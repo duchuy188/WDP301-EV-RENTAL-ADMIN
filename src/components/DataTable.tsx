@@ -1,17 +1,17 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 
 interface Column {
   key: string;
   header: string;
-  render?: (value: any, row: any) => React.ReactNode;
+  render?: (value: any, row: any, index?: number) => React.ReactNode;
 }
 
 interface DataTableProps {
   title?: string;
   columns: Column[];
-  data: any[];
+  data: any[] | undefined;
   loading?: boolean;
 }
 
@@ -39,7 +39,7 @@ export function DataTable({ title, columns, data, loading }: DataTableProps) {
     );
   }
 
-  if (data.length === 0) {
+  if (!data || data.length === 0) {
     return (
       <Card>
         {title && (
@@ -84,12 +84,12 @@ export function DataTable({ title, columns, data, loading }: DataTableProps) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {data.map((row, index) => (
+                {(data || []).map((row, index) => (
                   <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     {columns.map((column) => (
                       <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm">
                         {column.render 
-                          ? column.render(row[column.key], row)
+                          ? column.render(row[column.key], row, index)
                           : row[column.key]
                         }
                       </td>

@@ -1,6 +1,6 @@
-import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useState } from 'react';
 import { 
   Home, 
   Car, 
@@ -10,10 +10,14 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Zap
+  ChevronDown,
+  Zap,
+  UserCheck,
+  UserX,
+  BadgeCheck
 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { storage } from '../lib/storage';
+import AuthService from './service/authService';
 
 interface SidebarProps {
   isCollapsed: boolean;
@@ -24,23 +28,64 @@ interface SidebarProps {
 const menuItems = [
   { name: 'Dashboard', icon: Home, path: '/' },
   { name: 'Đội xe & Điểm thuê', icon: Car, path: '/fleet' },
-  { name: 'Khách hàng', icon: Users, path: '/customers' },
-  { name: 'Nhân viên', icon: UserCog, path: '/staff' },
+  { 
+    name: 'Quản lý khách hàng', 
+    icon: Users, 
+    path: '/customers',
+    hasSubmenu: true,
+    submenu: [
+      { name: 'Khách hàng', icon: UserCheck, path: '/customers' },
+      { name: 'Khách hàng rủi ro', icon: UserX, path: '/customers/risky' }
+    ]
+  },
+  { 
+    name: 'Quản lý nhân viên', 
+    icon: UserCog, 
+    path: '/staff',
+    hasSubmenu: true,
+    submenu: [
+      { name: 'Nhân viên', icon: Users, path: '/staff' },
+      { name: 'Phân công', icon: UserCog, path: '/staff/assignment' }
+    ]
+  },
   { name: 'Báo cáo & Phân tích', icon: BarChart3, path: '/analytics' },
 ];
 
 export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps) {
   const location = useLocation();
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
 
-  const handleLogout = () => {
-    storage.setAuth(false);
-    window.location.href = '/login';
+  const handleLogout = async () => {
+    try {
+      await AuthService.logout();
+      window.location.href = '/login';
+    } catch (error: any) {
+      console.error('❌ Sidebar: Logout error:', error.message);
+      // Still redirect even if logout API fails
+      window.location.href = '/login';
+    }
   };
 
   const expandSidebar = () => {
     if (isCollapsed) {
       setIsCollapsed(false);
     }
+  };
+
+  const toggleSubmenu = (menuName: string) => {
+    setExpandedMenus(prev => 
+      prev.includes(menuName) 
+        ? prev.filter(name => name !== menuName)
+        : [...prev, menuName]
+    );
+  };
+
+  const isSubmenuExpanded = (menuName: string) => {
+    return expandedMenus.includes(menuName);
+  };
+
+  const isSubmenuItemActive = (submenu: any[]) => {
+    return submenu.some(item => location.pathname === item.path);
   };
 
   return (
@@ -104,7 +149,101 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
             {menuItems.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
+              const hasSubmenu = item.hasSubmenu;
+              const isSubmenuActive = hasSubmenu && isSubmenuItemActive(item.submenu || []);
+              const isExpanded = hasSubmenu && isSubmenuExpanded(item.name);
               
+              if (hasSubmenu) {
+                return (
+                  <div key={item.name}>
+                    {/* Main menu item */}
+                    <button
+                      onClick={() => !isCollapsed && toggleSubmenu(item.name)}
+                      className={cn(
+                        'group flex items-center w-full rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 relative',
+                        isSubmenuActive
+                          ? 'bg-gradient-to-r from-primary-800 to-primary-600 text-white shadow-lg transform scale-[1.02]'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-800 hover:transform hover:scale-[1.01]',
+                        isCollapsed && 'justify-center px-3'
+                      )}
+                      title={isCollapsed ? item.name : undefined}
+                    >
+                      <Icon
+                        className={cn(
+                          'h-6 w-6 transition-all duration-200',
+                          isSubmenuActive ? 'text-white' : 'text-neutral-500 dark:text-gray-400 group-hover:text-primary-600',
+                          !isCollapsed && 'mr-4'
+                        )}
+                      />
+                      {!isCollapsed && (
+                        <>
+                          <motion.span
+                            initial={{ opacity: 0, x: -10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="truncate flex-1 text-left"
+                          >
+                            {item.name}
+                          </motion.span>
+                          <motion.div
+                            animate={{ rotate: isExpanded ? 180 : 0 }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <ChevronDown className="h-4 w-4 text-neutral-500 dark:text-gray-400" />
+                          </motion.div>
+                        </>
+                      )}
+                      {isSubmenuActive && !isCollapsed && (
+                        <motion.div
+                          layoutId="activeTab"
+                          className="absolute right-2 w-1 h-6 bg-white rounded-full"
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ duration: 0.2 }}
+                        />
+                      )}
+                    </button>
+
+                    {/* Submenu */}
+                    {!isCollapsed && (
+                      <motion.div
+                        initial={false}
+                        animate={{ 
+                          height: isExpanded ? 'auto' : 0,
+                          opacity: isExpanded ? 1 : 0
+                        }}
+                        transition={{ duration: 0.2 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="ml-6 mt-1 space-y-1">
+                          {item.submenu?.map((subItem) => {
+                            const isSubActive = location.pathname === subItem.path;
+                            const SubIcon = subItem.icon;
+                            
+                            return (
+                              <Link
+                                key={subItem.name}
+                                to={subItem.path}
+                                className={cn(
+                                  'group flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200',
+                                  isSubActive
+                                    ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+                                )}
+                              >
+                                <SubIcon className="h-4 w-4 mr-3" />
+                                <span className="truncate">{subItem.name}</span>
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                );
+              }
+              
+              // Regular menu item (no submenu)
               return (
                 <Link
                   key={item.name}

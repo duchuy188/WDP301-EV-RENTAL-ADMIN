@@ -3,33 +3,27 @@ import { motion } from 'framer-motion';
 import { Car, Mail, Lock, Zap, Users, Shield, CheckCircle } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-// import { storage } from '@/lib/storage';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+
 
 export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, loading, error } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    // Chỉ cho phép đăng nhập với tài khoản demo
-    if (email === 'admin@evrental.com' && password === 'admin123') {
-      setTimeout(() => {
-        login();
-        navigate('/');
-        setLoading(false);
-      }, 1000);
-    } else {
-      setTimeout(() => {
-        alert('Email hoặc mật khẩu không đúng!');
-        setLoading(false);
-      }, 1000);
+    
+    try {
+      await login({ email, password });
+      // Navigation will be handled by the AuthProvider/useAuth hook
+      navigate('/');
+    } catch (error) {
+      // Error is handled by useAuth hook and displayed via error state
     }
   };
 
@@ -136,11 +130,7 @@ export function Login() {
         className="flex-1 flex items-center justify-center p-8 bg-neutral-50 dark:bg-gray-900 relative"
       >
         {/* Background pattern */}
-        <div className="absolute inset-0 opacity-5 dark:opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234CAF50' fill-opacity='0.1'%3E%3Ccircle cx='30' cy='30' r='2'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }} />
-        </div>
+        <div className="absolute inset-0 opacity-5 dark:opacity-10 bg-pattern" />
 
         <div className="w-full max-w-md relative z-10">
           {/* Logo for mobile */}
@@ -179,27 +169,20 @@ export function Login() {
               >
                 Dành cho Quản trị viên
               </motion.p>
-              
-              {/* Demo credentials */}
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.6 }}
-                className="mt-6 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-200 dark:border-primary-800"
-              >
-                <p className="text-sm font-semibold text-primary-800 dark:text-primary-200 mb-2">
-                  🔐 Demo Login
-                </p>
-                <div className="space-y-1">
-                  <p className="text-xs text-primary-700 dark:text-primary-300">
-                    <span className="font-medium">Email:</span> <span className="font-mono bg-primary-100 dark:bg-primary-800 px-2 py-1 rounded">admin@evrental.com</span>
-                  </p>
-                  <p className="text-xs text-primary-700 dark:text-primary-300">
-                    <span className="font-medium">Password:</span> <span className="font-mono bg-primary-100 dark:bg-primary-800 px-2 py-1 rounded">admin123</span>
-                  </p>
-                </div>
-              </motion.div>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl"
+              >
+                <p className="text-sm text-red-600 dark:text-red-400 font-medium">
+                  {error}
+                </p>
+              </motion.div>
+            )}
 
             {/* Form */}
             <motion.form 
@@ -222,6 +205,7 @@ export function Login() {
                     className="pl-12 h-12 rounded-xl border-neutral-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                     placeholder="Nhập email của bạn"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -239,6 +223,7 @@ export function Login() {
                     className="pl-12 h-12 rounded-xl border-neutral-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                     placeholder="Nhập mật khẩu"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -251,6 +236,7 @@ export function Login() {
                   checked={rememberMe}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRememberMe(e.target.checked)}
                   className="h-4 w-4 text-primary-600 border-neutral-300 rounded focus:ring-primary-500"
+                  disabled={loading}
                 />
                 <label htmlFor="remember-me" className="ml-2 text-sm text-neutral-600 dark:text-gray-400">
                   Ghi nhớ đăng nhập
@@ -272,7 +258,28 @@ export function Login() {
                 )}
               </Button>
             </motion.form>
+
+            {/* Debug Panel Toggle */}
+            <div className="mt-6 text-center">
+              <button
+                onClick={() => setShowDebug(!showDebug)}
+                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                {showDebug ? 'Ẩn Debug Panel' : 'Hiện Debug Panel'}
+              </button>
+            </div>
           </motion.div>
+
+          {/* Debug Panel */}
+          {showDebug && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+              className="mt-6"
+            >
+            </motion.div>
+          )}
         </div>
       </motion.div>
     </div>
