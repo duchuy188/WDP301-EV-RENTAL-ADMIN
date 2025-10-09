@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, User, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { X, MapPin, User, CheckCircle, Loader2, Building2, Phone, Mail, Calendar, Shield, Search } from 'lucide-react';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { AssignmentService, UnassignedStaff, Station, AssignStaffRequest } from './service/assignmentService';
+import { showToast } from '../lib/toast';
 
 interface AssignmentModalProps {
   isOpen: boolean;
@@ -16,34 +15,71 @@ interface AssignmentModalProps {
 
 export function AssignmentModal({ isOpen, onClose, staff, onSuccess }: AssignmentModalProps) {
   const [stations, setStations] = useState<Station[]>([]);
+  const [filteredStations, setFilteredStations] = useState<Station[]>([]);
   const [selectedStationId, setSelectedStationId] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchStations = useCallback(async () => {
     try {
       setLoading(true);
-      setError(null);
       const stationsData = await AssignmentService.getStations();
       setStations(stationsData);
-    } catch (err) {
-      setError('Không thể tải danh sách trạm');
+      setFilteredStations(stationsData);
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách trạm';
+      showToast.error(`Lỗi tải danh sách trạm: ${errorMessage}`);
       console.error('Error fetching stations:', err);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  // Filter and reorder stations based on search term
+  useEffect(() => {
+    if (searchTerm.trim() === '') {
+      setFilteredStations(stations);
+    } else {
+      const searchLower = searchTerm.toLowerCase();
+      const filtered = stations.filter(station => 
+        station.name.toLowerCase().includes(searchLower) ||
+        station.code.toLowerCase().includes(searchLower) ||
+        (station.address && station.address.toLowerCase().includes(searchLower))
+      );
+      
+      // Sort by relevance: exact matches first, then partial matches
+      const sorted = filtered.sort((a, b) => {
+        const aName = a.name.toLowerCase();
+        const bName = b.name.toLowerCase();
+        const aCode = a.code.toLowerCase();
+        const bCode = b.code.toLowerCase();
+        const aAddress = a.address?.toLowerCase() || '';
+        const bAddress = b.address?.toLowerCase() || '';
+        
+        // Exact matches first
+        if (aName === searchLower || aCode === searchLower) return -1;
+        if (bName === searchLower || bCode === searchLower) return 1;
+        
+        // Starts with search term
+        if (aName.startsWith(searchLower) || aCode.startsWith(searchLower)) return -1;
+        if (bName.startsWith(searchLower) || bCode.startsWith(searchLower)) return 1;
+        
+        // Contains search term
+        return 0;
+      });
+      
+      setFilteredStations(sorted);
+    }
+  }, [searchTerm, stations]);
+
   // Fetch stations when modal opens and reset state
   useEffect(() => {
     if (isOpen) {
       // Reset state when modal opens
       setSelectedStationId('');
-      setError(null);
-      setSuccess(false);
+      setSearchTerm('');
       setLoading(false);
       setAssigning(false);
       fetchStations();
@@ -58,37 +94,34 @@ export function AssignmentModal({ isOpen, onClose, staff, onSuccess }: Assignmen
         clearTimeout(timeoutRef.current);
       }
       setSelectedStationId('');
-      setError(null);
-      setSuccess(false);
       setLoading(false);
       setAssigning(false);
     };
   }, []);
 
   const handleAssign = async () => {
-    if (!staff || !selectedStationId) return;
+    if (!staff || !selectedStationId) {
+      showToast.error('Vui lòng chọn trạm để phân công nhân viên');
+      return;
+    }
 
     try {
       setAssigning(true);
-      setError(null);
 
       const assignData: AssignStaffRequest = {
         userId: staff._id,
         stationId: selectedStationId
       };
 
-      const result = await AssignmentService.assignStaff(assignData);
+      await AssignmentService.assignStaff(assignData);
       
-      setSuccess(true);
-      
-      // Auto close after 2 seconds
-      timeoutRef.current = setTimeout(() => {
-        onSuccess();
-        handleClose();
-      }, 2000);
+      showToast.success('Phân công nhân viên thành công!');
+      onSuccess();
+      handleClose();
 
     } catch (err: any) {
-      setError(err.message || 'Có lỗi xảy ra khi phân công');
+      const errorMessage = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi phân công';
+      showToast.error(`Lỗi phân công nhân viên: ${errorMessage}`);
       console.error('Error assigning staff:', err);
     } finally {
       setAssigning(false);
@@ -104,8 +137,7 @@ export function AssignmentModal({ isOpen, onClose, staff, onSuccess }: Assignmen
       }
       // Reset state before closing
       setSelectedStationId('');
-      setError(null);
-      setSuccess(false);
+      setSearchTerm('');
       setLoading(false);
       onClose();
     }
@@ -119,147 +151,208 @@ export function AssignmentModal({ isOpen, onClose, staff, onSuccess }: Assignmen
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed top-0 left-0 right-0 bottom-0 w-screen h-screen bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
-          style={{ margin: 0, padding: 0 }}
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         >
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            transition={{ duration: 0.2 }}
-            className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md"
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+            className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-2xl h-auto max-h-[85vh] flex flex-col overflow-hidden"
           >
-        <Card className="border-0 shadow-none">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <CardTitle className="text-lg font-semibold">Phân công nhân viên</CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleClose}
-              disabled={assigning}
-              className="h-8 w-8"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </CardHeader>
-
-          <CardContent className="space-y-6">
-            {/* Staff Info */}
-            <div className="flex items-center space-x-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <MapPin className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                    Phân công nhân viên
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Chọn trạm để phân công nhân viên
+                  </p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-medium text-gray-900 dark:text-white">{staff.fullname}</h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{staff.email}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{staff.phone}</p>
-              </div>
-              <Badge variant="outline" className="text-xs">
-                {staff.role}
-              </Badge>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleClose}
+                disabled={assigning}
+                className="h-10 w-10 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
 
-            {/* Station Selection */}
-            <div className="space-y-3">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Chọn trạm phân công
-              </label>
-              
-              {loading ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                  <span className="ml-2 text-sm text-gray-500">Đang tải danh sách trạm...</span>
-                </div>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {stations.map((station) => (
-                    <div
-                      key={station._id}
-                      className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                        selectedStationId === station._id
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
-                      }`}
-                      onClick={() => setSelectedStationId(station._id)}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <MapPin className="w-4 h-4 text-gray-500" />
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {station.name}
-                          </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Mã: {station.code}
-                          </p>
-                          {station.address && (
-                            <p className="text-xs text-gray-400 dark:text-gray-500">
-                              {station.address}
-                            </p>
-                          )}
+            <div className="flex-1 overflow-hidden">
+              {/* Staff Information Card */}
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center">
+                  <User className="w-4 h-4 mr-2 text-emerald-600" />
+                  Thông tin nhân viên
+                </h3>
+                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/20 dark:to-teal-900/20 rounded-xl p-4 border border-emerald-100 dark:border-emerald-800/30">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-md">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <h4 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                          {staff.fullname}
+                        </h4>
+                        <Badge variant="secondary" className="text-xs bg-emerald-100 text-emerald-700 border-emerald-200">
+                          <Shield className="w-3 h-3 mr-1" />
+                          {staff.role}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-1 gap-1">
+                        <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
+                          <Mail className="w-3 h-3 text-emerald-600" />
+                          <span className="truncate">{staff.email}</span>
                         </div>
-                        {selectedStationId === station._id && (
-                          <CheckCircle className="w-5 h-5 text-blue-600" />
-                        )}
+                        <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
+                          <Phone className="w-3 h-3 text-emerald-600" />
+                          <span>{staff.phone}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-xs text-gray-600 dark:text-gray-400">
+                          <Calendar className="w-3 h-3 text-emerald-600" />
+                          <span>Tham gia: {new Date(staff.createdAt).toLocaleDateString('vi-VN')}</span>
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              )}
+              </div>
+
+              {/* Station Selection */}
+              <div className="px-6 pb-4">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center space-x-3">
+                    <Building2 className="w-5 h-5 text-emerald-600" />
+                    <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                      Chọn trạm phân công
+                    </h3>
+                  </div>
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Tìm trạm..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-48 pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200"
+                    />
+                  </div>
+                </div>
+                
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="flex flex-col items-center space-y-3">
+                      <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-900/20 rounded-xl flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />
+                      </div>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                        Đang tải danh sách trạm...
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3 h-[200px] overflow-y-auto overflow-x-hidden pr-2">
+                    {filteredStations.slice(0, 2).map((station) => (
+                      <motion.div
+                        key={station._id}
+                        whileTap={{ scale: 0.98 }}
+                        className={`relative p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 ${
+                          selectedStationId === station._id
+                            ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20'
+                            : 'border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                        }`}
+                        onClick={() => setSelectedStationId(station._id)}
+                      >
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                            selectedStationId === station._id
+                              ? 'bg-emerald-500 text-white shadow-lg'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                          }`}>
+                            <MapPin className="w-5 h-5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-gray-900 dark:text-white truncate">
+                              {station.name}
+                            </h4>
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Mã trạm: {station.code}
+                            </p>
+                            {station.address && (
+                              <p className="text-xs text-gray-500 dark:text-gray-500 truncate mt-1 flex items-center">
+                                <MapPin className="w-3 h-3 mr-1 text-emerald-600" />
+                                {station.address}
+                              </p>
+                            )}
+                          </div>
+                          {selectedStationId === station._id && (
+                            <motion.div
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg"
+                            >
+                              <CheckCircle className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </div>
+                      </motion.div>
+                    ))}
+                    {filteredStations.length > 2 && (
+                      <div className="text-center py-2">
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          Và {filteredStations.length - 2} trạm khác...
+                        </span>
+                      </div>
+                    )}
+                    {filteredStations.length === 0 && searchTerm && (
+                      <div className="flex items-center justify-center h-full">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          Không tìm thấy trạm nào
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Error Message */}
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center space-x-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg"
-              >
-                <AlertCircle className="w-4 h-4 text-red-600" />
-                <span className="text-sm text-red-700 dark:text-red-400">{error}</span>
-              </motion.div>
-            )}
-
-            {/* Success Message */}
-            {success && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center space-x-2 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg"
-              >
-                <CheckCircle className="w-4 h-4 text-green-600" />
-                <span className="text-sm text-green-700 dark:text-green-400">
-                  Phân công thành công!
-                </span>
-              </motion.div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="flex space-x-3 pt-4">
+            {/* Footer Actions */}
+            <div className="flex items-center justify-end space-x-4 p-6 border-t border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
               <Button
                 variant="outline"
                 onClick={handleClose}
                 disabled={assigning}
-                className="flex-1"
+                className="px-8 py-3 rounded-xl border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
               >
-                Hủy
+                Hủy bỏ
               </Button>
               <Button
                 onClick={handleAssign}
                 disabled={!selectedStationId || assigning || loading}
-                className="flex-1"
+                className="px-10 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 rounded-xl font-semibold"
               >
                 {assigning ? (
                   <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                     Đang phân công...
                   </>
                 ) : (
-                  'Phân công'
+                  <>
+                    <MapPin className="w-5 h-5 mr-2" />
+                    Phân công nhân viên
+                  </>
                 )}
               </Button>
             </div>
-          </CardContent>
-        </Card>
           </motion.div>
         </motion.div>
       )}

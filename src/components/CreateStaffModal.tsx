@@ -6,6 +6,7 @@ import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { UserService } from './service/userService';
 import { CreateStaffPayload, CreateStaffResponse } from './service/type/userTypes';
+import { showToast } from '../lib/toast';
 
 interface CreateStaffModalProps {
   isOpen: boolean;
@@ -85,8 +86,9 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
       }, 3000);
 
     } catch (err: any) {
-      const errorMessage = err.message || 'Có lỗi xảy ra khi tạo tài khoản';
+      const errorMessage = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi tạo tài khoản';
       setError(errorMessage);
+      showToast.error(`Lỗi tạo tài khoản: ${errorMessage}`);
       console.error('Error creating staff:', err);
       
       // If it's a timeout or network error, suggest checking the staff list

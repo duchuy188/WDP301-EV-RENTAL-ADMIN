@@ -8,6 +8,7 @@ import { Button } from '../components/ui/button';
 import { UserService } from '../components/service/userService';
 import { User, Station } from '../components/service/type/userTypes';
 import { CreateStaffModal } from '../components/CreateStaffModal';
+import { showToast } from '../lib/toast';
 
 export function Staff() {
   const [staff, setStaff] = useState<User[]>([]);
@@ -36,7 +37,9 @@ export function Staff() {
         setPagination(response.pagination);
       } catch (err: any) {
         console.error('Error fetching staff:', err);
-        setError(err.message || 'Failed to fetch staff data');
+        const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách nhân viên';
+        setError(errorMessage);
+        showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -132,7 +135,7 @@ export function Staff() {
 
   const totalStaff = pagination.total;
   const activeStaff = staff.filter(s => s.status === 'active').length;
-  const blockedStaff = staff.filter(s => s.status === 'blocked').length;
+  const suspendedStaff = staff.filter(s => s.status === 'suspended').length;
   const kycApproved = staff.filter(s => s.kycStatus === 'approved').length;
 
   // Pagination handlers
@@ -161,7 +164,9 @@ export function Staff() {
         console.log('✅ Staff list refreshed successfully');
       } catch (err: any) {
         console.error('Error fetching staff:', err);
-        setError(err.message || 'Failed to fetch staff data');
+        const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách nhân viên';
+        setError(errorMessage);
+        showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
       } finally {
         setLoading(false);
       }
@@ -261,7 +266,7 @@ export function Staff() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-red-600">
-                {blockedStaff}
+                {suspendedStaff}
               </div>
             </CardContent>
           </Card>

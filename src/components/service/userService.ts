@@ -47,7 +47,7 @@ export class UserService {
    */
   static async updateUserStatus(
     userId: string,
-    status: 'active' | 'blocked'
+    status: 'active' | 'suspended'
   ): Promise<User> {
     const response = await axiosInstance.patch(`/api/users/${userId}/status`, {
       status,
@@ -116,7 +116,7 @@ export class UserService {
    * @returns Promise<UsersResponse>
    */
   static async getUsersByStatus(
-    status: 'active' | 'blocked',
+    status: 'active' | 'suspended',
     params?: Omit<UsersParams, 'status'>
   ): Promise<UsersResponse> {
     return this.getUsers({

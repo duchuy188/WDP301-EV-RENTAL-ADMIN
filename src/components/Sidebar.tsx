@@ -27,7 +27,16 @@ interface SidebarProps {
 
 const menuItems = [
   { name: 'Dashboard', icon: Home, path: '/' },
-  { name: 'Đội xe & Điểm thuê', icon: Car, path: '/fleet' },
+  {
+    name: 'Quản lý Xe và Trạm',
+    icon: Car,
+    path: '/fleet',
+    hasSubmenu: true,
+    submenu: [
+      { name: 'Trạm xe', icon: BadgeCheck, path: '/fleet/stations' },
+      { name: 'Đội xe', icon: Car, path: '/fleet' },
+    ],
+  },
   { 
     name: 'Quản lý khách hàng', 
     icon: Users, 
@@ -48,6 +57,7 @@ const menuItems = [
       { name: 'Phân công', icon: UserCog, path: '/staff/assignment' }
     ]
   },
+  { name: 'Quản lý đặt và thuê xe', icon: BadgeCheck, path: '/staff/rentals' },
   { name: 'Báo cáo & Phân tích', icon: BarChart3, path: '/analytics' },
 ];
 
@@ -159,19 +169,19 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
                     {/* Main menu item */}
                     <button
                       onClick={() => !isCollapsed && toggleSubmenu(item.name)}
-                      className={cn(
-                        'group flex items-center w-full rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 relative',
-                        isSubmenuActive
-                          ? 'bg-gradient-to-r from-primary-800 to-primary-600 text-white shadow-lg transform scale-[1.02]'
-                          : 'text-gray-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-800 hover:transform hover:scale-[1.01]',
-                        isCollapsed && 'justify-center px-3'
-                      )}
+                    className={cn(
+                      'group flex items-center w-full rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 relative',
+                      isSubmenuActive
+                        ? 'bg-gradient-to-r from-primary-800 to-primary-600 text-white shadow-lg transform scale-[1.02]'
+                        : 'text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300 hover:shadow-md hover:ring-1 hover:ring-primary-200 dark:hover:ring-primary-800 hover:scale-[1.02]',
+                      isCollapsed && 'justify-center px-3'
+                    )}
                       title={isCollapsed ? item.name : undefined}
                     >
                       <Icon
                         className={cn(
                           'h-6 w-6 transition-all duration-200',
-                          isSubmenuActive ? 'text-white' : 'text-neutral-500 dark:text-gray-400 group-hover:text-primary-600',
+                          isSubmenuActive ? 'text-white' : 'text-neutral-500 dark:text-gray-400 group-hover:text-primary-700 dark:group-hover:text-primary-300',
                           !isCollapsed && 'mr-4'
                         )}
                       />
@@ -228,7 +238,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
                                   'group flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200',
                                   isSubActive
                                     ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
-                                    : 'text-gray-600 dark:text-gray-400 hover:bg-neutral-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200'
+                                    : 'text-gray-600 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300 hover:shadow-sm hover:scale-[1.01]'
                                 )}
                               >
                                 <SubIcon className="h-4 w-4 mr-3" />
@@ -252,7 +262,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
                     'group flex items-center rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 relative',
                     isActive
                       ? 'bg-gradient-to-r from-primary-800 to-primary-600 text-white shadow-lg transform scale-[1.02]'
-                      : 'text-gray-700 dark:text-gray-300 hover:bg-neutral-100 dark:hover:bg-gray-800 hover:transform hover:scale-[1.01]',
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300 hover:shadow-md hover:ring-1 hover:ring-primary-200 dark:hover:ring-primary-800 hover:scale-[1.02]',
                     isCollapsed && 'justify-center px-3'
                   )}
                   title={isCollapsed ? item.name : undefined}
@@ -260,7 +270,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
                   <Icon
                     className={cn(
                       'h-6 w-6 transition-all duration-200',
-                      isActive ? 'text-white' : 'text-neutral-500 dark:text-gray-400 group-hover:text-primary-600',
+                      isActive ? 'text-white' : 'text-neutral-500 dark:text-gray-400 group-hover:text-primary-700 dark:group-hover:text-primary-300',
                       !isCollapsed && 'mr-4'
                     )}
                   />

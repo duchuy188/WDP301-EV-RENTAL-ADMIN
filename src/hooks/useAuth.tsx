@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AuthService from '../components/service/authService';
 import { LoginRequest, User } from '../components/service/type/authTypes';
+import { showToast } from '../lib/toast';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -59,10 +60,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error: any) {
       console.error('❌ useAuth: Login failed:', error.message);
       
-      const errorMessage = error.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
+      const errorMessage = error.response?.data?.message || error.message || 'Đăng nhập thất bại. Vui lòng thử lại.';
       setError(errorMessage);
       setIsAuthenticated(false);
       setUser(null);
+      showToast.error(errorMessage);
       
       // Re-throw to allow UI to handle the error
       throw error;

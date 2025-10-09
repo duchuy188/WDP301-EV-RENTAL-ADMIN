@@ -16,7 +16,7 @@ export interface User {
   address?: string;
   avatar?: string;
   avatarPublicId?: string;
-  status: 'active' | 'blocked';
+  status: 'active' | 'suspended';
   role: 'Admin' | 'Station Staff' | 'EV Renter';
   stationId?: string | Station | null;
   kycStatus: 'approved' | 'pending' | 'rejected' | 'not_submitted';
@@ -44,7 +44,7 @@ export interface UsersParams {
   page?: number;
   limit?: number;
   role?: 'Admin' | 'Station Staff' | 'EV Renter';
-  status?: 'active' | 'blocked';
+  status?: 'active' | 'suspended';
   stationId?: string;
   search?: string;
   sort?: 'createdAt' | 'fullname' | 'email';
@@ -58,7 +58,7 @@ export interface UpdateUserPayload {
   address?: string;
   avatar?: string;
   stationId?: string;
-  status?: 'active' | 'blocked';
+  status?: 'active' | 'suspended';
   kycStatus?: 'approved' | 'pending' | 'rejected' | 'not_submitted';
 }
 

@@ -13,6 +13,7 @@ import {
   CheckCircle,
   RefreshCw
 } from 'lucide-react';
+import { showToast } from '../lib/toast';
 import { DataTable } from '../components/DataTable';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -54,7 +55,9 @@ export default function Assignment() {
       setStaff(response.staff);
       setPagination(response.pagination);
     } catch (err: any) {
-      setError(err.message || 'Không thể tải danh sách nhân viên');
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách nhân viên';
+      setError(errorMessage);
+      showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
       console.error('Error fetching staff:', err);
     } finally {
       setLoading(false);
@@ -131,22 +134,10 @@ export default function Assignment() {
       header: 'Trạng thái',
       render: (value: string) => (
         <Badge 
-          variant={value === 'active' ? 'default' : 'secondary'}
+          variant={value === 'active' ? 'success' : 'secondary'}
           className="text-xs"
         >
           {value === 'active' ? 'Hoạt động' : 'Không hoạt động'}
-        </Badge>
-      )
-    },
-    {
-      key: 'kyc_status',
-      header: 'KYC',
-      render: (value: string) => (
-        <Badge 
-          variant={value === 'approved' ? 'default' : 'destructive'}
-          className="text-xs"
-        >
-          {value === 'approved' ? 'Đã duyệt' : 'Chưa duyệt'}
         </Badge>
       )
     },

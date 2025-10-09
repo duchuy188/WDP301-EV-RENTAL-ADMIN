@@ -5,6 +5,7 @@ import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { User as UserType, UpdateUserPayload } from './service/type/userTypes';
 import { UserService } from './service/userService';
+import { showToast } from '../lib/toast';
 
 interface UserDetailModalProps {
   user: UserType | null;
@@ -75,7 +76,9 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
       }, 1500);
     } catch (err: any) {
       console.error('Failed to update user', err);
-      setError(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin');
+      const errorMessage = err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin';
+      setError(errorMessage);
+      showToast.error(`Lỗi cập nhật thông tin: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
@@ -118,7 +121,7 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'success';
-      case 'blocked': return 'destructive';
+      case 'suspended': return 'destructive';
       default: return 'secondary';
     }
   };
@@ -136,7 +139,7 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
   const getStatusText = (status: string) => {
     switch (status) {
       case 'active': return 'Hoạt động';
-      case 'blocked': return 'Bị khóa';
+      case 'suspended': return 'Đã chặn';
       default: return status;
     }
   };
@@ -392,7 +395,7 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
                               aria-label="Trạng thái"
                             >
                               <option value="active">Hoạt động</option>
-                              <option value="blocked">Bị khóa</option>
+                              <option value="suspended">Đã chặn</option>
                             </select>
                           ) : (
                             <Badge variant={getStatusColor(user.status) as any} className="px-3 py-1">

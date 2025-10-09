@@ -8,6 +8,7 @@ import { Input } from '../components/ui/input';
 import { UserService } from '../components/service/userService';
 import { User as UserType, UsersParams } from '../components/service/type/userTypes';
 import { UserDetailModal } from '../components/UserDetailModal';
+import { showToast } from '../lib/toast';
 
 export function Customers() {
   const [users, setUsers] = useState<UserType[]>([]);
@@ -76,7 +77,9 @@ export function Customers() {
         console.log('📄 Current page:', response.pagination.page, 'of', response.pagination.pages);
         
       } catch (err: any) {
-        setError(err.message);
+        const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách khách hàng';
+        setError(errorMessage);
+        showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
         console.error('❌ Error fetching users:', err);
         console.error('❌ Error details:', {
           message: err.message,
@@ -123,7 +126,9 @@ export function Customers() {
       setUsers(response.users);
       setPagination(response.pagination);
     } catch (err: any) {
-      setError(err.message);
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể tải dữ liệu';
+      setError(errorMessage);
+      showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
@@ -132,12 +137,18 @@ export function Customers() {
   const toggleStatus = async (user: UserType) => {
     try {
       setTogglingId(user._id);
-      const nextStatus = user.status === 'active' ? 'blocked' : 'active';
+      const nextStatus = user.status === 'active' ? 'suspended' : 'active';
       await UserService.updateUserStatus(user._id, nextStatus);
       // Optimistic update
       setUsers(prev => prev.map(u => (u._id === user._id ? { ...u, status: nextStatus } : u)));
+      
+      // Show success message
+      const statusText = nextStatus === 'active' ? 'đã được kích hoạt' : 'đã bị chặn';
+      showToast.success(`Tài khoản ${user.fullname} ${statusText} thành công!`);
     } catch (err: any) {
-      console.error(err.message);
+      const errorMessage = err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái';
+      showToast.error(`Lỗi cập nhật trạng thái: ${errorMessage}`);
+      console.error('Error updating user status:', err);
     } finally {
       setTogglingId(null);
     }
@@ -246,7 +257,7 @@ export function Customers() {
       header: 'Trạng thái',
       render: (value: string, _row: any) => (
         <Badge variant={value === 'active' ? 'success' : 'destructive'}>
-          {value === 'active' ? 'Hoạt động' : 'Bị khóa'}
+          {value === 'active' ? 'Hoạt động' : 'Đã chặn'}
         </Badge>
       )
     },
@@ -280,8 +291,8 @@ export function Customers() {
             onClick={() => toggleStatus(row)}
             disabled={togglingId === row._id}
             className="h-8 w-8 p-0 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/20 dark:hover:text-amber-400"
-            title={row.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
-            aria-label={row.status === 'active' ? 'Khóa tài khoản' : 'Mở khóa tài khoản'}
+            title={row.status === 'active' ? 'Đình chỉ tài khoản' : 'Kích hoạt tài khoản'}
+            aria-label={row.status === 'active' ? 'Đình chỉ tài khoản' : 'Kích hoạt tài khoản'}
           >
             {row.status === 'active' ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
           </Button>
@@ -293,7 +304,7 @@ export function Customers() {
   // Calculate statistics from API data
   const totalCustomers = pagination.total;
   const activeCustomers = users.filter(u => u.status === 'active').length;
-  const blockedCustomers = users.filter(u => u.status === 'blocked').length;
+  const suspendedCustomers = users.filter(u => u.status === 'suspended').length;
 
   return (
     <div className="space-y-6 p-6">
@@ -360,10 +371,10 @@ export function Customers() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-red-600 dark:text-red-400">
-                EV Renter bị khóa
+                EV Renter đã chặn
               </p>
               <p className="text-3xl font-bold text-red-700 dark:text-red-300">
-                {blockedCustomers}
+                {suspendedCustomers}
               </p>
             </div>
             <User className="h-8 w-8 text-red-600 dark:text-red-400" />
@@ -421,7 +432,7 @@ export function Customers() {
             >
               <option value="">Tất cả trạng thái</option>
               <option value="active">Hoạt động</option>
-              <option value="blocked">Bị khóa</option>
+              <option value="suspended">Đã chặn</option>
             </select>
           </div>
 
