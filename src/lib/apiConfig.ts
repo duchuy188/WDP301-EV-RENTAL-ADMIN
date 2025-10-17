@@ -17,18 +17,30 @@ export const API_CONFIG = {
       getById: (id: string) => `/api/users/${id}`
     },
     vehicles: {
-      list: '/api/vehicles',
+      // Admin vehicle endpoints
+      list: '/api/vehicles/admin',
       create: '/api/vehicles',
+      getById: (id: string) => `/api/vehicles/${id}`,
+      statistics: '/api/vehicles/statistics',
+      bulkCreate: '/api/vehicles/bulk-create',
+      importLicensePlates: '/api/vehicles/import-license-plates',
+      assignByQuantity: '/api/vehicles/assign-by-quantity',
+      exportPricingTemplate: '/api/vehicles/export-pricing-template',
+      importPricingUpdates: '/api/vehicles/import-pricing-updates',
       update: (id: string) => `/api/vehicles/${id}`,
       delete: (id: string) => `/api/vehicles/${id}`,
-      getById: (id: string) => `/api/vehicles/${id}`
+      updateStatus: (id: string) => `/api/vehicles/${id}/status`,
+      updateBattery: (id: string) => `/api/vehicles/${id}/battery`
     },
     stations: {
       list: '/api/stations',
       create: '/api/stations',
+      getById: (id: string) => `/api/stations/${id}`,
       update: (id: string) => `/api/stations/${id}`,
       delete: (id: string) => `/api/stations/${id}`,
-      getById: (id: string) => `/api/stations/${id}`
+      sync: (id: string) => `/api/stations/${id}/sync`,
+      syncAll: '/api/stations/sync-all',
+      getStaff: (id: string) => `/api/stations/${id}/staff`
     },
     rentals: {
       list: '/api/rentals',

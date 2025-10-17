@@ -15,6 +15,17 @@ export interface PaginatedResponse<T = any> {
   };
 }
 
+// Station specific response format
+export interface StationListResponse {
+  stations: any[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
 export interface ApiError {
   message: string;
   error?: string;
@@ -41,6 +52,22 @@ export interface RequestConfig {
   data?: any;
   headers?: Record<string, string>;
 }
+
+// Re-export specific types from dedicated files
+export type { Station, CreateStationRequest, UpdateStationRequest } from './stationTypes';
+export type { 
+  Vehicle, 
+  VehicleStatus, 
+  CreateVehicleRequest, 
+  UpdateVehicleRequest,
+  UpdateVehicleStatusRequest,
+  UpdateVehicleBatteryRequest,
+  BulkCreateVehicleRequest,
+  AssignVehicleByQuantityRequest,
+  VehicleStatistics
+} from './vehicleTypes';
+
+
 
 
 

@@ -86,21 +86,113 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
       }, 3000);
 
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || 'Có lỗi xảy ra khi tạo tài khoản';
-      setError(errorMessage);
-      showToast.error(`Lỗi tạo tài khoản: ${errorMessage}`);
       console.error('Error creating staff:', err);
+      const errorMessage = err.message || 'Có lỗi xảy ra khi tạo tài khoản';
       
-      // If it's a timeout or network error, suggest checking the staff list
-      if (errorMessage.includes('có thể đã được tạo thành công')) {
-        // Auto refresh staff list after timeout error
-        setTimeout(() => {
-          onSuccess(); // This will refresh the staff list
+      // Handle different error types based on our simplified error codes
+      if (errorMessage === 'DUPLICATE_EMAIL') {
+        setError('Email này đã được sử dụng. Đang kiểm tra xem tài khoản đã được tạo chưa...');
+        showToast.warning('Email đã tồn tại - Đang kiểm tra...');
+        
+        // Always check if staff exists for duplicate email errors
+        setTimeout(async () => {
+          await checkIfStaffExists();
         }, 1000);
+        
+      } else if (errorMessage.startsWith('VALIDATION_ERROR:')) {
+        const validationMsg = errorMessage.replace('VALIDATION_ERROR: ', '');
+        setError(`Lỗi validation: ${validationMsg}. Đang kiểm tra kết quả...`);
+        showToast.warning('Lỗi validation - Đang kiểm tra...');
+        
+        // Check if staff was created despite validation error
+        setTimeout(async () => {
+          await checkIfStaffExists();
+        }, 1000);
+        
+      } else if (errorMessage === 'TIMEOUT_ERROR') {
+        setError('Server phản hồi chậm. Đang kiểm tra xem tài khoản đã được tạo chưa...');
+        showToast.warning('Timeout - Đang kiểm tra kết quả...');
+        
+        setTimeout(async () => {
+          await checkIfStaffExists();
+        }, 2000);
+        
+      } else if (errorMessage === 'NETWORK_ERROR') {
+        setError('Lỗi kết nối mạng. Đang kiểm tra xem tài khoản đã được tạo chưa...');
+        showToast.error('Lỗi mạng - Đang kiểm tra kết quả...');
+        
+        setTimeout(async () => {
+          await checkIfStaffExists();
+        }, 2000);
+        
+      } else {
+        // Other API errors - still check in case of success
+        const cleanMsg = errorMessage.startsWith('API_ERROR: ') ? 
+          errorMessage.replace('API_ERROR: ', '') : errorMessage;
+        setError(`Lỗi: ${cleanMsg}. Đang kiểm tra kết quả...`);
+        showToast.error(`Lỗi: ${cleanMsg}`);
+        
+        // Even for other errors, check if creation was successful
+        setTimeout(async () => {
+          await checkIfStaffExists();
+        }, 1500);
       }
     } finally {
       setCreating(false);
       setIsRetrying(false);
+    }
+  };
+
+  // Helper function to check if staff was actually created
+  const checkIfStaffExists = async () => {
+    try {
+      console.log('Checking if staff exists with email:', form.email);
+      const searchResult = await UserService.getUsers({ 
+        search: form.email,
+        role: 'Station Staff',
+        limit: 10 
+      });
+      
+      const staffExists = searchResult.users.some(user => 
+        user.email.toLowerCase() === form.email.toLowerCase()
+      );
+      
+      if (staffExists) {
+        console.log('✅ Staff found! Creation was actually successful.');
+        setError('');
+        setSuccess(true);
+        showToast.success('🎉 Tài khoản đã được tạo thành công!');
+        
+        // Find the created staff to show details
+        const createdUser = searchResult.users.find(user => 
+          user.email.toLowerCase() === form.email.toLowerCase()
+        );
+        
+        if (createdUser) {
+          // Create a mock response structure for display
+          setCreatedStaff({
+            message: 'Tài khoản đã được tạo thành công',
+            user: createdUser,
+            temporaryPassword: 'Đã được gửi qua email' // We don't have the actual password
+          });
+        }
+        
+        // Auto close and refresh after showing success
+        setTimeout(() => {
+          onSuccess();
+          handleClose();
+        }, 3000);
+      } else {
+        console.log('❌ Staff not found, creation likely failed.');
+        setError('Không tìm thấy tài khoản. Vui lòng thử lại.');
+        showToast.info('Không tìm thấy tài khoản - Đang làm mới danh sách...');
+        onSuccess(); // Refresh the list anyway
+      }
+    } catch (verifyError) {
+      console.error('Error verifying staff creation:', verifyError);
+      setError('Không thể kiểm tra kết quả. Vui lòng kiểm tra danh sách nhân viên.');
+      showToast.info('Đang làm mới danh sách nhân viên...');
+      onSuccess(); // Refresh the list anyway
     }
   };
 

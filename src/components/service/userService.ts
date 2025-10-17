@@ -1,6 +1,6 @@
 import { axiosInstance } from './api/axiosInstance';
 import { User, UsersResponse, UsersParams, UpdateUserPayload, CreateStaffPayload, CreateStaffResponse } from './type/userTypes';
-import { buildQueryParams, isTimeoutError, isNetworkError, retryWithBackoff } from './utils/apiUtils';
+import { buildQueryParams, isTimeoutError, isNetworkError } from './utils/apiUtils';
 
 export class UserService {
   /**
@@ -139,34 +139,50 @@ export class UserService {
   }
 
   /**
-   * Create a new staff account with retry logic
+   * Create a new staff account - simplified without retry logic
    * @param payload - Staff creation data
-   * @param retryCount - Current retry attempt
    * @returns Promise<CreateStaffResponse>
    */
   static async createStaff(payload: CreateStaffPayload): Promise<CreateStaffResponse> {
-    return retryWithBackoff(
-      async () => {
-        const response = await axiosInstance.post('/api/users/staff', payload);
-        return response.data;
-      },
-      2, // maxRetries
-      1000 // baseDelay
-    ).catch((error: any) => {
-      // Handle timeout errors specially
-      if (isTimeoutError(error)) {
-        throw new Error('Server đang xử lý chậm. Tài khoản có thể đã được tạo thành công. Vui lòng kiểm tra danh sách nhân viên.');
+    try {
+      console.log('Creating staff with payload:', payload);
+      const response = await axiosInstance.post('/api/users/staff', payload);
+      console.log('Staff creation response:', response);
+      return response.data;
+    } catch (error: any) {
+      console.log('CreateStaff error details:', error);
+      console.log('Error response:', error.response);
+      console.log('Error status:', error.response?.status);
+      console.log('Error message:', error.response?.data?.message);
+      
+      // Handle 400 Bad Request specifically
+      if (error.response?.status === 400) {
+        const errorMsg = error.response?.data?.message || '';
+        console.log('400 error message:', errorMsg);
+        
+        // Check if it's a duplicate email error
+        if (errorMsg.includes('email') || errorMsg.includes('đã tồn tại') || errorMsg.includes('already exists') || errorMsg.includes('duplicate')) {
+          throw new Error('DUPLICATE_EMAIL');
+        }
+        
+        // Other validation errors
+        throw new Error(`VALIDATION_ERROR: ${errorMsg}`);
       }
 
-      // Handle network errors specially
+      // Handle timeout errors
+      if (isTimeoutError(error)) {
+        throw new Error('TIMEOUT_ERROR');
+      }
+
+      // Handle network errors
       if (isNetworkError(error)) {
-        throw new Error('Không thể kết nối đến server. Tài khoản có thể đã được tạo thành công. Vui lòng kiểm tra danh sách nhân viên.');
+        throw new Error('NETWORK_ERROR');
       }
 
       // Handle other errors
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to create staff account';
-      throw new Error(errorMessage);
-    });
+      const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
+      throw new Error(`API_ERROR: ${errorMessage}`);
+    }
   }
 
 }

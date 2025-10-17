@@ -8,6 +8,7 @@ import { Header } from './components/Header';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Fleet } from './pages/Fleet';
+import { Stations } from './pages/Stations';
 import { Customers } from './pages/Customers';
 import { Staff } from './pages/Staff';
 import { Analytics } from './pages/Analytics';
@@ -65,6 +66,7 @@ function AppContent() {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/fleet" element={<Fleet />} />
+                <Route path="/fleet/stations" element={<Stations />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/customers/risky" element={<RiskyCustomers />} />
                 <Route path="/staff" element={<Staff />} />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, CreditCard, Loader2, Search, ChevronLeft, ChevronRight, Eye, Lock, Unlock } from 'lucide-react';
-import { DataTable } from '../components/DataTable';
+import { User, CreditCard, Loader2, Search, Eye, Lock, Unlock } from 'lucide-react';
+import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -154,54 +154,8 @@ export function Customers() {
     }
   };
 
-  // Handle pagination
-  const handlePageChange = (newPage: number) => {
-    setFilters(prev => ({ ...prev, page: newPage }));
-  };
 
-  const handlePreviousPage = () => {
-    if (filters.page && filters.page > 1) {
-      handlePageChange(filters.page - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (filters.page && filters.page < pagination.pages) {
-      handlePageChange(filters.page + 1);
-    }
-  };
-
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const currentPage = filters.page || 1;
-    const totalPages = pagination.pages;
-    const pages = [];
-    
-    // Show first page
-    if (currentPage > 3) {
-      pages.push(1);
-      if (currentPage > 4) {
-        pages.push('...');
-      }
-    }
-    
-    // Show pages around current page
-    for (let i = Math.max(1, currentPage - 2); i <= Math.min(totalPages, currentPage + 2); i++) {
-      pages.push(i);
-    }
-    
-    // Show last page
-    if (currentPage < totalPages - 2) {
-      if (currentPage < totalPages - 3) {
-        pages.push('...');
-      }
-      pages.push(totalPages);
-    }
-    
-    return pages;
-  };
-
-  const columns = [
+  const columns: EnhancedColumn[] = [
     {
       key: 'stt',
       header: 'STT',
@@ -219,6 +173,8 @@ export function Customers() {
     {
       key: 'fullname',
       header: 'Tên khách hàng',
+      sortable: true,
+      filterable: true,
       render: (value: string, row: any) => (
         <div className="flex items-center space-x-3">
           <div className="h-8 w-8 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center overflow-hidden">
@@ -245,6 +201,8 @@ export function Customers() {
     {
       key: 'phone',
       header: 'Số điện thoại',
+      sortable: true,
+      filterable: true,
       render: (value: string, _row: any) => (
         <div className="flex items-center space-x-2">
           <CreditCard className="h-4 w-4 text-gray-500" />
@@ -255,6 +213,8 @@ export function Customers() {
     {
       key: 'status',
       header: 'Trạng thái',
+      sortable: true,
+      filterable: true,
       render: (value: string, _row: any) => (
         <Badge variant={value === 'active' ? 'success' : 'destructive'}>
           {value === 'active' ? 'Hoạt động' : 'Đã chặn'}
@@ -264,6 +224,8 @@ export function Customers() {
     {
       key: 'kycStatus',
       header: 'KYC',
+      sortable: true,
+      filterable: true,
       render: (value: string, _row: any) => (
         <Badge variant={value === 'approved' ? 'success' : value === 'pending' ? 'warning' : value === 'not_submitted' ? 'secondary' : 'destructive'}>
           {value === 'approved' ? 'Đã duyệt' : value === 'pending' ? 'Chờ duyệt' : value === 'not_submitted' ? 'Chưa nộp' : 'Từ chối'}
@@ -469,76 +431,21 @@ export function Customers() {
           </div>
         </div>
       ) : (
-        <DataTable
+        <EnhancedDataTable
           title="Danh sách khách hàng EV Renter"
           columns={columns}
           data={users}
+          loading={loading}
+          searchable={true}
+          exportable={true}
+          selectable={true}
+          pageSize={10}
+          pageSizeOptions={[5, 10, 20, 50]}
+          onRowClick={handleViewUser}
+          emptyMessage="Không có khách hàng nào"
         />
       )}
 
-      {/* Pagination */}
-      {!loading && !error && pagination.pages > 1 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.5 }}
-          className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700"
-        >
-          <div className="flex items-center justify-between">
-            {/* Pagination Info */}
-            <div className="text-sm text-gray-600 dark:text-gray-400">
-              Hiển thị {((filters.page || 1) - 1) * (filters.limit || 10) + 1} - {Math.min((filters.page || 1) * (filters.limit || 10), pagination.total)} trong tổng số {pagination.total} kết quả
-            </div>
-
-            {/* Pagination Controls */}
-            <div className="flex items-center space-x-2">
-              {/* Previous Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePreviousPage}
-                disabled={!filters.page || filters.page <= 1}
-                className="flex items-center space-x-1"
-              >
-                <ChevronLeft className="h-4 w-4" />
-                <span>Trước</span>
-              </Button>
-
-              {/* Page Numbers */}
-              <div className="flex items-center space-x-1">
-                {getPageNumbers().map((page, index) => (
-                  <div key={index}>
-                    {page === '...' ? (
-                      <span className="px-3 py-2 text-gray-500">...</span>
-                    ) : (
-                      <Button
-                        variant={page === filters.page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handlePageChange(page as number)}
-                        className="w-10 h-10 p-0"
-                      >
-                        {page}
-                      </Button>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Next Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={!filters.page || filters.page >= pagination.pages}
-                className="flex items-center space-x-1"
-              >
-                <span>Sau</span>
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* User Detail Modal */}
       <UserDetailModal

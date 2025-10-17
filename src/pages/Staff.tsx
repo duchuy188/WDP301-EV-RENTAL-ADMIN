@@ -136,7 +136,7 @@ export function Staff() {
   const totalStaff = pagination.total;
   const activeStaff = staff.filter(s => s.status === 'active').length;
   const suspendedStaff = staff.filter(s => s.status === 'suspended').length;
-  const kycApproved = staff.filter(s => s.kycStatus === 'approved').length;
+  const assignedStaff = staff.filter(s => s.stationId !== null && s.stationId !== undefined).length;
 
   // Pagination handlers
   const handlePageChange = (newPage: number) => {
@@ -240,13 +240,13 @@ export function Staff() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">
-                Đã xác thực KYC
+                Đã phân công
               </CardTitle>
-              <Star className="h-4 w-4 text-yellow-600" />
+              <MapPin className="h-4 w-4 text-purple-600" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
-                {kycApproved}
+              <div className="text-2xl font-bold text-purple-600">
+                {assignedStaff}
               </div>
             </CardContent>
           </Card>

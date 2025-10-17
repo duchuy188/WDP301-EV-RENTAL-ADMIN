@@ -85,7 +85,7 @@ export function DataTable({ title, columns, data, loading }: DataTableProps) {
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {(data || []).map((row, index) => (
-                  <tr key={index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                  <tr key={row.id || row._id || index} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     {columns.map((column) => (
                       <td key={column.key} className="px-6 py-4 whitespace-nowrap text-sm">
                         {column.render 

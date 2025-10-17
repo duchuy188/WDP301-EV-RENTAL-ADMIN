@@ -84,18 +84,32 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
     }
   };
 
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | undefined | null) => {
     try {
+      // Check if dateString exists and is not empty
+      if (!dateString || dateString === '' || dateString === 'Invalid Date') {
+        return 'Chưa có thông tin';
+      }
+
       // Handle different date formats from API
       let date: Date;
       
       // Check if it's already in DD/MM/YYYY HH:mm:ss format
       if (dateString.includes('/')) {
         // Parse DD/MM/YYYY HH:mm:ss format
-        const [datePart, timePart] = dateString.split(' ');
+        const parts = dateString.split(' ');
+        const datePart = parts[0];
+        const timePart = parts[1] || '00:00:00';
         const [day, month, year] = datePart.split('/');
         const [hour, minute, second] = timePart.split(':');
-        date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute), parseInt(second));
+        date = new Date(
+          parseInt(year), 
+          parseInt(month) - 1, 
+          parseInt(day), 
+          parseInt(hour || '0'), 
+          parseInt(minute || '0'), 
+          parseInt(second || '0')
+        );
       } else {
         // Try standard ISO format
         date = new Date(dateString);
@@ -103,7 +117,7 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
       
       // Check if date is valid
       if (isNaN(date.getTime())) {
-        return dateString; // Return original if can't parse
+        return 'Chưa có thông tin';
       }
       
       return date.toLocaleDateString('vi-VN', {
@@ -114,7 +128,7 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
         minute: '2-digit'
       });
     } catch {
-      return dateString;
+      return 'Chưa có thông tin';
     }
   };
 
@@ -163,9 +177,9 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
+            className="modal-backdrop"
             onClick={onClose}
-            style={{ margin: 0, padding: 0 }}
+            style={{ padding: 0 }}
           />
 
           {/* Modal */}
@@ -179,7 +193,7 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
               stiffness: 300,
               duration: 0.3 
             }}
-            className="fixed inset-0 z-50 flex items-center justify-center pt-16 pb-16 px-4"
+            className="fixed inset-0 z-[10000] flex items-center justify-center pt-16 pb-16 px-4"
           >
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[calc(95vh-1rem)] overflow-hidden border border-gray-200/50 dark:border-gray-700/50">
               {/* Header */}
@@ -405,19 +419,22 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
                         </div>
                       </div>
 
-                      <div className="group p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                          <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center group-hover:bg-amber-200 dark:group-hover:bg-amber-900/50 transition-colors">
-                            <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                      {/* KYC Status - Chỉ hiển thị cho EV Renter */}
+                      {user.role === 'EV Renter' && (
+                        <div className="group p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                            <div className="h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center group-hover:bg-amber-200 dark:group-hover:bg-amber-900/50 transition-colors">
+                              <Shield className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                              </div>
+                              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">KYC Status</span>
                             </div>
-                            <span className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">KYC Status</span>
+                            <Badge variant={getKycStatusColor(user.kycStatus) as any} className="px-3 py-1">
+                              {getKycStatusText(user.kycStatus)}
+                            </Badge>
                           </div>
-                          <Badge variant={getKycStatusColor(user.kycStatus) as any} className="px-3 py-1">
-                            {getKycStatusText(user.kycStatus)}
-                          </Badge>
                         </div>
-                      </div>
+                      )}
 
                       <div className="group p-4 rounded-xl bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                         <div className="flex items-center justify-between">
