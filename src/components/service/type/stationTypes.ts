@@ -33,7 +33,7 @@ export interface CreateStationRequest {
   district: string; // required
   city: string; // required
   description?: string; // optional
-  images?: string[]; // optional, max 10 images
+  images?: File[]; // optional, max 10 images (File objects for upload)
   phone: string; // required
   email: string; // required
   opening_time: string; // required (format: "HH:MM")

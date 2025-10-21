@@ -166,7 +166,37 @@ class StationService {
    */
   async createStation(stationData: CreateStationRequest): Promise<CreateStationResponse> {
     try {
-      const response = await axiosInstance.post(API_CONFIG.endpoints.stations.create, stationData);
+      // Create FormData to handle image uploads
+      const formData = new FormData();
+      
+      // Append text fields
+      formData.append('name', stationData.name);
+      formData.append('address', stationData.address);
+      formData.append('district', stationData.district);
+      formData.append('city', stationData.city);
+      formData.append('phone', stationData.phone);
+      formData.append('email', stationData.email);
+      formData.append('opening_time', stationData.opening_time);
+      formData.append('closing_time', stationData.closing_time);
+      formData.append('max_capacity', stationData.max_capacity.toString());
+      
+      // Append optional fields
+      if (stationData.description) {
+        formData.append('description', stationData.description);
+      }
+      
+      // Append images (if any)
+      if (stationData.images && stationData.images.length > 0) {
+        stationData.images.forEach((image) => {
+          formData.append('images', image);
+        });
+      }
+      
+      const response = await axiosInstance.post(API_CONFIG.endpoints.stations.create, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       console.error('Error creating station:', error);

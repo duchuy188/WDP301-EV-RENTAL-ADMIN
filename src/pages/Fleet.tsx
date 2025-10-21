@@ -1,21 +1,22 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Car, 
   MapPin, 
   Plus, 
   Search, 
-  Download, 
-  Upload,
+  FileSpreadsheet,
+  DollarSign,
   AlertTriangle,
   CheckCircle,
   Edit,
   Trash2,
   Users,
-  RefreshCw,
   Grid3X3,
   List,
-  Map
+  Map,
+  Filter,
+  X
 } from 'lucide-react';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { VehicleCardGrid } from '../components/VehicleCardGrid';
@@ -26,6 +27,8 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { EditVehicleModal } from '../components/EditVehicleModal';
 import { BulkVehicleModal } from '../components/BulkVehicleModal';
+import { LicensePlateModal } from '../components/LicensePlateModal';
+import { BulkPricingModal } from '../components/BulkPricingModal';
 import { VehicleAssignmentModal } from '../components/VehicleAssignmentModal';
 import { vehicleService } from '../components/service/vehicleService';
 import { formatVehicleStatus, getVehicleStatusColor } from '../components/service/utils/apiUtils';
@@ -40,15 +43,18 @@ export function Fleet() {
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | null>(null);
   const [typeFilter, setTypeFilter] = useState<VehicleType | null>(null);
   const [batteryFilter] = useState<{ min: number; max: number } | null>(null);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [sortBy, setSortBy] = useState<'name' | 'battery' | 'price' | 'year'>('name');
   
   // Modal states
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
-  const [bulkModalDefaultTab, setBulkModalDefaultTab] = useState<'bulk-create' | 'import-plates' | 'pricing'>('bulk-create');
+  const [licensePlateModalOpen, setLicensePlateModalOpen] = useState(false);
+  const [bulkPricingModalOpen, setBulkPricingModalOpen] = useState(false);
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleUI | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'table' | 'map'>('grid');
+  const [viewMode, setViewMode] = useState<'table' | 'grid' | 'map'>('table');
 
   // Load data
   useEffect(() => {
@@ -131,10 +137,11 @@ export function Fleet() {
       if (isUsingMockData && vehicles.length > 0) {
         const mockStats = {
           totalVehicles: vehicles.length,
+          draftVehicles: vehicles.filter(v => v.status === 'draft').length,
           availableVehicles: vehicles.filter(v => v.status === 'available').length,
+          reservedVehicles: vehicles.filter(v => v.status === 'reserved').length,
           rentedVehicles: vehicles.filter(v => v.status === 'rented').length,
           maintenanceVehicles: vehicles.filter(v => v.status === 'maintenance').length,
-          brokenVehicles: vehicles.filter(v => v.status === 'broken').length,
           averageBatteryLevel: Math.round(vehicles.reduce((sum, v) => sum + v.batteryLevel, 0) / vehicles.length),
           stationsWithVehicles: new Set(vehicles.filter(v => v.stationId).map(v => v.stationId)).size,
           totalStations: 3 // Mock total stations
@@ -144,10 +151,11 @@ export function Fleet() {
         // Set default statistics if API fails
         setStatistics({
           totalVehicles: 0,
+          draftVehicles: 0,
           availableVehicles: 0,
+          reservedVehicles: 0,
           rentedVehicles: 0,
           maintenanceVehicles: 0,
-          brokenVehicles: 0,
           averageBatteryLevel: 0,
           stationsWithVehicles: 0,
           totalStations: 0
@@ -198,7 +206,6 @@ export function Fleet() {
     switch (action) {
       case 'assign':
         // Open bulk assignment modal
-        setBulkModalDefaultTab('bulk-create');
         setBulkModalOpen(true);
         break;
       case 'maintenance':
@@ -206,9 +213,8 @@ export function Fleet() {
         // This would need API implementation
         break;
       case 'export':
-        // Export selected vehicles
-        setBulkModalDefaultTab('pricing');
-        setBulkModalOpen(true);
+        // Export selected vehicles - open license plate modal instead
+        setLicensePlateModalOpen(true);
         break;
       default:
         console.log('Unknown bulk action:', action);
@@ -216,21 +222,35 @@ export function Fleet() {
   };
 
 
-  // Filter vehicles
-  const filteredVehicles = (vehicles || []).filter(vehicle => {
-    const matchesSearch = !searchTerm || 
-      vehicle.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      vehicle.brand?.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = !statusFilter || vehicle.status === statusFilter;
-    const matchesType = !typeFilter || vehicle.type === typeFilter;
-    
-    const matchesBattery = !batteryFilter || 
-      (vehicle.batteryLevel >= batteryFilter.min && vehicle.batteryLevel <= batteryFilter.max);
-    
-    return matchesSearch && matchesStatus && matchesType && matchesBattery;
-  });
+  // Filter and sort vehicles
+  const filteredVehicles = (vehicles || [])
+    .filter(vehicle => {
+      const matchesSearch = !searchTerm || 
+        vehicle.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.brand?.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = !statusFilter || vehicle.status === statusFilter;
+      const matchesType = !typeFilter || vehicle.type === typeFilter;
+      
+      const matchesBattery = !batteryFilter || 
+        (vehicle.batteryLevel >= batteryFilter.min && vehicle.batteryLevel <= batteryFilter.max);
+      
+      return matchesSearch && matchesStatus && matchesType && matchesBattery;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'battery':
+          return b.batteryLevel - a.batteryLevel;
+        case 'price':
+          return b.pricePerDay - a.pricePerDay;
+        case 'year':
+          return b.year - a.year;
+        case 'name':
+        default:
+          return (a.name || a.licensePlate).localeCompare(b.name || b.licensePlate);
+      }
+    });
 
   // Log filtered vehicles in development mode
   if (import.meta.env.DEV && filteredVehicles.length > 0) {
@@ -239,15 +259,46 @@ export function Fleet() {
 
   const vehicleColumns: EnhancedColumn[] = [
     {
+      key: 'stt',
+      header: 'STT',
+      width: '60px',
+      render: (_value: any, _row: VehicleUI, index?: number) => (
+        <div className="text-center font-medium text-gray-700">
+          {(index !== undefined ? index : 0) + 1}
+        </div>
+      )
+    },
+    {
       key: 'vehicleInfo',
       header: 'Thông tin xe',
       sortable: true,
       filterable: true,
       render: (_value: any, row: VehicleUI) => (
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Car className="h-4 w-4 text-blue-600" />
+          {/* Vehicle Image */}
+          <div className="flex-shrink-0">
+            {row.images && row.images.length > 0 ? (
+              <img
+                src={row.images[0]}
+                alt={row.licensePlate}
+                className="w-16 h-16 object-cover rounded-lg border-2 border-gray-200"
+                onError={(e) => {
+                  // Fallback to icon if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent) {
+                    parent.innerHTML = '<div class="w-16 h-16 flex items-center justify-center bg-blue-100 rounded-lg border-2 border-gray-200"><svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg></div>';
+                  }
+                }}
+              />
+            ) : (
+              <div className="w-16 h-16 flex items-center justify-center bg-blue-100 rounded-lg border-2 border-gray-200">
+                <Car className="h-8 w-8 text-blue-600" />
+              </div>
+            )}
           </div>
+          {/* Vehicle Info */}
           <div>
             <div className="font-medium text-gray-900">{row.licensePlate}</div>
             <div className="text-sm text-gray-500">{row.brand} {row.model} ({row.year})</div>
@@ -385,126 +436,137 @@ export function Fleet() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
+        className="bg-gradient-to-r from-green-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-8 shadow-sm border border-green-100 dark:border-gray-700"
       >
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-              Quản lý đội xe
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Theo dõi và quản lý toàn bộ đội xe điện
-            </p>
+          <div className="flex items-center space-x-4">
+
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+                Quản lý đội xe
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 flex items-center space-x-2">
+                <span>Theo dõi và quản lý toàn bộ đội xe điện của bạn</span>
+              </p>
+            </div>
           </div>
-          <div className="flex space-x-3">
+          <div className="flex flex-wrap gap-2 justify-end">
             <Button 
               variant="outline" 
-              className="flex items-center space-x-2"
-              onClick={() => {
-                setBulkModalDefaultTab('import-plates');
-                setBulkModalOpen(true);
-              }}
+              className="flex items-center space-x-2 hover:bg-white hover:shadow-md transition-all"
+              onClick={() => setLicensePlateModalOpen(true)}
             >
-              <Upload className="h-4 w-4" />
-              <span>Import Biển số</span>
+              <FileSpreadsheet className="h-4 w-4" />
+              <span className="hidden sm:inline">Export/ Import Biển số</span>
             </Button>
             <Button 
               variant="outline" 
-              className="flex items-center space-x-2"
-              onClick={() => {
-                setBulkModalDefaultTab('pricing');
-                setBulkModalOpen(true);
-              }}
+              className="flex items-center space-x-2 hover:bg-white hover:shadow-md transition-all"
+              onClick={() => setBulkPricingModalOpen(true)}
             >
-              <Download className="h-4 w-4" />
-              <span>Cập nhật Giá</span>
+              <DollarSign className="h-4 w-4" />
+              <span className="hidden sm:inline">Cập nhật Giá</span>
             </Button>
             <Button 
               variant="outline" 
-              className="flex items-center space-x-2"
+              className="flex items-center space-x-2 hover:bg-white hover:shadow-md transition-all"
               onClick={() => setAssignmentModalOpen(true)}
             >
               <Users className="h-4 w-4" />
-              <span>Phân bổ xe</span>
+              <span className="hidden sm:inline">Phân bổ xe</span>
             </Button>
             <Button 
-              className="flex items-center space-x-2"
-              onClick={() => {
-                setBulkModalDefaultTab('bulk-create');
-                setBulkModalOpen(true);
-              }}
+              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all"
+              onClick={() => setBulkModalOpen(true)}
             >
               <Plus className="h-4 w-4" />
-              <span>Tạo hàng loạt</span>
+              <span>Tạo xe</span>
             </Button>
           </div>
         </div>
       </motion.div>
 
       {/* Fleet Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Tổng số xe
               </CardTitle>
-              <Car className="h-4 w-4 text-blue-600" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
                 {statistics?.totalVehicles || 0}
               </div>
-              <p className="text-xs text-gray-500">
-                {statistics?.averageBatteryLevel || 0}% pin trung bình
-              </p>
+              <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse" />
+                  <span>{statistics?.averageBatteryLevel || 0}% pin TB</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 0 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 dark:bg-green-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Xe sẵn sàng
               </CardTitle>
-              <CheckCircle className="h-4 w-4 text-green-600" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
                 {statistics?.availableVehicles || 0}
               </div>
-              <p className="text-xs text-gray-500">
-                {statistics?.stationsWithVehicles || 0} trạm có xe
-              </p>
+              <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                <MapPin className="h-3 w-3" />
+                <span>{statistics?.stationsWithVehicles || 0} trạm có xe</span>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 0 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 dark:bg-yellow-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Xe đang thuê
               </CardTitle>
-              <Car className="h-4 w-4 text-yellow-600" />
+              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
+                <Users className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-yellow-600">
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
                 {statistics?.rentedVehicles || 0}
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-gray-500 dark:text-gray-400">
                 Đang được sử dụng
               </p>
             </CardContent>
@@ -512,204 +574,411 @@ export function Fleet() {
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.4 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-red-100 dark:bg-red-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
                 Cần bảo trì
               </CardTitle>
-              <AlertTriangle className="h-4 w-4 text-red-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-600">
-                {(statistics?.maintenanceVehicles || 0) + (statistics?.brokenVehicles || 0)}
+              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
               </div>
-              <p className="text-xs text-gray-500">
-                {statistics?.maintenanceVehicles || 0} bảo trì, {statistics?.brokenVehicles || 0} hỏng
-              </p>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">
+                {statistics?.maintenanceVehicles || 0}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                Xe đang bảo trì
+              </div>
             </CardContent>
           </Card>
         </motion.div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Search and Filter */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.5 }}
+        transition={{ duration: 0.4, delay: 0.5 }}
+        className="space-y-4"
       >
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col lg:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Tìm kiếm theo biển số, model, brand..."
-                    value={searchTerm}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
+        {/* Search and Filter Toggle */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          {/* Search */}
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Tìm kiếm xe theo tên, biển số, thương hiệu..."
+              value={searchTerm}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+              className="pl-10 h-11"
+            />
+          </div>
+
+          {/* Filter Toggle Button */}
+          <Button
+            variant="outline"
+            onClick={() => {
+              const newState = !showFilterPanel;
+              setShowFilterPanel(newState);
+              
+              // Scroll to vehicle list when closing filter
+              if (!newState) {
+                setTimeout(() => {
+                  const element = document.getElementById('vehicle-list-section');
+                  if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  }
+                }, 100);
+              }
+            }}
+            className={`flex items-center space-x-2 h-11 ${
+              showFilterPanel 
+                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400' 
+                : ''
+            }`}
+          >
+            <Filter className="h-4 w-4" />
+            <span>Bộ lọc</span>
+            {showFilterPanel && <X className="h-3 w-3 ml-1" />}
+          </Button>
+        </div>
+
+        {/* Expanded Filters */}
+        <AnimatePresence mode="wait">
+          {showFilterPanel && (
+            <motion.div
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: 'auto', marginTop: 16 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.3, ease: 'easeInOut' }}
+              className="overflow-hidden"
+            >
+              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border-2 border-gray-200 dark:border-gray-700 max-h-[450px] overflow-y-auto custom-scrollbar">
+                {/* Filter Header */}
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center">
+                    <Filter className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+                    Bộ lọc nâng cao
+                  </h3>
+                  <div className="flex items-center space-x-2">
+                    {(statusFilter || typeFilter || searchTerm) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setStatusFilter(null);
+                          setTypeFilter(null);
+                          setSearchTerm('');
+                        }}
+                        className="h-8 px-3 text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                      >
+                        Xóa bộ lọc
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowFilterPanel(false)}
+                      className="h-8 px-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Status Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Trạng thái
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={statusFilter === null}
+                        onChange={() => setStatusFilter(null)}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Tất cả trạng thái ({vehicles.length})
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={statusFilter === 'draft'}
+                        onChange={() => setStatusFilter('draft')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Draft ({statistics?.draftVehicles || 0})
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={statusFilter === 'available'}
+                        onChange={() => setStatusFilter('available')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Sẵn sàng ({statistics?.availableVehicles || 0})
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={statusFilter === 'reserved'}
+                        onChange={() => setStatusFilter('reserved')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Đã đặt ({statistics?.reservedVehicles || 0})
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={statusFilter === 'rented'}
+                        onChange={() => setStatusFilter('rented')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Đang thuê ({statistics?.rentedVehicles || 0})
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="status"
+                        checked={statusFilter === 'maintenance'}
+                        onChange={() => setStatusFilter('maintenance')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Bảo trì ({statistics?.maintenanceVehicles || 0})
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Type Filter */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Loại xe
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="type"
+                        checked={typeFilter === null}
+                        onChange={() => setTypeFilter(null)}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Tất cả loại
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="type"
+                        checked={typeFilter === 'scooter'}
+                        onChange={() => setTypeFilter('scooter')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Xe máy điện
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="type"
+                        checked={typeFilter === 'motorcycle'}
+                        onChange={() => setTypeFilter('motorcycle')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Mô tô điện
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Sort Options */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Sắp xếp
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sort"
+                        checked={sortBy === 'name'}
+                        onChange={() => setSortBy('name')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Tên xe
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sort"
+                        checked={sortBy === 'battery'}
+                        onChange={() => setSortBy('battery')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Mức pin
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sort"
+                        checked={sortBy === 'price'}
+                        onChange={() => setSortBy('price')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Giá thuê
+                      </span>
+                    </label>
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="sort"
+                        checked={sortBy === 'year'}
+                        onChange={() => setSortBy('year')}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Năm sản xuất
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Filter Actions */}
+                <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <Badge variant="secondary" className="text-xs">
+                    {filteredVehicles.length} xe tìm thấy
+                  </Badge>
+                  {filteredVehicles.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={() => {
+                        const element = document.getElementById('vehicle-list-section');
+                        if (element) {
+                          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }
+                      }}
+                      className="h-8 px-4 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                    >
+                      Xem kết quả
+                    </Button>
+                  )}
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    loadVehicles();
-                    loadStatistics();
-                  }}
-                  disabled={loading}
-                >
-                  <RefreshCw className={`h-3 w-3 mr-1 ${loading ? 'animate-spin' : ''}`} />
-                  Làm mới
-                </Button>
-                {import.meta.env.DEV && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const mockData = vehicleService.getMockVehicles();
-                      setVehicles(mockData.data);
-                      setIsUsingMockData(true);
-                      
-                      // Calculate mock statistics
-                      const mockStats = {
-                        totalVehicles: mockData.data.length,
-                        availableVehicles: mockData.data.filter(v => v.status === 'available').length,
-                        rentedVehicles: mockData.data.filter(v => v.status === 'rented').length,
-                        maintenanceVehicles: mockData.data.filter(v => v.status === 'maintenance').length,
-                        brokenVehicles: mockData.data.filter(v => v.status === 'broken').length,
-                        averageBatteryLevel: Math.round(mockData.data.reduce((sum, v) => sum + v.batteryLevel, 0) / mockData.data.length),
-                        stationsWithVehicles: new Set(mockData.data.filter(v => v.stationId).map(v => v.stationId)).size,
-                        totalStations: 3
-                      };
-                      setStatistics(mockStats);
-                    }}
-                  >
-                    Dữ liệu mẫu
-                  </Button>
-                )}
-                <Button
-                  variant={statusFilter === null ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter(null)}
-                >
-                  Tất cả
-                </Button>
-                <Button
-                  variant={statusFilter === 'available' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter('available')}
-                >
-                  Sẵn sàng
-                </Button>
-                <Button
-                  variant={statusFilter === 'rented' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter('rented')}
-                >
-                  Đang thuê
-                </Button>
-                <Button
-                  variant={statusFilter === 'maintenance' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter('maintenance')}
-                >
-                  Bảo trì
-                </Button>
-                <Button
-                  variant={statusFilter === 'broken' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter('broken')}
-                >
-                  Hỏng
-                </Button>
-                
-                {/* Divider */}
-                <div className="w-px h-6 bg-gray-300"></div>
-                
-                {/* Vehicle Type Filters */}
-                <Button
-                  variant={typeFilter === null ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTypeFilter(null)}
-                >
-                  Tất cả loại
-                </Button>
-                <Button
-                  variant={typeFilter === 'scooter' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTypeFilter('scooter')}
-                >
-                  Xe máy điện
-                </Button>
-                <Button
-                  variant={typeFilter === 'motorcycle' ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setTypeFilter('motorcycle')}
-                >
-                  Mô tô điện
-                </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* View Toggle */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3, delay: 0.5 }}
+        transition={{ duration: 0.4, delay: 0.6 }}
       >
-        <Card>
+        <Card className="border-0 shadow-md bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
           <CardContent className="p-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center space-x-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Danh sách xe ({filteredVehicles.length})
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    Danh sách xe
+                  </span>
+                  <span className="ml-2 text-gray-500 dark:text-gray-400">
+                    ({filteredVehicles.length})
+                  </span>
                 </h3>
                 {isUsingMockData && (
-                  <Badge variant="secondary" className="text-xs">
-                    Dữ liệu demo
+                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-200">
+                    📊 Dữ liệu demo
+                  </Badge>
+                )}
+                {(statusFilter || typeFilter || searchTerm) && (
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-200">
+                    🔍 Đang lọc
                   </Badge>
                 )}
               </div>
               
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Chế độ xem:</span>
-                <div className="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg p-1">
-                  <Button
-                    size="sm"
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    className="h-8 px-3"
-                    onClick={() => setViewMode('grid')}
-                  >
-                    <Grid3X3 className="h-4 w-4 mr-2" />
-                    Card
-                  </Button>
-                  <Button
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:inline">
+                  Chế độ xem:
+                </span>
+                <div className="flex items-center bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-1 shadow-sm">
+                <Button
                     size="sm"
                     variant={viewMode === 'table' ? 'default' : 'ghost'}
-                    className="h-8 px-3"
+                    className={`h-9 px-4 rounded-lg transition-all ${
+                      viewMode === 'table' 
+                        ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
                     onClick={() => setViewMode('table')}
                   >
                     <List className="h-4 w-4 mr-2" />
-                    Table
+                    <span className="hidden sm:inline">Table</span>
                   </Button>
                   <Button
                     size="sm"
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    className={`h-9 px-4 rounded-lg transition-all ${
+                      viewMode === 'grid' 
+                        ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <Grid3X3 className="h-4 w-4 mr-2" />
+                    <span className="hidden sm:inline">Card</span>
+                  </Button>
+                  
+                  <Button
+                    size="sm"
                     variant={viewMode === 'map' ? 'default' : 'ghost'}
-                    className="h-8 px-3"
+                    className={`h-9 px-4 rounded-lg transition-all ${
+                      viewMode === 'map' 
+                        ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
+                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
                     onClick={() => setViewMode('map')}
                   >
                     <Map className="h-4 w-4 mr-2" />
-                    Map
+                    <span className="hidden sm:inline">Map</span>
                   </Button>
                 </div>
               </div>
@@ -723,6 +992,8 @@ export function Fleet() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.6 }}
+        id="vehicle-list-section"
+        className="min-h-[400px]"
       >
         {viewMode === 'grid' ? (
           <VehicleCardGrid
@@ -731,30 +1002,22 @@ export function Fleet() {
             onEdit={handleEditVehicle}
             onAssign={handleAssignVehicle}
             onView={handleViewVehicle}
-            onAddNew={() => setBulkModalOpen(true)}
-            onImport={() => {
-              setBulkModalDefaultTab('import-plates');
-              setBulkModalOpen(true);
-            }}
-            onExport={() => {
-              setBulkModalDefaultTab('pricing');
-              setBulkModalOpen(true);
-            }}
             onBulkAction={handleBulkAction}
           />
         ) : viewMode === 'table' ? (
           <EnhancedDataTable
-            title={`Danh sách xe (${filteredVehicles.length})`}
             columns={vehicleColumns}
             data={filteredVehicles}
             loading={loading}
-            searchable={true}
-            exportable={true}
-            selectable={true}
+            searchable={false}
+            exportable={false}
+            selectable={false}
             pageSize={10}
             pageSizeOptions={[5, 10, 20, 50]}
             onRowClick={handleViewVehicle}
             emptyMessage="Không có xe nào"
+            showInfo={false}
+            showColumnSettings={false}
           />
         ) : (
           <VehicleMapView
@@ -780,7 +1043,19 @@ export function Fleet() {
         isOpen={bulkModalOpen}
         onClose={() => setBulkModalOpen(false)}
         onSuccess={handleVehicleUpdated}
-        defaultTab={bulkModalDefaultTab}
+      />
+
+      <LicensePlateModal
+        isOpen={licensePlateModalOpen}
+        onClose={() => setLicensePlateModalOpen(false)}
+        onSuccess={handleVehicleUpdated}
+        vehicles={vehicles}
+      />
+
+      <BulkPricingModal
+        isOpen={bulkPricingModalOpen}
+        onClose={() => setBulkPricingModalOpen(false)}
+        onSuccess={handleVehicleUpdated}
       />
 
       <VehicleAssignmentModal

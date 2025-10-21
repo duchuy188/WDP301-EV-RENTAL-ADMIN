@@ -13,25 +13,36 @@ interface ColorPickerProps {
   className?: string;
 }
 
-// Định nghĩa các màu phổ biến cho xe điện
+// Định nghĩa các màu phổ biến cho xe điện (Viết hoa chữ cái đầu mỗi từ)
 const COLOR_OPTIONS: ColorOption[] = [
   { name: 'Trắng', value: 'Trắng', hex: '#FFFFFF' },
   { name: 'Đen', value: 'Đen', hex: '#000000' },
   { name: 'Xám', value: 'Xám', hex: '#6B7280' },
   { name: 'Bạc', value: 'Bạc', hex: '#C0C0C0' },
   { name: 'Đỏ', value: 'Đỏ', hex: '#EF4444' },
-  { name: 'Xanh dương', value: 'Xanh dương', hex: '#3B82F6' },
-  { name: 'Xanh lá', value: 'Xanh lá', hex: '#10B981' },
+  { name: 'Xanh Dương', value: 'Xanh Dương', hex: '#3B82F6' },
+  { name: 'Xanh Lá', value: 'Xanh Lá', hex: '#10B981' },
   { name: 'Vàng', value: 'Vàng', hex: '#F59E0B' },
   { name: 'Cam', value: 'Cam', hex: '#F97316' },
   { name: 'Tím', value: 'Tím', hex: '#8B5CF6' },
   { name: 'Hồng', value: 'Hồng', hex: '#EC4899' },
   { name: 'Nâu', value: 'Nâu', hex: '#92400E' },
-  { name: 'Xanh navy', value: 'Xanh navy', hex: '#1E40AF' },
-  { name: 'Xanh mint', value: 'Xanh mint', hex: '#06B6D4' },
-  { name: 'Vàng chanh', value: 'Vàng chanh', hex: '#84CC16' },
-  { name: 'Đỏ đô', value: 'Đỏ đô', hex: '#DC2626' }
+  { name: 'Xanh Navy', value: 'Xanh Navy', hex: '#1E40AF' },
+  { name: 'Xanh Mint', value: 'Xanh Mint', hex: '#06B6D4' },
+  { name: 'Vàng Chanh', value: 'Vàng Chanh', hex: '#84CC16' },
+  { name: 'Đỏ Đô', value: 'Đỏ Đô', hex: '#DC2626' }
 ];
+
+// Function to capitalize each word (Viết hoa chữ cái đầu mỗi từ)
+function capitalizeEachWord(text: string): string {
+  return text
+    .split(' ')
+    .map(word => {
+      if (word.length === 0) return word;
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    })
+    .join(' ');
+}
 
 // Function to get Tailwind color class from hex
 function getColorClass(hex: string): string {
@@ -95,26 +106,38 @@ export function ColorPicker({ value, onChange, className = '' }: ColorPickerProp
       {value && (
         <div className="flex items-center space-x-2 mt-2">
           <div 
-            className={`w-4 h-4 rounded border border-gray-300 ${
+            className={`w-4 h-4 rounded border border-gray-300 dark:border-gray-600 ${
               getColorClass(COLOR_OPTIONS.find(c => c.value === value)?.hex || '#6B7280')
             }`}
           />
-          <span className="text-sm text-gray-700">Đã chọn: {value}</span>
+          <span className="text-sm text-gray-700 dark:text-gray-300">Đã chọn: <strong>{value}</strong></span>
         </div>
       )}
       
       {/* Input tùy chỉnh cho màu khác */}
       <div className="mt-3">
-        <label className="block text-xs text-gray-500 mb-1">
+        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
           Hoặc nhập màu khác:
         </label>
         <input
           type="text"
           value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="VD: Xanh lục bảo, Đỏ cherry..."
-          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+          onChange={(e) => {
+            const inputValue = e.target.value;
+            // Auto-capitalize mỗi từ khi blur hoặc có thể làm real-time
+            onChange(inputValue);
+          }}
+          onBlur={(e) => {
+            // Tự động viết hoa chữ cái đầu mỗi từ khi blur
+            const capitalizedValue = capitalizeEachWord(e.target.value);
+            if (capitalizedValue !== e.target.value) {
+              onChange(capitalizedValue);
+            }
+          }}
+          placeholder="VD: Xanh Lục Bảo, Đỏ Cherry..."
+          className="w-full px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
         />
+       
       </div>
     </div>
   );

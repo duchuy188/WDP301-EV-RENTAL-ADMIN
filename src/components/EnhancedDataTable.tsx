@@ -47,6 +47,8 @@ export interface EnhancedDataTableProps {
   className?: string;
   emptyMessage?: string;
   loadingRows?: number;
+  showInfo?: boolean;
+  showColumnSettings?: boolean;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -70,7 +72,9 @@ export function EnhancedDataTable({
   onSelectionChange,
   className = '',
   emptyMessage = 'Không có dữ liệu',
-  loadingRows = 5
+  loadingRows = 5,
+  showInfo = true,
+  showColumnSettings = true
 }: EnhancedDataTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortState, setSortState] = useState<SortState>({ column: null, direction: null });
@@ -237,67 +241,73 @@ export function EnhancedDataTable({
     >
       <Card>
         {/* Header */}
-        <CardHeader className="pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              {title && <CardTitle className="text-xl">{title}</CardTitle>}
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Hiển thị {paginatedData.length} / {processedData.length} mục
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {/* Global Search */}
-              {searchable && (
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Tìm kiếm..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 w-64"
-                  />
+        {(showInfo || searchable || exportable || showColumnSettings || (selectable && selectedRows.size > 0)) && (
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              {showInfo && (
+                <div>
+                  {title && <CardTitle className="text-xl">{title}</CardTitle>}
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                    Hiển thị {paginatedData.length} / {processedData.length} mục
+                  </p>
                 </div>
               )}
+              
+              <div className={`flex items-center gap-2 ${!showInfo ? 'ml-auto' : ''}`}>
+                {/* Global Search */}
+                {searchable && (
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Tìm kiếm..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 w-64"
+                    />
+                  </div>
+                )}
 
-              {/* Export Button */}
-              {exportable && (
+                {/* Export Button */}
+                {exportable && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExport}
+                    disabled={!data || data.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                )}
+
+                {/* Column Visibility */}
+                {showColumnSettings && (
+                  <div className="relative">
+                    <Button variant="outline" size="sm">
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Selected Items Info */}
+            {selectable && selectedRows.size > 0 && (
+              <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                <span className="text-sm text-blue-700 dark:text-blue-300">
+                  Đã chọn {selectedRows.size} mục
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={handleExport}
-                  disabled={!data || data.length === 0}
+                  onClick={() => setSelectedRows(new Set())}
                 >
-                  <Download className="h-4 w-4 mr-2" />
-                  Export
-                </Button>
-              )}
-
-              {/* Column Visibility */}
-              <div className="relative">
-                <Button variant="outline" size="sm">
-                  <Settings className="h-4 w-4" />
+                  Bỏ chọn tất cả
                 </Button>
               </div>
-            </div>
-          </div>
-
-          {/* Selected Items Info */}
-          {selectable && selectedRows.size > 0 && (
-            <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
-              <span className="text-sm text-blue-700 dark:text-blue-300">
-                Đã chọn {selectedRows.size} mục
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedRows(new Set())}
-              >
-                Bỏ chọn tất cả
-              </Button>
-            </div>
-          )}
-        </CardHeader>
+            )}
+          </CardHeader>
+        )}
 
         <CardContent className="p-0">
           {!data || data.length === 0 ? (

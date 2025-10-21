@@ -440,18 +440,18 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
-          <div>
+                    <div>
             <h2 className="text-xl font-semibold text-gray-900">
               Quản lý xe hàng loạt
-            </h2>
+                      </h2>
             <p className="text-sm text-gray-500">
               Tạo xe, import biển số và cập nhật giá hàng loạt
-            </p>
-          </div>
+                      </p>
+                    </div>
           <Button variant="outline" size="sm" onClick={handleClose}>
             <X className="h-4 w-4" />
-          </Button>
-        </div>
+                  </Button>
+              </div>
 
         {/* Tabs */}
         <div className="border-b">
@@ -489,8 +489,8 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
               <FileSpreadsheet className="h-4 w-4 inline mr-2" />
               Cập nhật giá
             </button>
-          </div>
-        </div>
+                        </div>
+                      </div>
 
         {/* Content */}
         <div className="p-6">
@@ -498,16 +498,16 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
             <div className="space-y-6">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <h4 className="text-sm font-medium text-blue-800 mb-2">
-                  Quy trình tạo xe hàng loạt
-                </h4>
+                          Quy trình tạo xe hàng loạt
+                        </h4>
                 <ol className="text-sm text-blue-700 space-y-1">
                   <li>1. Điền thông tin xe (model, màu sắc, giá thuê...)</li>
                   <li>2. Nhập số lượng xe cần tạo</li>
                   <li>3. Hệ thống tạo xe và xuất file Excel</li>
                   <li>4. Mở file Excel và thêm biển số xe</li>
                   <li>5. Sử dụng tab "Import biển số" để cập nhật</li>
-                </ol>
-              </div>
+                        </ol>
+                      </div>
               
               <form onSubmit={handleBulkCreate} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -538,15 +538,15 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                       </p>
                     )}
                   </div>
-                  <div>
+                        <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Model *
-                    </label>
+                          </label>
                     <select
-                      value={bulkFormData.model}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, model: e.target.value })}
+                            value={bulkFormData.model}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, model: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
+                            required
                       disabled={loadingModels}
                       aria-label="Chọn model xe"
                     >
@@ -565,32 +565,32 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                       </p>
                     )}
                   </div>
-                </div>
+                        </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                        <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Năm sản xuất *
-                    </label>
-                    <Input
-                      type="number"
-                      min="2000"
-                      max="2030"
-                      value={bulkFormData.year}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, year: parseInt(e.target.value) })}
-                      required
-                    />
-                  </div>
-                  <div>
+                          </label>
+                          <Input
+                            type="number"
+                            min="2000"
+                            max="2030"
+                            value={bulkFormData.year}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, year: parseInt(e.target.value) })}
+                            required
+                          />
+                        </div>
+                        <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Màu sắc *
-                    </label>
+                          </label>
                     <ColorPicker
                       value={bulkFormData.color}
                       onChange={(color) => setBulkFormData({ ...bulkFormData, color })}
                     />
                   </div>
-                </div>
+                        </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -608,63 +608,63 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                       <option value="motorcycle">Mô tô điện</option>
                     </select>
                   </div>
-                  <div>
+                        <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Dung lượng pin (kWh) *
-                    </label>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      step="0.1"
-                      value={bulkFormData.batteryCapacity}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, batteryCapacity: parseFloat(e.target.value) })}
-                      required
-                    />
-                  </div>
-                </div>
+                          </label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="10"
+                            step="0.1"
+                            value={bulkFormData.batteryCapacity}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, batteryCapacity: parseFloat(e.target.value) })}
+                            required
+                          />
+                        </div>
+                        </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                        <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Quãng đường tối đa (km) *
-                    </label>
-                    <Input
-                      type="number"
+                          </label>
+                          <Input
+                            type="number"
                       min="50"
                       max="200"
                       value={bulkFormData.maxRange}
                       onChange={(e) => setBulkFormData({ ...bulkFormData, maxRange: parseInt(e.target.value) })}
-                      required
-                    />
+                            required
+                          />
                   </div>
-                  <div>
+                        <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Giá thuê (VNĐ/ngày) *
-                    </label>
-                    <Input
-                      type="number"
-                      min="50000"
-                      max="500000"
-                      step="1000"
-                      value={bulkFormData.pricePerDay}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, pricePerDay: parseInt(e.target.value) })}
-                      required
-                    />
+                          </label>
+                          <Input
+                            type="number"
+                            min="50000"
+                            max="500000"
+                            step="1000"
+                            value={bulkFormData.pricePerDay}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, pricePerDay: parseInt(e.target.value) })}
+                            required
+                          />
                   </div>
-                </div>
+                        </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                        <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Phần trăm cọc (%) *
-                    </label>
-                    <Input
-                      type="number"
-                      min="10"
-                      max="100"
-                      value={bulkFormData.depositPercentage}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, depositPercentage: parseInt(e.target.value) })}
+                          </label>
+                          <Input
+                            type="number"
+                            min="10"
+                            max="100"
+                            value={bulkFormData.depositPercentage}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, depositPercentage: parseInt(e.target.value) })}
                       required
                     />
                   </div>
@@ -701,12 +701,12 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                     max="100"
                     value={bulkFormData.quantity}
                     onChange={(e) => setBulkFormData({ ...bulkFormData, quantity: parseInt(e.target.value) || 1 })}
-                    required
-                  />
+                            required
+                          />
                   <p className="text-xs text-gray-500 mt-1">
                     Hệ thống sẽ tạo xe và xuất file Excel để bạn thêm biển số
-                  </p>
-                </div>
+                          </p>
+                        </div>
 
                 <div className="space-y-3">
                   <Button type="submit" disabled={loading} className="w-full">
@@ -728,57 +728,57 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                 </div>
               </form>
 
-              {bulkResult && (
+                  {bulkResult && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Kết quả tạo xe</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {bulkResult.totalCreated > 0 ? (
-                      <div className="space-y-4">
+                        {bulkResult.totalCreated > 0 ? (
+                          <div className="space-y-4">
                         <div className="flex items-center space-x-2 text-green-600">
                           <CheckCircle className="h-5 w-5" />
                           <span className="font-medium">
-                            Đã tạo thành công {bulkResult.totalCreated} xe
+                                  Đã tạo thành công {bulkResult.totalCreated} xe
                           </span>
-                        </div>
+                              </div>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                           <div className="flex items-start space-x-2">
                             <Download className="h-5 w-5 text-blue-600 mt-0.5" />
-                            <div>
+                                <div>
                               <h4 className="text-sm font-medium text-blue-800">
-                                File Excel đã được tải xuống
+                                    File Excel đã được tải xuống
                               </h4>
                               <p className="text-sm text-blue-700 mt-1">
                                 Vui lòng mở file Excel, thêm biển số xe vào cột tương ứng, 
                                 sau đó sử dụng tính năng "Import biển số" để cập nhật.
-                              </p>
+                                  </p>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    ) : (
+                        ) : (
                       <div className="space-y-2">
                         <div className="flex items-center space-x-2 text-red-600">
                           <AlertCircle className="h-5 w-5" />
                           <span className="text-sm">Có lỗi xảy ra khi tạo xe</span>
-                        </div>
-                        {bulkResult.failed.length > 0 && (
+                            </div>
+                            {bulkResult.failed.length > 0 && (
                           <div className="space-y-1">
-                            {bulkResult.failed.map((item, index) => (
+                                {bulkResult.failed.map((item, index) => (
                               <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                                {item.error}
+                                    {item.error}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
+                            )}
                           </div>
                         )}
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               )}
-            </div>
-          )}
+                    </div>
+                  )}
 
           {activeTab === 'import-plates' && (
             <div className="space-y-6">
@@ -798,8 +798,8 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                     <li>3. Điền biển số xe vào cột "license_plate"</li>
                     <li>4. Upload file Excel đã điền biển số</li>
                   </ol>
-                </div>
-                
+              </div>
+
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <Button
                     onClick={handleCreateLicensePlateTemplate}
@@ -978,7 +978,7 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                   </CardContent>
                 </Card>
               )}
-            </div>
+          </div>
           )}
         </div>
 

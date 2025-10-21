@@ -26,6 +26,8 @@ import {
   ExportPricingTemplateResponse,
   ImportPricingUpdatesRequest,
   ImportPricingUpdatesResponse,
+  WithdrawVehiclesRequest,
+  WithdrawVehiclesResponse,
   normalizeVehicleForUI
 } from './type/vehicleTypes';
 
@@ -336,6 +338,21 @@ class VehicleService {
   }
 
   /**
+   * Rút xe từ trạm về trạng thái draft (chưa phân bổ)
+   */
+  async withdrawVehiclesFromStation(withdrawData: WithdrawVehiclesRequest): Promise<ApiResponse<WithdrawVehiclesResponse>> {
+    try {
+      console.log('Withdrawing vehicles from station:', withdrawData);
+      const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.withdrawFromStation, withdrawData);
+      console.log('Withdraw response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error withdrawing vehicles from station:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Lấy danh sách model xe duy nhất
    */
   async getVehicleModels(): Promise<ApiResponse<string[]>> {
@@ -398,12 +415,12 @@ class VehicleService {
       const stationStats = statsData.stationStats || [];
       const typeStats = statsData.typeStats || [];
       
-      // Calculate vehicle counts by status
+      // Calculate vehicle counts by status (enum: 'draft', 'available', 'reserved', 'rented', 'maintenance')
+      const draftVehicles = statusStats.find((s: any) => s._id === 'draft')?.count || 0;
       const availableVehicles = statusStats.find((s: any) => s._id === 'available')?.count || 0;
-      const rentedVehicles = statusStats.find((s: any) => s._id === 'rented')?.count || 0;
       const reservedVehicles = statusStats.find((s: any) => s._id === 'reserved')?.count || 0;
+      const rentedVehicles = statusStats.find((s: any) => s._id === 'rented')?.count || 0;
       const maintenanceVehicles = statusStats.find((s: any) => s._id === 'maintenance')?.count || 0;
-      const brokenVehicles = statusStats.find((s: any) => s._id === 'broken')?.count || 0;
       
       // Calculate total vehicles
       const totalVehicles = statusStats.reduce((sum: number, stat: any) => sum + (stat.count || 0), 0);
@@ -411,10 +428,11 @@ class VehicleService {
       // Map API response to our VehicleStatistics interface
       const normalizedStats: VehicleStatistics = {
         totalVehicles,
+        draftVehicles,
         availableVehicles,
-        rentedVehicles: rentedVehicles + reservedVehicles, // Combine rented and reserved
+        reservedVehicles,
+        rentedVehicles,
         maintenanceVehicles,
-        brokenVehicles,
         averageBatteryLevel: 75, // Default since API doesn't provide this
         stationsWithVehicles: stationStats.length,
         totalStations: stationStats.length
@@ -433,10 +451,11 @@ class VehicleService {
         return {
           data: {
             totalVehicles: 3,
+            draftVehicles: 0,
             availableVehicles: 1,
+            reservedVehicles: 0,
             rentedVehicles: 1,
             maintenanceVehicles: 1,
-            brokenVehicles: 0,
             averageBatteryLevel: 74,
             stationsWithVehicles: 2,
             totalStations: 3
@@ -571,6 +590,33 @@ class VehicleService {
   }
 
   /**
+   * Export danh sách xe chưa có biển số
+   */
+  async exportDraftVehicles(): Promise<Blob> {
+    try {
+      console.log('Exporting draft vehicles (without license plates)');
+      console.log('API endpoint:', API_CONFIG.endpoints.vehicles.exportDraftVehicles);
+
+      const response = await axiosInstance.get(API_CONFIG.endpoints.vehicles.exportDraftVehicles, {
+        responseType: 'blob',
+        timeout: 60000 // 60 seconds timeout
+      });
+      
+      console.log('Export draft vehicles response received, blob size:', response.data.size);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error exporting draft vehicles:', error);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
    * Import biển số từ Excel
    */
   async importLicensePlates(file: File): Promise<ApiResponse<ImportLicensePlatesResponse>> {
@@ -611,41 +657,23 @@ class VehicleService {
   /**
    * Xuất template cập nhật giá hàng loạt
    */
-  async exportPricingTemplate(): Promise<Blob> {
+  async exportPricingTemplate(filter?: { model?: string; color?: string; year?: number }): Promise<Blob> {
     try {
-      // Đầu tiên, lấy danh sách xe để tìm filter phù hợp
-      let requestBody = {};
+      // Sử dụng filter được truyền vào, hoặc rỗng nếu không có
+      const requestBody = filter || {};
       
-      try {
-        console.log('Getting vehicles to determine filter...');
-        const vehiclesResponse = await this.getVehiclesForAdmin({ page: 1, limit: 1 });
-        
-        if (vehiclesResponse.data && vehiclesResponse.data.length > 0) {
-          const firstVehicle = vehiclesResponse.data[0];
-          requestBody = {
-            "model": firstVehicle.model,
-            "color": firstVehicle.color,
-            "year": firstVehicle.year
-          };
-          console.log('Using filter from existing vehicle:', requestBody);
-        } else {
-          console.log('No vehicles found, using empty filter');
-        }
-      } catch (vehicleError) {
-        console.log('Could not get vehicles, using empty filter');
-      }
-      
-      console.log('Exporting pricing template with body:', requestBody);
+      console.log('Exporting pricing template with filter:', requestBody);
       console.log('API endpoint:', API_CONFIG.endpoints.vehicles.exportPricingTemplate);
 
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.exportPricingTemplate, requestBody, {
         responseType: 'blob',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        timeout: 60000 // 60 seconds timeout
       });
       
-      console.log('Export pricing template response received');
+      console.log('Export pricing template response received, blob size:', response.data.size);
       return response.data;
     } catch (error: any) {
       console.error('Error exporting pricing template:', error);
@@ -655,46 +683,6 @@ class VehicleService {
         console.error('Response status:', error.response.status);
         console.error('Response data:', error.response.data);
         console.error('Response headers:', error.response.headers);
-      }
-      
-      // Nếu vẫn lỗi 404, thử với các filter khác nhau
-      if (error.response?.status === 404) {
-        console.log('Trying alternative request bodies...');
-        
-        // Thử với các filter phổ biến và cả request rỗng
-        const alternativeFilters = [
-          {}, // Empty object
-          { "year": 2024 },
-          { "year": 2023 },
-          { "model": "Klara S" },
-          { "model": "VinFast" },
-          { "color": "Đỏ" },
-          { "color": "Xanh" },
-          { "color": "Trắng" },
-          null, // No body
-          undefined // No body
-        ];
-        
-        for (const filter of alternativeFilters) {
-          try {
-            console.log('Trying filter:', filter);
-            const retryResponse = await axiosInstance.post(
-              API_CONFIG.endpoints.vehicles.exportPricingTemplate, 
-              filter,
-              {
-                responseType: 'blob',
-                headers: filter !== null && filter !== undefined ? {
-                  'Content-Type': 'application/json'
-                } : {}
-              }
-            );
-            console.log('Success with filter:', filter);
-            return retryResponse.data;
-          } catch (retryError) {
-            console.log('Failed with filter:', filter, retryError.response?.status);
-            continue;
-          }
-        }
       }
       
       throw error;
@@ -738,6 +726,7 @@ class VehicleService {
       throw error;
     }
   }
+
 }
 
 // Export singleton instance

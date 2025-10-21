@@ -107,10 +107,11 @@ export async function retryWithBackoff<T>(
  */
 export function formatVehicleStatus(status: VehicleStatus): string {
   const statusMap: Record<string, string> = {
+    draft: 'Draft',
     available: 'Sẵn sàng',
+    reserved: 'Đã đặt',
     rented: 'Đang thuê',
-    maintenance: 'Bảo trì',
-    broken: 'Hỏng'
+    maintenance: 'Bảo trì'
   };
   return statusMap[status] || status;
 }
@@ -122,12 +123,13 @@ export function formatVehicleStatus(status: VehicleStatus): string {
  */
 export function getVehicleStatusColor(status: VehicleStatus): string {
   const colorMap: Record<string, string> = {
-    available: 'text-green-600 bg-green-100',
-    rented: 'text-blue-600 bg-blue-100',
-    maintenance: 'text-yellow-600 bg-yellow-100',
-    broken: 'text-red-600 bg-red-100'
+    draft: 'text-gray-600 bg-gray-100 dark:text-gray-300 dark:bg-gray-800',
+    available: 'text-green-600 bg-green-100 dark:text-green-400 dark:bg-green-900/30',
+    reserved: 'text-orange-600 bg-orange-100 dark:text-orange-400 dark:bg-orange-900/30',
+    rented: 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30',
+    maintenance: 'text-yellow-600 bg-yellow-100 dark:text-yellow-400 dark:bg-yellow-900/30'
   };
-  return colorMap[status] || 'text-gray-600 bg-gray-100';
+  return colorMap[status] || 'text-gray-600 bg-gray-100 dark:text-gray-300 dark:bg-gray-800';
 }
 
 /**

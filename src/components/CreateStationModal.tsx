@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, Clock, Phone, AlertCircle, Plus } from 'lucide-react';
+import { X, MapPin, Clock, Phone, AlertCircle, Plus, Upload, Image as ImageIcon } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -31,6 +31,7 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -88,6 +89,7 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
         images: []
       });
       setErrors({});
+      setImagePreviews([]);
       
       onSuccess();
       onClose();
@@ -106,6 +108,72 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
     }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    
+    // Validate file count (max 10 images)
+    const currentImageCount = formData.images?.length || 0;
+    const totalImages = currentImageCount + files.length;
+    
+    if (totalImages > 10) {
+      showToast.error('Chỉ được tải lên tối đa 10 ảnh');
+      return;
+    }
+    
+    // Validate file types and sizes
+    const validFiles: File[] = [];
+    const invalidFiles: string[] = [];
+    
+    files.forEach(file => {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        invalidFiles.push(`${file.name} không phải là file ảnh`);
+        return;
+      }
+      
+      // Check file size (max 5MB per image)
+      if (file.size > 5 * 1024 * 1024) {
+        invalidFiles.push(`${file.name} vượt quá 5MB`);
+        return;
+      }
+      
+      validFiles.push(file);
+    });
+    
+    // Show error for invalid files
+    if (invalidFiles.length > 0) {
+      showToast.error(invalidFiles.join(', '));
+    }
+    
+    // Add valid files
+    if (validFiles.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        images: [...(prev.images || []), ...validFiles]
+      }));
+      
+      // Create previews
+      validFiles.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setImagePreviews(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+    
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      images: prev.images?.filter((_, i) => i !== index) || []
+    }));
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   return (
@@ -387,6 +455,76 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                           )}
                         </div>
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Image Upload */}
+                  <Card className="border-2 border-gray-200 dark:border-gray-700">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <CardTitle className="flex items-center space-x-2 text-base">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                          <ImageIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <span>Hình ảnh trạm</span>
+                        <span className="text-xs text-gray-500 font-normal ml-2">(Tùy chọn, tối đa 10 ảnh)</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      {/* Image Upload Button */}
+                      <div>
+                        <label htmlFor="station-images" className="cursor-pointer">
+                          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 hover:border-purple-500 dark:hover:border-purple-400 transition-colors text-center">
+                            <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                              <span className="text-purple-600 dark:text-purple-400 font-semibold">Click để chọn ảnh</span> hoặc kéo thả vào đây
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              PNG, JPG, JPEG, WEBP (tối đa 5MB mỗi ảnh)
+                            </p>
+                          </div>
+                        </label>
+                        <input
+                          id="station-images"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                      </div>
+
+                      {/* Image Preview Grid */}
+                      {imagePreviews.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                          {imagePreviews.map((preview, index) => (
+                            <div key={index} className="relative group">
+                              <img
+                                src={preview}
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-32 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveImage(index)}
+                                className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1.5 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                title="Xóa ảnh"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                              <div className="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+                                {index + 1}/{imagePreviews.length}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {imagePreviews.length > 0 && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center">
+                          <ImageIcon className="h-4 w-4 mr-1.5 text-purple-600" />
+                          Đã chọn {imagePreviews.length}/10 ảnh
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
                 </form>

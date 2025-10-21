@@ -3,7 +3,7 @@
  */
 
 // Vehicle Status Enum
-export type VehicleStatus = 'available' | 'rented' | 'maintenance' | 'broken';
+export type VehicleStatus = 'draft' | 'available' | 'reserved' | 'rented' | 'maintenance';
 
 // Vehicle Type Enum
 export type VehicleType = 'scooter' | 'motorcycle';
@@ -129,10 +129,11 @@ export interface VehicleSimple {
 
 export interface VehicleStatistics {
   totalVehicles: number;
+  draftVehicles: number;
   availableVehicles: number;
+  reservedVehicles: number;
   rentedVehicles: number;
   maintenanceVehicles: number;
-  brokenVehicles: number;
   averageBatteryLevel: number;
   stationsWithVehicles: number;
   totalStations: number;
@@ -245,10 +246,18 @@ export interface ImportPricingUpdatesRequest {
 }
 
 export interface ImportPricingUpdatesResponse {
-  updated: { id: string; licensePlate: string; newPrice: number }[];
-  failed: { row: number; data: any; error: string }[];
-  totalUpdated: number;
-  totalFailed: number;
+  success: boolean;
+  updated: number;
+  failed: number;
+  message: string;
+  statusStats?: {
+    available: number;
+    maintenance: number;
+  };
+  details?: {
+    successes: any[];
+    failures: any[];
+  };
 }
 
 // Vehicle Status Colors (for UI)
@@ -285,6 +294,31 @@ export const VEHICLE_STATUS_CONFIGS: VehicleStatusConfig[] = [
     bgColor: 'bg-red-100'
   }
 ];
+
+// Withdraw Vehicles from Station
+export interface WithdrawVehiclesRequest {
+  station_id: string;
+  model: string;
+  color: string;
+  quantity: number;
+}
+
+export interface WithdrawVehiclesResponse {
+  message: string;
+  withdrawn_count: number;
+  station: {
+    id: string;
+    name: string;
+    remaining_vehicles: number;
+    remaining_available: number;
+  };
+  vehicles: Array<{
+    name: string;
+    model: string;
+    color: string;
+    status: 'draft';
+  }>;
+}
 
 // Utility function to normalize API vehicle to UI vehicle
 export function normalizeVehicleForUI(vehicle: Vehicle): VehicleUI {

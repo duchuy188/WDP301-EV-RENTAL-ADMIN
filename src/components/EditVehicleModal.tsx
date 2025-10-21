@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Save, AlertCircle, CheckCircle, Car, Zap, DollarSign, MapPin, RefreshCw, Edit } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -169,55 +169,88 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop flex items-center justify-center">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div className="modal-backdrop flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Chỉnh sửa xe
-            </h2>
-            <p className="text-sm text-gray-500">
-              Cập nhật thông tin xe {vehicle?.licensePlate}
-            </p>
+        <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                <Edit className="h-6 w-6" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">
+                  Chỉnh sửa thông tin xe
+                </h2>
+                <p className="text-sm text-blue-100 mt-1 font-medium">
+                  {vehicle?.licensePlate} • {vehicle?.brand} {vehicle?.model}
+                </p>
+              </div>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleClose}
+              className="text-white hover:bg-white/20 transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={handleClose}>
-            <X className="h-4 w-4" />
-          </Button>
         </div>
+        
+        <div className="max-h-[calc(90vh-100px)] overflow-y-auto">
 
-        {/* Content */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Success Message */}
-          {success && (
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2">
-                <CheckCircle className="h-5 w-5 text-green-600" />
-                <span className="text-sm font-medium text-green-800">
-                  Cập nhật xe thành công!
-                </span>
+          {/* Content */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            {/* Success Message */}
+            {success && (
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-green-500 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-green-800 block">
+                      Cập nhật thành công!
+                    </span>
+                    <span className="text-xs text-green-600">
+                      Thông tin xe đã được cập nhật
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5 text-red-600" />
-                <span className="text-sm font-medium text-red-800">
-                  {error}
-                </span>
+            {/* Error Message */}
+            {error && (
+              <div className="bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="p-2 bg-red-500 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-red-800 block">
+                      Có lỗi xảy ra!
+                    </span>
+                    <span className="text-xs text-red-600">
+                      {error}
+                    </span>
+                  </div>
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Thông tin cơ bản</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* Basic Information */}
+            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-3">
+                    <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  Thông tin cơ bản
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -341,12 +374,17 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
             </CardContent>
           </Card>
 
-          {/* Technical Specifications */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Thông số kỹ thuật</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* Technical Specifications */}
+            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mr-3">
+                    <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
+                  </div>
+                  Thông số kỹ thuật
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -393,12 +431,17 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
             </CardContent>
           </Card>
 
-          {/* Pricing */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Giá thuê</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* Pricing */}
+            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg mr-3">
+                    <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  </div>
+                  Giá thuê
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -431,12 +474,17 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
             </CardContent>
           </Card>
 
-          {/* Status and Location */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Trạng thái và vị trí</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            {/* Status and Location */}
+            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
+              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg mr-3">
+                    <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  Trạng thái và vị trí
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -449,10 +497,11 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                     required
                     aria-label="Chọn trạng thái xe"
                   >
+                    <option value="draft">Draft</option>
                     <option value="available">Sẵn sàng</option>
+                    <option value="reserved">Đã đặt</option>
                     <option value="rented">Đang thuê</option>
                     <option value="maintenance">Bảo trì</option>
-                    <option value="broken">Hỏng</option>
                   </select>
                 </div>
                 <div>
@@ -491,17 +540,38 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
             </CardContent>
           </Card>
 
-          {/* Footer */}
-          <div className="flex justify-end space-x-3 pt-6 border-t">
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Hủy
-            </Button>
-            <Button type="submit" disabled={loading}>
-              <Save className="h-4 w-4 mr-2" />
-              {loading ? 'Đang cập nhật...' : 'Cập nhật xe'}
-            </Button>
-          </div>
-        </form>
+            {/* Footer */}
+            <div className="flex justify-end space-x-3 pt-6 border-t-2 border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-900 -mx-6 px-6 py-4 rounded-b-2xl">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleClose}
+                className="px-6 hover:bg-gray-100 dark:hover:bg-gray-800 font-medium"
+                disabled={loading}
+              >
+                <X className="h-4 w-4 mr-2" />
+                Hủy
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={loading}
+                className="px-6 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all font-medium"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Đang cập nhật...
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    Cập nhật xe
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );
