@@ -88,8 +88,20 @@ export class AssignmentService {
    * @returns Promise<Station[]>
    */
   static async getStations(): Promise<Station[]> {
-    const response = await axiosInstance.get('/api/stations');
-    return response.data.stations || response.data;
+    // Request with high limit to get all stations
+    const response = await axiosInstance.get('/api/stations?page=1&limit=999');
+    const stations = response.data.stations || response.data;
+    
+    console.log('🏢 All Stations API Response:', response.data);
+    console.log('📊 Total stations from API:', stations?.length || 0);
+    console.log('📋 Station details:', stations?.map((s: any) => ({
+      name: s.name,
+      code: s.code,
+      status: s.status,
+      address: s.address
+    })));
+    
+    return stations;
   }
 
   /**

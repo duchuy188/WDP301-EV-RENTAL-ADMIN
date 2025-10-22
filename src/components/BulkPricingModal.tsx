@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ColorPicker } from './ui/color-picker';
 import { vehicleService } from './service/vehicleService';
 import { showToast } from '../lib/toast';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
 interface BulkPricingModalProps {
   isOpen: boolean;
@@ -36,6 +37,9 @@ interface ImportResult {
 }
 
 export function BulkPricingModal({ isOpen, onClose, onSuccess }: BulkPricingModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
+  
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);

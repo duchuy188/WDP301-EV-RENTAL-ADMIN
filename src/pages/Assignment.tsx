@@ -21,6 +21,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { AssignmentModal } from '../components/AssignmentModal';
 import { AssignmentService, UnassignedStaff, UnassignedStaffParams } from '../components/service/assignmentService';
+import { formatDate } from '../utils/dateUtils';
 
 export default function Assignment() {
   const [staff, setStaff] = useState<UnassignedStaff[]>([]);
@@ -148,7 +149,7 @@ export default function Assignment() {
         <div className="flex items-center space-x-2">
           <Calendar className="w-4 h-4 text-gray-400" />
           <span className="text-sm">
-            {new Date(value).toLocaleDateString('vi-VN')}
+            {formatDate(value)}
           </span>
         </div>
       )

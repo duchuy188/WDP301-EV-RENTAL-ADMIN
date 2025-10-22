@@ -77,3 +77,80 @@ export interface CreateStaffResponse {
   temporaryPassword: string;
 }
 
+// Risky Customers Types
+export interface Violation {
+  type: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  points: number;
+  date: string;
+  resolved: boolean;
+  resolved_date: string | null;
+  resolved_by: string | null;
+}
+
+export interface RiskInfo {
+  risk_score: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  total_violations: number;
+  last_violation_date: string | null;
+  violations?: Violation[];
+}
+
+export interface RiskyCustomer extends User {
+  riskInfo: RiskInfo;
+}
+
+export interface RiskyCustomersParams {
+  page?: number;
+  limit?: number;
+  minRiskScore?: number;
+  riskLevel?: 'low' | 'medium' | 'high' | 'critical';
+  search?: string;
+}
+
+export interface RiskyCustomersResponse {
+  customers: RiskyCustomer[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
+export interface RiskyCustomerDetailResponse {
+  user: User;
+  riskInfo: RiskInfo;
+}
+
+export interface RiskScoreResponse {
+  user_id: string;
+  risk_score: number;
+  risk_level: 'low' | 'medium' | 'high' | 'critical';
+  total_violations: number;
+  last_violation_date: string | null;
+  violations: Violation[];
+}
+
+export interface ResetRiskScoreResponse {
+  message: string;
+  user_id: string;
+  risk_score: number;
+  risk_level: string;
+}
+
+export interface AddViolationRequest {
+  type: string;
+  description: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  points: number;
+}
+
+export interface AddViolationResponse {
+  message: string;
+  user_id: string;
+  violation: Violation;
+  risk_score: number;
+  risk_level: string;
+}

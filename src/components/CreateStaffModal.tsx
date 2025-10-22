@@ -7,6 +7,7 @@ import { Badge } from './ui/badge';
 import { UserService } from './service/userService';
 import { CreateStaffPayload, CreateStaffResponse } from './service/type/userTypes';
 import { showToast } from '../lib/toast';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
 interface CreateStaffModalProps {
   isOpen: boolean;
@@ -15,6 +16,8 @@ interface CreateStaffModalProps {
 }
 
 export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
   const [form, setForm] = useState<CreateStaffPayload>({
     fullname: '',
     email: '',

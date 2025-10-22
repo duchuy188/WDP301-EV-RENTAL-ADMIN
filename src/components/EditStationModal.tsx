@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { stationService } from './service/stationService';
 import { UpdateStationRequest, Station } from './service/type/stationTypes';
 import { showToast } from '../lib/toast';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
 interface EditStationModalProps {
   isOpen: boolean;
@@ -16,6 +17,8 @@ interface EditStationModalProps {
 }
 
 export function EditStationModal({ isOpen, onClose, onSuccess, station }: EditStationModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState<UpdateStationRequest>({
     name: '',

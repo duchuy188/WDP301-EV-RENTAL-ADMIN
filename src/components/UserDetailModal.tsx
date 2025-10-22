@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { User as UserType, UpdateUserPayload } from './service/type/userTypes';
 import { UserService } from './service/userService';
 import { showToast } from '../lib/toast';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
 interface UserDetailModalProps {
   user: UserType | null;
@@ -15,25 +16,29 @@ interface UserDetailModalProps {
 }
 
 export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetailModalProps) {
-  if (!user) return null;
-
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
+  
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURN
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  
   const normalizeStationId = (station: any): string | undefined => {
     if (!station) return undefined;
     if (typeof station === 'string') return station;
     if (typeof station === 'object' && station._id) return station._id as string;
     return undefined;
   };
+  
   const [form, setForm] = useState<UpdateUserPayload>({
-    fullname: user.fullname,
-    email: user.email,
-    phone: user.phone,
-    address: user.address,
-    stationId: normalizeStationId(user.stationId),
-    status: user.status,
+    fullname: user?.fullname || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    address: user?.address || '',
+    stationId: normalizeStationId(user?.stationId),
+    status: user?.status || 'active',
   });
 
   // Keep form in sync if opening modal on different user
@@ -50,6 +55,9 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
       setIsEditing(false);
     }
   }, [user]);
+
+  // Early return AFTER all hooks
+  if (!user) return null;
 
   const handleChange = (key: keyof UpdateUserPayload, value: string) => {
     setForm(prev => ({ ...prev, [key]: value }));

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatDate } from '../utils/dateUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Car, 
@@ -376,8 +377,8 @@ export function Fleet() {
       key: 'createdAt',
       header: 'Ngày tạo',
       render: (value: string) => (
-        <div className="text-sm text-gray-500">
-          {new Date(value).toLocaleDateString('vi-VN')}
+        <div className="text-sm text-gray-500 dark:text-gray-400">
+          {formatDate(value)}
         </div>
       )
     },

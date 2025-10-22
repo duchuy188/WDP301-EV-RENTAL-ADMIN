@@ -368,16 +368,39 @@ export function Stations() {
 
   const stationColumns = [
     {
+      key: 'stt',
+      header: 'STT',
+      render: (_value: any, _row: any, index?: number) => {
+        const stt = (index ?? 0) + 1;
+        return (
+          <span className="font-medium text-sm text-gray-600 dark:text-gray-400">{stt}</span>
+        );
+      }
+    },
+    {
       key: 'name',
       header: 'TÊN TRẠM',
       render: (_value: string, row: Station) => (
         <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <Building2 className="h-4 w-4 text-blue-600" />
+          <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0 shadow-md">
+            {row.images && row.images.length > 0 ? (
+              <img
+                src={row.images[0]}
+                alt={row.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+            ) : null}
+            <div className={`w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center ${row.images && row.images.length > 0 ? 'hidden' : ''}`}>
+              <Building2 className="h-6 w-6 text-white" />
+            </div>
           </div>
           <div>
-            <div className="font-medium text-gray-900">{row.name}</div>
-            <div className="text-sm text-gray-500">Code: {row.code}</div>
+            <div className="font-medium text-gray-900 dark:text-white">{row.name}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Code: {row.code}</div>
           </div>
         </div>
       )

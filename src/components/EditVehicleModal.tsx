@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ColorPicker } from './ui/color-picker';
 import { vehicleService } from './service/vehicleService';
 import { stationService } from './service/stationService';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 import type { VehicleUI, UpdateVehicleRequest, VehicleStatus, VehicleType } from './service/type/vehicleTypes';
 import type { Station } from './service/type/stationTypes';
 
@@ -17,6 +18,8 @@ interface EditVehicleModalProps {
 }
 
 export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }: EditVehicleModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
   const [loading, setLoading] = useState(false);
   const [stations, setStations] = useState<Station[]>([]);
   const [models, setModels] = useState<string[]>([]);
@@ -78,7 +81,8 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
 
   const loadStations = async () => {
     try {
-      const response = await stationService.getStations({ page: 1, limit: 100 });
+      const response = await stationService.getStations({ page: 1, limit: 999 });
+      console.log('🏢 EditVehicleModal - Loaded stations:', response.stations?.length || 0);
       setStations(response.stations || []);
     } catch (error) {
       console.error('Error loading stations:', error);

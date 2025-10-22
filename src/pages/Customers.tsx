@@ -236,27 +236,43 @@ export function Customers() {
       key: 'actions',
       header: 'Hành động',
       render: (_value: any, row: UserType) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => handleViewUser(row)}
-            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
-            title="Xem chi tiết"
-            aria-label="Xem chi tiết"
+            onClick={(e) => {
+              e.stopPropagation(); // Ngăn event bubble lên row
+              handleViewUser(row);
+            }}
+            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+            title="Xem chi tiết khách hàng"
+            aria-label="Xem chi tiết khách hàng"
           >
             <Eye className="h-4 w-4" />
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => toggleStatus(row)}
+            onClick={(e) => {
+              e.stopPropagation(); // Ngăn event bubble lên row
+              toggleStatus(row);
+            }}
             disabled={togglingId === row._id}
-            className="h-8 w-8 p-0 hover:bg-amber-50 hover:text-amber-600 dark:hover:bg-amber-900/20 dark:hover:text-amber-400"
-            title={row.status === 'active' ? 'Đình chỉ tài khoản' : 'Kích hoạt tài khoản'}
-            aria-label={row.status === 'active' ? 'Đình chỉ tài khoản' : 'Kích hoạt tài khoản'}
+            className={`h-8 w-8 p-0 border transition-all ${
+              row.status === 'active' 
+                ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border-red-200 dark:border-red-800' 
+                : 'hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400 border-green-200 dark:border-green-800'
+            }`}
+            title={row.status === 'active' ? 'Chặn tài khoản' : 'Kích hoạt tài khoản'}
+            aria-label={row.status === 'active' ? 'Chặn tài khoản' : 'Kích hoạt tài khoản'}
           >
-            {row.status === 'active' ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
+            {togglingId === row._id ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : row.status === 'active' ? (
+              <Lock className="h-4 w-4" />
+            ) : (
+              <Unlock className="h-4 w-4" />
+            )}
           </Button>
         </div>
       )
@@ -438,7 +454,7 @@ export function Customers() {
           loading={loading}
           searchable={true}
           exportable={true}
-          selectable={true}
+          selectable={false}
           pageSize={10}
           pageSizeOptions={[5, 10, 20, 50]}
           onRowClick={handleViewUser}

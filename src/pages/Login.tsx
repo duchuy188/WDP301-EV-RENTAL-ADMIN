@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Car, Mail, Lock, Zap, Users, Shield, CheckCircle } from 'lucide-react';
+import { Car, Mail, Lock, Zap, Users, Shield, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useAuth } from '../hooks/useAuth';
@@ -11,7 +11,7 @@ export function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login, loading, error } = useAuth();
 
@@ -217,14 +217,26 @@ export function Login() {
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-neutral-400" />
                   <Input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
-                    className="pl-12 h-12 rounded-xl border-neutral-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                    className="pl-12 pr-12 h-12 rounded-xl border-neutral-300 dark:border-gray-600 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                     placeholder="Nhập mật khẩu"
                     required
                     disabled={loading}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600 dark:hover:text-gray-300 transition-colors"
+                    disabled={loading}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-5 w-5" />
+                    ) : (
+                      <Eye className="h-5 w-5" />
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -258,28 +270,7 @@ export function Login() {
                 )}
               </Button>
             </motion.form>
-
-            {/* Debug Panel Toggle */}
-            <div className="mt-6 text-center">
-              <button
-                onClick={() => setShowDebug(!showDebug)}
-                className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-              >
-                {showDebug ? 'Ẩn Debug Panel' : 'Hiện Debug Panel'}
-              </button>
-            </div>
           </motion.div>
-
-          {/* Debug Panel */}
-          {showDebug && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mt-6"
-            >
-            </motion.div>
-          )}
         </div>
       </motion.div>
     </div>

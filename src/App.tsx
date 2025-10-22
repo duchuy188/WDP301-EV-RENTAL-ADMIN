@@ -14,6 +14,7 @@ import { Staff } from './pages/Staff';
 import { Analytics } from './pages/Analytics';
 import RiskyCustomers from './pages/RiskyCustomers';
 import Assignment from './pages/Assignment';
+import Payments from './pages/Payments';
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -71,6 +72,7 @@ function AppContent() {
                 <Route path="/customers/risky" element={<RiskyCustomers />} />
                 <Route path="/staff" element={<Staff />} />
                 <Route path="/staff/assignment" element={<Assignment />} />
+                <Route path="/payments" element={<Payments />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>

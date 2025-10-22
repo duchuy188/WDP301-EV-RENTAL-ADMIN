@@ -33,6 +33,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { stationService } from './service/stationService';
 import { StationDetail, StationVehicle, StationStaff } from './service/type/stationTypes';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
 interface StationDetailModalProps {
   isOpen: boolean;
@@ -42,6 +43,8 @@ interface StationDetailModalProps {
 }
 
 export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: StationDetailModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
   const [station, setStation] = useState<StationDetail | null>(null);
   const [staff, setStaff] = useState<StationStaff[]>([]);
   const [loading, setLoading] = useState(false);

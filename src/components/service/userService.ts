@@ -1,5 +1,19 @@
 import { axiosInstance } from './api/axiosInstance';
-import { User, UsersResponse, UsersParams, UpdateUserPayload, CreateStaffPayload, CreateStaffResponse } from './type/userTypes';
+import { 
+  User, 
+  UsersResponse, 
+  UsersParams, 
+  UpdateUserPayload, 
+  CreateStaffPayload, 
+  CreateStaffResponse,
+  RiskyCustomersParams,
+  RiskyCustomersResponse,
+  RiskyCustomerDetailResponse,
+  RiskScoreResponse,
+  ResetRiskScoreResponse,
+  AddViolationRequest,
+  AddViolationResponse
+} from './type/userTypes';
 import { buildQueryParams, isTimeoutError, isNetworkError } from './utils/apiUtils';
 
 export class UserService {
@@ -126,15 +140,66 @@ export class UserService {
   }
 
   /**
-   * Get risky customers list
-   * @param params - Query parameters (excluding role)
-   * @returns Promise<UsersResponse>
+   * Get risky customers list with full filters
+   * GET /api/users/risky-customers
+   * @param params - Query parameters with risk filters
+   * @returns Promise<RiskyCustomersResponse>
    */
-  static async getRiskyCustomers(params?: Omit<UsersParams, 'role'>): Promise<UsersResponse> {
-    const requestParams = buildQueryParams(params);
+  static async getRiskyCustomers(params?: RiskyCustomersParams): Promise<RiskyCustomersResponse> {
     const response = await axiosInstance.get('/api/users/risky-customers', {
-      params: requestParams,
+      params: {
+        page: params?.page || 1,
+        limit: params?.limit || 10,
+        minRiskScore: params?.minRiskScore,
+        riskLevel: params?.riskLevel,
+        search: params?.search,
+      },
     });
+    return response.data;
+  }
+
+  /**
+   * Get risky customer detail
+   * GET /api/users/risky-customers/{id}
+   * @param id - Customer ID
+   * @returns Promise<RiskyCustomerDetailResponse>
+   */
+  static async getRiskyCustomerDetail(id: string): Promise<RiskyCustomerDetailResponse> {
+    const response = await axiosInstance.get(`/api/users/risky-customers/${id}`);
+    return response.data;
+  }
+
+  /**
+   * Get user risk score
+   * GET /api/users/{id}/risk-score
+   * @param id - User ID
+   * @returns Promise<RiskScoreResponse>
+   */
+  static async getRiskScore(id: string): Promise<RiskScoreResponse> {
+    const response = await axiosInstance.get(`/api/users/${id}/risk-score`);
+    return response.data;
+  }
+
+  /**
+   * Reset user risk score
+   * POST /api/users/{id}/reset-risk-score
+   * @param id - User ID
+   * @returns Promise<ResetRiskScoreResponse>
+   */
+  static async resetRiskScore(id: string): Promise<ResetRiskScoreResponse> {
+    const response = await axiosInstance.post(`/api/users/${id}/reset-risk-score`);
+    return response.data;
+  }
+
+  /**
+   * Add violation to user
+   * POST /api/users/{id}/violations
+   * @param id - User ID
+   * @param data - Violation data
+   * @returns Promise<AddViolationResponse>
+   */
+  static async addViolation(id: string, data: AddViolationRequest): Promise<AddViolationResponse> {
+    const response = await axiosInstance.post(`/api/users/${id}/violations`, data);
     return response.data;
   }
 

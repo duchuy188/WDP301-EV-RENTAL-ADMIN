@@ -1,39 +1,38 @@
-import { useState, useRef, useEffect } from 'react';
-import { X, Upload, Download, Plus, FileSpreadsheet, AlertCircle, CheckCircle } from 'lucide-react';
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  X, 
+  Plus, 
+  Car, 
+  DollarSign, 
+  FileText, 
+  Sparkles,
+  Download,
+  CheckCircle,
+  AlertCircle
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ColorPicker } from './ui/color-picker';
-import { Badge } from './ui/badge';
 import { vehicleService } from './service/vehicleService';
-import { stationService } from './service/stationService';
-import type { 
-  BulkCreateVehicleRequest, 
-  CreateVehicleRequest, 
-  BulkCreateResponse,
-  ImportLicensePlatesResponse,
-  ImportPricingUpdatesResponse
-} from './service/type/vehicleTypes';
-import type { Station } from './service/type/stationTypes';
+import { showToast } from '../lib/toast';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
+import type { BulkCreateResponse } from './service/type/vehicleTypes';
 
 interface BulkVehicleModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  defaultTab?: TabType;
 }
 
-type TabType = 'bulk-create' | 'import-plates' | 'pricing';
-
-export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bulk-create' }: BulkVehicleModalProps) {
-  const [activeTab, setActiveTab] = useState<TabType>(defaultTab);
+export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
   const [loading, setLoading] = useState(false);
-  const [stations, setStations] = useState<Station[]>([]);
-  const [loadingStations, setLoadingStations] = useState(false);
   
   // Bulk Create State
   const [bulkFormData, setBulkFormData] = useState({
-    brand: '',
     model: '',
     year: new Date().getFullYear(),
     color: '',
@@ -42,80 +41,16 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
     maxRange: 80,
     pricePerDay: 150000,
     depositPercentage: 50,
-    quantity: 1,
-    stationId: ''
+    quantity: 1
   });
   
-  // Dropdown data
-  const [models, setModels] = useState<string[]>([]);
-  const [brands, setBrands] = useState<string[]>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
-  const [loadingBrands, setLoadingBrands] = useState(false);
   const [bulkResult, setBulkResult] = useState<BulkCreateResponse | null>(null);
-
-  // Import License Plates State
-  const [importPlatesResult, setImportPlatesResult] = useState<ImportLicensePlatesResponse | null>(null);
-  const licensePlatesFileRef = useRef<HTMLInputElement>(null);
-
-  // Pricing State
-  const [pricingResult, setPricingResult] = useState<ImportPricingUpdatesResponse | null>(null);
-  const pricingFileRef = useRef<HTMLInputElement>(null);
-
-  // Update active tab when defaultTab changes
-  useEffect(() => {
-    setActiveTab(defaultTab);
-  }, [defaultTab]);
-
-  // Load dropdown data when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      loadStations();
-      loadModels();
-      loadBrands();
-    }
-  }, [isOpen]);
-
-  const loadStations = async () => {
-    try {
-      setLoadingStations(true);
-      const response = await stationService.getStations({ page: 1, limit: 100 });
-      setStations(response.stations || []);
-    } catch (error) {
-      console.error('Error loading stations:', error);
-    } finally {
-      setLoadingStations(false);
-    }
-  };
-
-  const loadModels = async () => {
-    try {
-      setLoadingModels(true);
-      const response = await vehicleService.getVehicleModels();
-      setModels(response.data || []);
-    } catch (error) {
-      console.error('Error loading vehicle models:', error);
-    } finally {
-      setLoadingModels(false);
-    }
-  };
-
-  const loadBrands = async () => {
-    try {
-      setLoadingBrands(true);
-      const response = await vehicleService.getVehicleBrands();
-      setBrands(response.data || []);
-    } catch (error) {
-      console.error('Error loading vehicle brands:', error);
-    } finally {
-      setLoadingBrands(false);
-    }
-  };
 
   const handleBulkCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!bulkFormData.quantity || bulkFormData.quantity <= 0) {
-      alert('Vui lòng nhập số lượng xe cần tạo');
+      showToast.warning('Vui lòng nhập số lượng xe cần tạo');
       return;
     }
 
@@ -127,21 +62,20 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
       type: bulkFormData.type,
       battery_capacity: bulkFormData.batteryCapacity,
       max_range: bulkFormData.maxRange,
-      current_battery: 100, // Start with full battery
+      current_battery: 100,
       price_per_day: bulkFormData.pricePerDay,
       deposit_percentage: bulkFormData.depositPercentage,
       quantity: bulkFormData.quantity,
-      export_excel: true, // Export Excel file after creating vehicles
-      images: [] // Empty images array
+      export_excel: true,
+      images: []
     };
 
     try {
       setLoading(true);
       
-      // First create vehicles and get Excel file
       const excelBlob = await vehicleService.bulkCreateVehicles(requestBody);
       
-      // Download the Excel file with created vehicles
+      // Download the Excel file
       const url = window.URL.createObjectURL(excelBlob);
       const a = document.createElement('a');
       a.href = url;
@@ -152,425 +86,188 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
       document.body.removeChild(a);
       
       setBulkResult({
-        created: [], // We don't get vehicle data when export_excel=true
+        created: [],
         failed: [],
         totalCreated: bulkFormData.quantity,
         totalFailed: 0
       });
       
+      // Reset form after success
+      setBulkFormData({
+        model: '',
+        year: new Date().getFullYear(),
+        color: '',
+        type: 'scooter',
+        batteryCapacity: 2.5,
+        maxRange: 80,
+        pricePerDay: 150000,
+        depositPercentage: 50,
+        quantity: 1
+      });
+      
+      // Notify and close
+      showToast.success(`Đã tạo thành công ${bulkFormData.quantity} xe!`);
       onSuccess();
-    } catch (error) {
+      onClose();
+    } catch (error: any) {
       console.error('Error bulk creating vehicles:', error);
       setBulkResult({
         created: [],
-        failed: [{ data: { licensePlate: 'Error' }, error: error.message || 'Unknown error' }],
+        failed: [{ 
+          data: {
+            name: 'Error',
+            license_plate: 'Error',
+            brand: '',
+            model: bulkFormData.model,
+            year: bulkFormData.year,
+            color: bulkFormData.color,
+            type: bulkFormData.type,
+            battery_capacity: bulkFormData.batteryCapacity,
+            max_range: bulkFormData.maxRange,
+            price_per_day: bulkFormData.pricePerDay,
+            deposit_percentage: bulkFormData.depositPercentage
+          }, 
+          error: error.message || 'Unknown error' 
+        }],
         totalCreated: 0,
         totalFailed: 1
       });
+      showToast.error(error.message || 'Không thể tạo xe');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleExportTemplate = async () => {
-    try {
-      setLoading(true);
-      
-      // Request Excel template
-      const requestBody = {
-        model: 'Template',
-        year: 2023,
-        color: 'Template',
-        type: 'scooter',
-        battery_capacity: 2.5,
-        max_range: 80,
-        current_battery: 100,
-        price_per_day: 150000,
-        deposit_percentage: 50,
-        quantity: 1,
-        export_excel: true, // Request Excel template
-        images: []
-      };
-
-      const blob = await vehicleService.bulkCreateVehicles(requestBody);
-      
-      // Create download link for Excel file
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `bulk-create-template-${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error exporting template:', error);
-      alert('Có lỗi xảy ra khi xuất template');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImportLicensePlates = async (file: File) => {
-    try {
-      setLoading(true);
-      
-      // Validate file type
-      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-        alert('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
-        return;
-      }
-      
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File quá lớn. Vui lòng chọn file nhỏ hơn 10MB');
-        return;
-      }
-      
-      const response = await vehicleService.importLicensePlates(file);
-      setImportPlatesResult(response.data);
-      
-      if (response.data.totalImported > 0) {
-        onSuccess();
-      }
-    } catch (error: any) {
-      console.error('Error importing license plates:', error);
-      
-      // Display detailed error message
-      let errorMessage = 'Có lỗi xảy ra khi import biển số';
-      
-      if (error.response) {
-        // Server responded with error status
-        const status = error.response.status;
-        const data = error.response.data;
-        
-        if (status === 400) {
-          errorMessage = data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại file Excel';
-        } else if (status === 403) {
-          errorMessage = 'Không có quyền thực hiện thao tác này';
-        } else if (status === 500) {
-          errorMessage = 'Lỗi server. Vui lòng thử lại sau hoặc liên hệ admin';
-        } else {
-          errorMessage = data.message || `Lỗi ${status}: ${error.message}`;
-        }
-      } else if (error.request) {
-        // Network error
-        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng';
-      }
-      
-      // Set error result to display in UI
-      setImportPlatesResult({
-        imported: [],
-        failed: [{ licensePlate: 'System Error', error: errorMessage }],
-        totalImported: 0,
-        totalFailed: 1
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateLicensePlateTemplate = async () => {
-    try {
-      setLoading(true);
-      
-      // Create a simple Excel template for license plates
-      const templateData = [
-        ['vehicle_id', 'license_plate', 'notes'],
-        ['VH001', '51A-123.45', 'Ví dụ biển số xe máy điện'],
-        ['VH002', '30B-678.90', 'Ví dụ biển số xe máy điện'],
-        ['VH003', '29C-111.22', 'Ví dụ biển số mô tô điện']
-      ];
-      
-      // Convert to CSV format and create blob
-      const csvContent = templateData.map(row => row.join(',')).join('\n');
-      const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `license-plate-template-${new Date().toISOString().split('T')[0]}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error creating license plate template:', error);
-      alert('Có lỗi xảy ra khi tạo template');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExportPricingTemplate = async () => {
-    try {
-      setLoading(true);
-      const blob = await vehicleService.exportPricingTemplate();
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `pricing-template-${new Date().toISOString().split('T')[0]}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error: any) {
-      console.error('Error exporting pricing template:', error);
-      
-      // Display detailed error message
-      let errorMessage = 'Có lỗi xảy ra khi xuất template giá';
-      
-      if (error.response) {
-        const status = error.response.status;
-        const data = error.response.data;
-        
-        if (status === 404) {
-          errorMessage = 'Không tìm thấy xe nào trong hệ thống. Vui lòng tạo xe trước khi xuất template giá.';
-        } else if (status === 403) {
-          errorMessage = 'Không có quyền thực hiện thao tác này';
-        } else if (status === 500) {
-          errorMessage = 'Lỗi server. Vui lòng thử lại sau';
-        } else {
-          errorMessage = data.message || `Lỗi ${status}: ${error.message}`;
-        }
-      } else if (error.request) {
-        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng';
-      }
-      
-      alert(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleImportPricingUpdates = async (file: File) => {
-    try {
-      setLoading(true);
-      
-      // Validate file type
-      if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls')) {
-        alert('Vui lòng chọn file Excel (.xlsx hoặc .xls)');
-        return;
-      }
-      
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert('File quá lớn. Vui lòng chọn file nhỏ hơn 10MB');
-        return;
-      }
-      
-      const response = await vehicleService.importPricingUpdates(file);
-      setPricingResult(response.data);
-      
-      if (response.data.totalUpdated > 0) {
-        onSuccess();
-      }
-    } catch (error: any) {
-      console.error('Error importing pricing updates:', error);
-      
-      // Display detailed error message
-      let errorMessage = 'Có lỗi xảy ra khi import cập nhật giá';
-      
-      if (error.response) {
-        // Server responded with error status
-        const status = error.response.status;
-        const data = error.response.data;
-        
-        if (status === 400) {
-          errorMessage = data.message || 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại file Excel';
-        } else if (status === 403) {
-          errorMessage = 'Không có quyền thực hiện thao tác này';
-        } else if (status === 404) {
-          errorMessage = 'Không tìm thấy xe phù hợp trong file Excel';
-        } else if (status === 500) {
-          errorMessage = 'Lỗi server. Vui lòng thử lại sau hoặc liên hệ admin';
-        } else {
-          errorMessage = data.message || `Lỗi ${status}: ${error.message}`;
-        }
-      } else if (error.request) {
-        // Network error
-        errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng';
-      }
-      
-      // Set error result to display in UI
-      setPricingResult({
-        updated: [],
-        failed: [{ row: 1, data: { licensePlate: 'System Error' }, error: errorMessage }],
-        totalUpdated: 0,
-        totalFailed: 1
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setBulkFormData({
-      brand: '',
-      model: '',
-      year: new Date().getFullYear(),
-      color: '',
-      type: 'scooter',
-      batteryCapacity: 2.5,
-      maxRange: 80,
-      pricePerDay: 150000,
-      depositPercentage: 50,
-      quantity: 1,
-      stationId: ''
-    });
-    setBulkResult(null);
-    setImportPlatesResult(null);
-    setPricingResult(null);
   };
 
   const handleClose = () => {
-    resetForm();
+    setBulkResult(null);
     onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div 
-      className="modal-backdrop flex items-center justify-center"
-    >
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b">
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="modal-backdrop"
+            onClick={handleClose}
+          />
+
+          {/* Modal Container */}
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header with gradient - Matching CreateStationModal */}
+              <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 dark:from-green-700 dark:to-emerald-800 p-6 flex-shrink-0">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                      <Sparkles className="h-6 w-6 text-white" />
+                    </div>
                     <div>
-            <h2 className="text-xl font-semibold text-gray-900">
-              Quản lý xe hàng loạt
+                      <h2 className="text-2xl font-bold text-white">
+                        Tạo xe hàng loạt
                       </h2>
-            <p className="text-sm text-gray-500">
-              Tạo xe, import biển số và cập nhật giá hàng loạt
+                      <p className="text-green-100 text-sm mt-1">
+                        Tạo nhiều xe cùng lúc với thông tin giống nhau
                       </p>
                     </div>
-          <Button variant="outline" size="sm" onClick={handleClose}>
-            <X className="h-4 w-4" />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleClose}
+                    disabled={loading}
+                    className="h-10 w-10 p-0 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full"
+                    title="Đóng"
+                  >
+                    <X className="h-5 w-5" />
                   </Button>
+                </div>
               </div>
 
-        {/* Tabs */}
-        <div className="border-b">
-          <div className="flex space-x-8 px-6">
-            <button
-              onClick={() => setActiveTab('bulk-create')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'bulk-create'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Plus className="h-4 w-4 inline mr-2" />
-              Tạo hàng loạt
-            </button>
-            <button
-              onClick={() => setActiveTab('import-plates')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'import-plates'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Upload className="h-4 w-4 inline mr-2" />
-              Import biển số
-            </button>
-            <button
-              onClick={() => setActiveTab('pricing')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'pricing'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <FileSpreadsheet className="h-4 w-4 inline mr-2" />
-              Cập nhật giá
-            </button>
+              {/* Scrollable Form Content */}
+              <div className="flex-1 overflow-y-auto p-6">
+                <form onSubmit={handleBulkCreate} className="space-y-6" id="bulk-create-form">
+                  {/* Info Box */}
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-5 shadow-sm">
+                    <div className="flex items-start space-x-3">
+                      <div className="flex-shrink-0">
+                        <div className="p-2 bg-blue-100 rounded-lg">
+                          <FileText className="h-5 w-5 text-blue-600" />
                         </div>
                       </div>
-
-        {/* Content */}
-        <div className="p-6">
-          {activeTab === 'bulk-create' && (
-            <div className="space-y-6">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h4 className="text-sm font-medium text-blue-800 mb-2">
+                      <div>
+                        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
                           Quy trình tạo xe hàng loạt
                         </h4>
-                <ol className="text-sm text-blue-700 space-y-1">
-                  <li>1. Điền thông tin xe (model, màu sắc, giá thuê...)</li>
-                  <li>2. Nhập số lượng xe cần tạo</li>
-                  <li>3. Hệ thống tạo xe và xuất file Excel</li>
-                  <li>4. Mở file Excel và thêm biển số xe</li>
-                  <li>5. Sử dụng tab "Import biển số" để cập nhật</li>
+                        <ol className="text-sm text-gray-700 dark:text-gray-300 space-y-1.5">
+                          <li className="flex items-start">
+                            <span className="font-medium mr-2">1.</span>
+                            <span>Điền thông tin xe bên dưới</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="font-medium mr-2">2.</span>
+                            <span>Nhập số lượng xe cần tạo</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="font-medium mr-2">3.</span>
+                            <span>Nhấn "Tạo xe" để tạo và tải file Excel</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="font-medium mr-2">4.</span>
+                            <span>Điền biển số vào file Excel</span>
+                          </li>
+                          <li className="flex items-start">
+                            <span className="font-medium mr-2">5.</span>
+                            <span>Dùng "Export/Import Biển số" để cập nhật</span>
+                          </li>
                         </ol>
                       </div>
-              
-              <form onSubmit={handleBulkCreate} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Thương hiệu *
-                    </label>
-                    <select
-                      value={bulkFormData.brand}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, brand: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                      disabled={loadingBrands}
-                      aria-label="Chọn thương hiệu xe"
-                    >
-                      <option value="">
-                        {loadingBrands ? 'Đang tải...' : 'Chọn thương hiệu'}
-                      </option>
-                      {brands.map((brand) => (
-                        <option key={brand} value={brand}>
-                          {brand}
-                        </option>
-                      ))}
-                    </select>
-                    {brands.length === 0 && !loadingBrands && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Không có thương hiệu nào trong hệ thống
-                      </p>
-                    )}
+                    </div>
                   </div>
+
+                  {/* Thông tin xe */}
+                  <Card className="border-2 border-gray-200 dark:border-gray-700">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <CardTitle className="flex items-center space-x-2 text-base">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                          <Car className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <span>Thông tin xe</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Model */}
                         <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Model *
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Model <span className="text-red-500">*</span>
                           </label>
-                    <select
+                          <Input
+                            type="text"
                             value={bulkFormData.model}
                             onChange={(e) => setBulkFormData({ ...bulkFormData, model: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="VD: Klara S, VF8"
+                            className="h-11"
                             required
-                      disabled={loadingModels}
-                      aria-label="Chọn model xe"
-                    >
-                      <option value="">
-                        {loadingModels ? 'Đang tải...' : 'Chọn model'}
-                      </option>
-                      {models.map((model) => (
-                        <option key={model} value={model}>
-                          {model}
-                        </option>
-                      ))}
-                    </select>
-                    {models.length === 0 && !loadingModels && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Không có model nào trong hệ thống
-                      </p>
-                    )}
-                  </div>
+                          />
                         </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                        {/* Năm sản xuất */}
                         <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Năm sản xuất *
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Năm sản xuất <span className="text-red-500">*</span>
                           </label>
                           <Input
                             type="number"
@@ -578,39 +275,32 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                             max="2030"
                             value={bulkFormData.year}
                             onChange={(e) => setBulkFormData({ ...bulkFormData, year: parseInt(e.target.value) })}
+                            className="h-11"
                             required
                           />
                         </div>
+
+                        {/* Quãng đường tối đa */}
                         <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Màu sắc *
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Quãng đường tối đa (km) <span className="text-red-500">*</span>
                           </label>
-                    <ColorPicker
-                      value={bulkFormData.color}
-                      onChange={(color) => setBulkFormData({ ...bulkFormData, color })}
-                    />
-                  </div>
+                          <Input
+                            type="number"
+                            min="50"
+                            max="200"
+                            value={bulkFormData.maxRange}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, maxRange: parseInt(e.target.value) })}
+                            placeholder="VD: 80"
+                            className="h-11"
+                            required
+                          />
                         </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Loại xe *
-                    </label>
-                    <select
-                      value={bulkFormData.type}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, type: e.target.value as 'scooter' | 'motorcycle' })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required
-                      aria-label="Chọn loại xe"
-                    >
-                      <option value="scooter">Xe máy điện</option>
-                      <option value="motorcycle">Mô tô điện</option>
-                    </select>
-                  </div>
+                        {/* Dung lượng pin */}
                         <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Dung lượng pin (kWh) *
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Dung lượng pin (kWh) <span className="text-red-500">*</span>
                           </label>
                           <Input
                             type="number"
@@ -619,28 +309,79 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                             step="0.1"
                             value={bulkFormData.batteryCapacity}
                             onChange={(e) => setBulkFormData({ ...bulkFormData, batteryCapacity: parseFloat(e.target.value) })}
+                            className="h-11"
                             required
                           />
                         </div>
+
+                        {/* Loại xe */}
+                        <div>
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Loại xe <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            value={bulkFormData.type}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, type: e.target.value as 'scooter' | 'motorcycle' })}
+                            className="w-full h-11 px-4 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+                            required
+                            title="Chọn loại xe"
+                            aria-label="Loại xe"
+                          >
+                            <option value="scooter">Xe máy điện</option>
+                            <option value="motorcycle">Mô tô điện</option>
+                          </select>
                         </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                        {/* Số lượng xe */}
                         <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Quãng đường tối đa (km) *
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Số lượng xe <span className="text-red-500">*</span>
                           </label>
                           <Input
                             type="number"
-                      min="50"
-                      max="200"
-                      value={bulkFormData.maxRange}
-                      onChange={(e) => setBulkFormData({ ...bulkFormData, maxRange: parseInt(e.target.value) })}
+                            min="1"
+                            max="100"
+                            value={bulkFormData.quantity}
+                            onChange={(e) => setBulkFormData({ ...bulkFormData, quantity: parseInt(e.target.value) || 1 })}
+                            placeholder="VD: 10"
+                            className="h-11"
                             required
                           />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                            Tối đa 100 xe mỗi lần
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Màu sắc - Full width */}
+                      <div>
+                        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                          Màu sắc <span className="text-red-500">*</span>
+                        </label>
+                        <ColorPicker
+                          value={bulkFormData.color}
+                          onChange={(color) => setBulkFormData({ ...bulkFormData, color })}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Giá cả */}
+                  <Card className="border-2 border-gray-200 dark:border-gray-700">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <CardTitle className="flex items-center space-x-2 text-base">
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                          <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
+                        <span>Giá cả</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Giá thuê */}
                         <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Giá thuê (VNĐ/ngày) *
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Giá thuê (VNĐ/ngày) <span className="text-red-500">*</span>
                           </label>
                           <Input
                             type="number"
@@ -649,15 +390,19 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                             step="1000"
                             value={bulkFormData.pricePerDay}
                             onChange={(e) => setBulkFormData({ ...bulkFormData, pricePerDay: parseInt(e.target.value) })}
+                            placeholder="VD: 150000"
+                            className="h-11"
                             required
                           />
-                  </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                            {bulkFormData.pricePerDay ? `${bulkFormData.pricePerDay.toLocaleString('vi-VN')} VNĐ` : 'Nhập giá thuê'}
+                          </p>
                         </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                        {/* Phần trăm cọc */}
                         <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Phần trăm cọc (%) *
+                          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                            Phần trăm cọc (%) <span className="text-red-500">*</span>
                           </label>
                           <Input
                             type="number"
@@ -665,108 +410,77 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                             max="100"
                             value={bulkFormData.depositPercentage}
                             onChange={(e) => setBulkFormData({ ...bulkFormData, depositPercentage: parseInt(e.target.value) })}
-                      required
-                    />
-                  </div>
-                  <div></div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Trạm phân bổ (tùy chọn)
-                  </label>
-                  <select
-                    value={bulkFormData.stationId}
-                    onChange={(e) => setBulkFormData({ ...bulkFormData, stationId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onFocus={() => !stations.length && loadStations()}
-                    aria-label="Chọn trạm phân bổ"
-                  >
-                    <option value="">Chưa phân bổ</option>
-                    {stations.map((station) => (
-                      <option key={station.id} value={station.id}>
-                        {station.name} - {station.address}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Số lượng xe cần tạo *
-                  </label>
-                  <Input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={bulkFormData.quantity}
-                    onChange={(e) => setBulkFormData({ ...bulkFormData, quantity: parseInt(e.target.value) || 1 })}
+                            placeholder="VD: 50"
+                            className="h-11"
                             required
                           />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Hệ thống sẽ tạo xe và xuất file Excel để bạn thêm biển số
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                            {bulkFormData.depositPercentage && bulkFormData.pricePerDay 
+                              ? `Cọc: ${((bulkFormData.pricePerDay * bulkFormData.depositPercentage) / 100).toLocaleString('vi-VN')} VNĐ` 
+                              : 'Phần trăm tiền cọc'}
                           </p>
                         </div>
-
-                <div className="space-y-3">
-                  <Button type="submit" disabled={loading} className="w-full">
-                    <Plus className="h-4 w-4 mr-2" />
-                    {loading ? 'Đang tạo xe và xuất Excel...' : 'Tạo xe hàng loạt + Xuất Excel'}
-                  </Button>
-                  <div className="text-center">
-                    <Button 
-                      type="button" 
-                      variant="outline"
-                      onClick={handleExportTemplate}
-                      disabled={loading}
-                      size="sm"
-                    >
-                      <Download className="h-4 w-4 mr-2" />
-                      {loading ? 'Đang xuất...' : 'Chỉ xuất Template trống'}
-                    </Button>
                   </div>
-                </div>
-              </form>
+                    </CardContent>
+                  </Card>
 
+                  {/* Kết quả */}
                   {bulkResult && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Kết quả tạo xe</CardTitle>
+                    <Card className="border-2 border-gray-200 dark:border-gray-700">
+                      <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                        <CardTitle className="text-base">
+                          Kết quả tạo xe
+                        </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                      <CardContent className="p-6">
                         {bulkResult.totalCreated > 0 ? (
                           <div className="space-y-4">
-                        <div className="flex items-center space-x-2 text-green-600">
-                          <CheckCircle className="h-5 w-5" />
-                          <span className="font-medium">
-                                  Đã tạo thành công {bulkResult.totalCreated} xe
-                          </span>
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center justify-center w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full">
+                                <CheckCircle className="h-6 w-6 text-green-600 dark:text-green-400" />
                               </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="flex items-start space-x-2">
-                            <Download className="h-5 w-5 text-blue-600 mt-0.5" />
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  Tạo xe thành công!
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Đã tạo thành công {bulkResult.totalCreated} xe
+                                </p>
+                              </div>
+                            </div>
+                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                              <div className="flex items-start space-x-3">
+                                <Download className="h-5 w-5 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
                                 <div>
-                              <h4 className="text-sm font-medium text-blue-800">
+                                  <h5 className="text-sm font-medium text-green-900 dark:text-green-300">
                                     File Excel đã được tải xuống
-                              </h4>
-                              <p className="text-sm text-blue-700 mt-1">
-                                Vui lòng mở file Excel, thêm biển số xe vào cột tương ứng, 
-                                sau đó sử dụng tính năng "Import biển số" để cập nhật.
+                                  </h5>
+                                  <p className="text-sm text-green-800 dark:text-green-400 mt-1">
+                                    File Excel chứa thông tin các xe đã tạo. Điền biển số và dùng "Export/Import Biển số" để cập nhật.
                                   </p>
                                 </div>
                               </div>
                             </div>
                           </div>
                         ) : (
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2 text-red-600">
-                          <AlertCircle className="h-5 w-5" />
-                          <span className="text-sm">Có lỗi xảy ra khi tạo xe</span>
+                          <div className="space-y-4">
+                            <div className="flex items-center space-x-3">
+                              <div className="flex items-center justify-center w-12 h-12 bg-red-100 dark:bg-red-900/30 rounded-full">
+                                <AlertCircle className="h-6 w-6 text-red-600 dark:text-red-400" />
+                              </div>
+                              <div>
+                                <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                  Có lỗi xảy ra
+                                </h4>
+                                <p className="text-sm text-gray-600 dark:text-gray-400">
+                                  Không thể tạo xe
+                                </p>
+                              </div>
                             </div>
                             {bulkResult.failed.length > 0 && (
-                          <div className="space-y-1">
+                              <div className="space-y-2">
                                 {bulkResult.failed.map((item, index) => (
-                              <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                                  <div key={index} className="text-sm text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 rounded-lg">
                                     {item.error}
                                   </div>
                                 ))}
@@ -777,218 +491,45 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess, defaultTab = 'bul
                   </CardContent>
                 </Card>
               )}
-                    </div>
-                  )}
-
-          {activeTab === 'import-plates' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Import biển số từ Excel</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Upload file Excel chứa danh sách biển số xe cần import vào hệ thống.
-                </p>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <h4 className="text-sm font-medium text-blue-800 mb-2">
-                    Hướng dẫn sử dụng
-                  </h4>
-                  <ol className="text-sm text-blue-700 space-y-1">
-                    <li>1. Tạo xe hàng loạt để có file Excel với danh sách xe</li>
-                    <li>2. Hoặc tải template mẫu bên dưới</li>
-                    <li>3. Điền biển số xe vào cột "license_plate"</li>
-                    <li>4. Upload file Excel đã điền biển số</li>
-                  </ol>
+                </form>
               </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+              {/* Fixed Footer - Action Buttons */}
+              <div className="flex-shrink-0 border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-6">
+                <div className="flex justify-end space-x-3">
                   <Button
-                    onClick={handleCreateLicensePlateTemplate}
-                    disabled={loading}
+                    type="button"
                     variant="outline"
+                    onClick={handleClose}
+                    disabled={loading}
+                    className="px-6 py-3 h-12 border-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    Tải template mẫu
+                    Hủy
                   </Button>
-                  
-                  <div>
-                    <input
-                      ref={licensePlatesFileRef}
-                      type="file"
-                      accept=".xlsx,.xls"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleImportLicensePlates(file);
-                        }
-                      }}
-                      className="hidden"
-                      aria-label="Chọn file Excel biển số"
-                    />
-                    
-                    <Button
-                      onClick={() => licensePlatesFileRef.current?.click()}
-                      disabled={loading}
-                      className="w-full"
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {loading ? 'Đang import...' : 'Chọn file Excel'}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {importPlatesResult && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Kết quả import biển số</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span className="text-sm">Thành công: {importPlatesResult.totalImported}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-5 w-5 text-red-500" />
-                        <span className="text-sm">Thất bại: {importPlatesResult.totalFailed}</span>
-                      </div>
-                    </div>
-                    
-                    {importPlatesResult.failed.length > 0 && (
-                      <div>
-                        <h4 className="font-medium text-red-600 mb-2">Lỗi:</h4>
-                        <div className="space-y-1">
-                          {importPlatesResult.failed.map((item, index) => (
-                            <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                              {item.licensePlate}: {item.error}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          )}
-
-          {activeTab === 'pricing' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Cập nhật giá hàng loạt</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Tải template Excel, cập nhật giá và import lại để cập nhật giá hàng loạt.
-                </p>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-                  <h4 className="text-sm font-medium text-blue-800 mb-2">
-                    Quy trình cập nhật giá
-                  </h4>
-                  <ol className="text-sm text-blue-700 space-y-1">
-                    <li>1. Tải template Excel chứa danh sách xe hiện tại</li>
-                    <li>2. Cập nhật giá trong cột "price_per_day"</li>
-                    <li>3. Có thể cập nhật "deposit_percentage" nếu cần</li>
-                    <li>4. Upload file Excel đã cập nhật giá</li>
-                  </ol>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
                   <Button
-                    onClick={handleExportPricingTemplate}
+                    type="submit"
+                    form="bulk-create-form"
                     disabled={loading}
-                    variant="outline"
+                    className="px-8 py-3 h-12 min-w-[160px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                   >
-                    <Download className="h-4 w-4 mr-2" />
-                    {loading ? 'Đang tải...' : 'Tải template Excel'}
+                    {loading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                        Đang tạo...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-5 w-5 mr-2" />
+                        Tạo xe
+                      </>
+                    )}
                   </Button>
-                  
-                  <div>
-                    <input
-                      ref={pricingFileRef}
-                      type="file"
-                      accept=".xlsx,.xls"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          handleImportPricingUpdates(file);
-                        }
-                      }}
-                      className="hidden"
-                      aria-label="Chọn file Excel cập nhật giá"
-                    />
-                    
-                    <Button
-                      onClick={() => pricingFileRef.current?.click()}
-                      disabled={loading}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      {loading ? 'Đang import...' : 'Import cập nhật giá'}
-                    </Button>
-                  </div>
                 </div>
               </div>
-
-              {pricingResult && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Kết quả cập nhật giá</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="flex items-center space-x-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <span className="text-sm">Cập nhật: {pricingResult.totalUpdated}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <AlertCircle className="h-5 w-5 text-red-500" />
-                        <span className="text-sm">Thất bại: {pricingResult.totalFailed}</span>
-                      </div>
-                    </div>
-                    
-                    {pricingResult.updated.length > 0 && (
-                      <div className="mb-4">
-                        <h4 className="font-medium text-green-600 mb-2">Đã cập nhật:</h4>
-                        <div className="space-y-1">
-                          {pricingResult.updated.slice(0, 5).map((item, index) => (
-                            <div key={index} className="text-sm text-green-600 bg-green-50 p-2 rounded">
-                              {item.licensePlate}: {item.newPrice.toLocaleString('vi-VN')} VNĐ
-                            </div>
-                          ))}
-                          {pricingResult.updated.length > 5 && (
-                            <div className="text-sm text-gray-500">
-                              ... và {pricingResult.updated.length - 5} xe khác
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {pricingResult.failed.length > 0 && (
-                      <div>
-                        <h4 className="font-medium text-red-600 mb-2">Lỗi:</h4>
-                        <div className="space-y-1">
-                          {pricingResult.failed.map((item, index) => (
-                            <div key={index} className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                              Dòng {item.row}: {item.error}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+            </motion.div>
           </div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex justify-end space-x-3 p-6 border-t">
-          <Button variant="outline" onClick={handleClose}>
-            Đóng
-          </Button>
-        </div>
-      </div>
-    </div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

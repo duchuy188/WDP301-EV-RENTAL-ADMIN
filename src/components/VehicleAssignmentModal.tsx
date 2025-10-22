@@ -9,6 +9,7 @@ import { Badge } from './ui/badge';
 import { vehicleService } from './service/vehicleService';
 import { stationService } from './service/stationService';
 import { showToast } from '../lib/toast';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 import type { Station } from './service/type/stationTypes';
 import type { AssignVehicleResponse, WithdrawVehiclesResponse } from './service/type/vehicleTypes';
 
@@ -19,6 +20,8 @@ interface VehicleAssignmentModalProps {
 }
 
 export function VehicleAssignmentModal({ isOpen, onClose, onSuccess }: VehicleAssignmentModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
   // Tab state: 'assign' or 'withdraw'
   const [activeTab, setActiveTab] = useState<'assign' | 'withdraw'>('assign');
   
@@ -72,8 +75,8 @@ export function VehicleAssignmentModal({ isOpen, onClose, onSuccess }: VehicleAs
   const loadStations = async () => {
     try {
       setLoadingStations(true);
-      const response = await stationService.getStations({ page: 1, limit: 100 });
-      console.log('VehicleAssignmentModal - Stations response:', response);
+      const response = await stationService.getStations({ page: 1, limit: 999 });
+      console.log('🏢 VehicleAssignmentModal - Loaded stations:', response.stations?.length || 0);
       console.log('VehicleAssignmentModal - Stations array:', response.stations);
       setStations(response.stations || []);
     } catch (error) {

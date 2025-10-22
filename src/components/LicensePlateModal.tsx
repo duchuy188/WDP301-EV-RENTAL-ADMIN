@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { vehicleService } from './service/vehicleService';
 import { showToast } from '../lib/toast';
+import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 import type { VehicleUI } from './service/type/vehicleTypes';
 import * as XLSX from 'xlsx';
 
@@ -16,6 +17,8 @@ interface LicensePlateModalProps {
 }
 
 export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }: LicensePlateModalProps) {
+  // Disable body scroll when modal is open
+  useDisableBodyScroll(isOpen);
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [draftVehicles, setDraftVehicles] = useState<VehicleUI[]>([]);

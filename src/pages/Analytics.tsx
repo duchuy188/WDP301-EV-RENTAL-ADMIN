@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Brain, Clock, Users } from 'lucide-react';
+import { TrendingUp, Brain, Clock, Users, Filter, RefreshCw } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -17,12 +17,135 @@ import {
   Legend 
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { storage } from '@/lib/storage';
+import analyticsService from '@/components/service/analyticsService';
+import StationRevenueDetailModal from '@/components/StationRevenueDetailModal';
+import { 
+  RevenueTrendUI, 
+  RevenueOverviewData,
+  StationRevenueUI,
+  PERIOD_LABELS, 
+  ANALYTICS_PAYMENT_METHOD_LABELS 
+} from '@/components/service/type/analyticsTypes';
+import { formatCurrency, formatDate } from '@/utils/dateUtils';
+import { showToast } from '@/lib/toast';
+import stationService from '@/components/service/stationService';
 
 export function Analytics() {
   const stations = storage.getStations();
   const vehicles = storage.getVehicles();
   const rentals = storage.getRentals();
+
+  // Revenue Overview State
+  const [revenueOverview, setRevenueOverview] = useState<RevenueOverviewData | null>(null);
+  const [loadingOverview, setLoadingOverview] = useState(false);
+
+  // Revenue Trends State
+  const [revenueTrends, setRevenueTrends] = useState<RevenueTrendUI[]>([]);
+  const [loadingTrends, setLoadingTrends] = useState(false);
+
+  // Revenue by Station State
+  const [stationRevenues, setStationRevenues] = useState<StationRevenueUI[]>([]);
+  const [loadingStationRevenues, setLoadingStationRevenues] = useState(false);
+
+  // Filters State
+  const [period, setPeriod] = useState<'today' | 'week' | 'month' | 'year'>('month');
+  const [selectedStations, setSelectedStations] = useState<string>('all');
+  const [paymentMethod, setPaymentMethod] = useState<'all' | 'cash' | 'vnpay' | 'bank_transfer'>('all');
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); // YYYY-MM-DD
+  const [availableStations, setAvailableStations] = useState<any[]>([]);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Station Detail Modal State
+  const [showStationDetail, setShowStationDetail] = useState(false);
+  const [selectedStationForDetail, setSelectedStationForDetail] = useState<{ id: string; name: string } | null>(null);
+
+  // Fetch available stations
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        const response = await stationService.getStations({ limit: 1000 });
+        setAvailableStations(response.stations || []);
+      } catch (error) {
+        console.error('Error fetching stations:', error);
+      }
+    };
+    fetchStations();
+  }, []);
+
+  // Fetch revenue overview
+  const fetchRevenueOverview = async () => {
+    try {
+      setLoadingOverview(true);
+      const data = await analyticsService.getRevenueOverview({
+        period,
+        payment_method: paymentMethod
+      });
+      
+      setRevenueOverview(data);
+      console.log('Revenue overview loaded:', data);
+    } catch (error: any) {
+      console.error('Error fetching revenue overview:', error);
+      showToast.error(error.response?.data?.message || 'Không thể tải tổng quan doanh thu');
+    } finally {
+      setLoadingOverview(false);
+    }
+  };
+
+  // Fetch revenue trends
+  const fetchRevenueTrends = async () => {
+    try {
+      setLoadingTrends(true);
+      const response = await analyticsService.getRevenueTrends({
+        period,
+        stations: selectedStations,
+        payment_method: paymentMethod
+      });
+      
+      setRevenueTrends(response.trends || []);
+      console.log('Revenue trends loaded:', response.trends);
+    } catch (error: any) {
+      console.error('Error fetching revenue trends:', error);
+      showToast.error(error.response?.data?.message || 'Không thể tải xu hướng doanh thu');
+    } finally {
+      setLoadingTrends(false);
+    }
+  };
+
+  // Fetch revenue by station
+  const fetchRevenueByStation = async () => {
+    try {
+      setLoadingStationRevenues(true);
+      const response = await analyticsService.getRevenueByStation({
+        period,
+        date: selectedDate,
+        payment_method: paymentMethod
+      });
+      
+      setStationRevenues(response.stations || []);
+      console.log('Revenue by station loaded:', response.stations);
+    } catch (error: any) {
+      console.error('Error fetching revenue by station:', error);
+      showToast.error(error.response?.data?.message || 'Không thể tải doanh thu theo trạm');
+    } finally {
+      setLoadingStationRevenues(false);
+    }
+  };
+
+  // Fetch all analytics data
+  const fetchAllAnalytics = async () => {
+    await Promise.all([
+      fetchRevenueOverview(),
+      fetchRevenueTrends(),
+      fetchRevenueByStation()
+    ]);
+  };
+
+  // Load analytics data on mount and when filters change
+  useEffect(() => {
+    fetchAllAnalytics();
+  }, [period, selectedStations, paymentMethod, selectedDate]);
 
   // Revenue by station
   const revenueByStation = stations.map(station => ({
@@ -90,41 +213,246 @@ export function Analytics() {
         </p>
       </motion.div>
 
-      {/* AI Insights */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {aiInsights.map((insight, index) => (
-          <motion.div
-            key={index}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
-          >
-            <Card className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
-              <CardHeader className="flex flex-row items-center space-y-0 pb-2">
-                <div className="p-2 rounded-full bg-white dark:bg-gray-700 mr-3">
-                  <insight.icon className={`h-5 w-5 ${insight.color}`} />
+      {/* Revenue Trends Filters */}
+      <Card className="p-6">
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Xu hướng Doanh thu
+            </h3>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => setShowFilters(!showFilters)}
+                variant="outline"
+                size="sm"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Bộ lọc
+              </Button>
+              <Button
+                onClick={fetchAllAnalytics}
+                variant="outline"
+                size="sm"
+                disabled={loadingTrends || loadingOverview || loadingStationRevenues}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${(loadingTrends || loadingOverview || loadingStationRevenues) ? 'animate-spin' : ''}`} />
+                Làm mới
+              </Button>
+            </div>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700"
+            >
+              <div>
+                <label htmlFor="period-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Kỳ thống kê
+                </label>
+                <select
+                  id="period-filter"
+                  value={period}
+                  onChange={(e) => setPeriod(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="today">Hôm nay</option>
+                  <option value="week">Tuần này</option>
+                  <option value="month">Tháng này</option>
+                  <option value="year">Năm này</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="station-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Trạm
+                </label>
+                <select
+                  id="station-filter"
+                  value={selectedStations}
+                  onChange={(e) => setSelectedStations(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="all">Tất cả trạm</option>
+                  {availableStations.map((station) => (
+                    <option key={station._id} value={station._id}>
+                      {station.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="payment-method-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Phương thức thanh toán
+                </label>
+                <select
+                  id="payment-method-filter"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="cash">Tiền mặt</option>
+                  <option value="vnpay">VNPay</option>
+                  <option value="bank_transfer">Chuyển khoản</option>
+                </select>
+              </div>
+
+              <div className="md:col-span-3">
+                <label htmlFor="date-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Ngày thống kê (cho báo cáo theo trạm)
+                </label>
+                <input
+                  type="date"
+                  id="date-filter"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+            </motion.div>
+          )}
+        </div>
+      </Card>
+
+      {/* Revenue Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Total Revenue */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+        >
+          <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+            <CardContent className="p-6">
+              {loadingOverview ? (
+                <div className="flex items-center justify-center h-20">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
                 </div>
-                <div className="flex-1">
-                  <CardTitle className="text-sm font-medium flex items-center">
-                    <Brain className="h-4 w-4 mr-1 text-purple-500" />
-                    AI Insights
-                  </CardTitle>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Độ tin cậy: {insight.confidence}
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-blue-100 text-sm font-medium">Tổng doanh thu</p>
+                    <TrendingUp className="h-8 w-8 text-blue-200" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-1">
+                    {formatCurrency(revenueOverview?.totalRevenue || 0)}
+                  </h3>
+                  <p className="text-blue-100 text-sm">
+                    {PERIOD_LABELS[period]}
                   </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Transaction Count */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+        >
+          <Card className="bg-gradient-to-br from-green-500 to-green-600 text-white">
+            <CardContent className="p-6">
+              {loadingOverview ? (
+                <div className="flex items-center justify-center h-20">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
                 </div>
-              </CardHeader>
-              <CardContent>
-                <h3 className="font-semibold text-gray-900 dark:text-white mb-2">
-                  {insight.title}
-                </h3>
-                <p className="text-sm text-gray-600 dark:text-gray-300">
-                  {insight.insight}
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-green-100 text-sm font-medium">Số giao dịch</p>
+                    <Users className="h-8 w-8 text-green-200" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-1">
+                    {revenueOverview?.transactionCount || 0}
+                  </h3>
+                  <p className="text-green-100 text-sm">
+                    {PERIOD_LABELS[period]}
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Growth Rate */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        >
+          <Card className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+            <CardContent className="p-6">
+              {loadingOverview ? (
+                <div className="flex items-center justify-center h-20">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-purple-100 text-sm font-medium">Tăng trưởng</p>
+                    <TrendingUp className="h-8 w-8 text-purple-200" />
+                  </div>
+                  <h3 className="text-3xl font-bold mb-1">
+                    {revenueOverview?.growthRate?.toFixed(1) || 0}%
+                  </h3>
+                  <p className="text-purple-100 text-sm">
+                    So với kỳ trước
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Top Station */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.3 }}
+        >
+          <Card className="bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+            <CardContent className="p-6">
+              {loadingOverview ? (
+                <div className="flex items-center justify-center h-20">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-orange-100 text-sm font-medium">Trạm hàng đầu</p>
+                    <Brain className="h-8 w-8 text-orange-200" />
+                  </div>
+                  {revenueOverview?.topStation ? (
+                    <>
+                      <h3 className="text-xl font-bold mb-1 truncate">
+                        {revenueOverview.topStation.stationName}
+                      </h3>
+                      <p className="text-orange-100 text-sm">
+                        {formatCurrency(revenueOverview.topStation.revenue)}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-2xl font-bold mb-1">
+                        --
+                      </h3>
+                      <p className="text-orange-100 text-sm">
+                        Chưa có dữ liệu
+                      </p>
+                    </>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Charts Grid */}
@@ -137,35 +465,75 @@ export function Analytics() {
         >
           <Card>
             <CardHeader>
-              <CardTitle>Doanh thu theo điểm thuê</CardTitle>
+              <CardTitle>
+                Doanh thu theo trạm - {PERIOD_LABELS[period]}
+                {paymentMethod !== 'all' && ` - ${ANALYTICS_PAYMENT_METHOD_LABELS[paymentMethod]}`}
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={revenueByStation}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
-                    <XAxis 
-                      dataKey="name" 
-                      tick={{ fontSize: 12 }}
-                      className="text-gray-600 dark:text-gray-400"
-                    />
-                    <YAxis 
-                      tick={{ fontSize: 12 }}
-                      className="text-gray-600 dark:text-gray-400"
-                      tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`}
-                    />
-                    <Tooltip 
-                      formatter={(value: number) => [`${(value/1000000).toFixed(1)}M VNĐ`, 'Doanh thu']}
-                      contentStyle={{
-                        backgroundColor: 'white',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '6px'
+              {loadingStationRevenues ? (
+                <div className="h-80 flex items-center justify-center">
+                  <div className="text-center">
+                    <RefreshCw className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-2" />
+                    <p className="text-gray-500 dark:text-gray-400">Đang tải dữ liệu...</p>
+                  </div>
+                </div>
+              ) : stationRevenues.length === 0 ? (
+                <div className="h-80 flex items-center justify-center">
+                  <p className="text-gray-500 dark:text-gray-400">Không có dữ liệu</p>
+                </div>
+              ) : (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart 
+                      data={stationRevenues}
+                      onClick={(data) => {
+                        if (data && data.activePayload && data.activePayload[0]) {
+                          const station = data.activePayload[0].payload as StationRevenueUI;
+                          setSelectedStationForDetail({ id: station.id, name: station.name });
+                          setShowStationDetail(true);
+                        }
                       }}
-                    />
-                    <Bar dataKey="revenue" fill="#1976D2" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+                    >
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                      <XAxis 
+                        dataKey="name" 
+                        tick={{ fontSize: 12 }}
+                        className="text-gray-600 dark:text-gray-400"
+                        angle={-45}
+                        textAnchor="end"
+                        height={100}
+                      />
+                      <YAxis 
+                        tick={{ fontSize: 12 }}
+                        className="text-gray-600 dark:text-gray-400"
+                        tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`}
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => {
+                          if (name === 'revenue') return [formatCurrency(value), 'Doanh thu'];
+                          if (name === 'transactionCount') return [value, 'Số giao dịch'];
+                          return [value, name];
+                        }}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px'
+                        }}
+                        labelFormatter={(label) => `Trạm: ${label}`}
+                        cursor={{ fill: 'rgba(25, 118, 210, 0.1)' }}
+                      />
+                      <Bar 
+                        dataKey="revenue" 
+                        fill="#1976D2" 
+                        radius={[4, 4, 0, 0]} 
+                        name="Doanh thu"
+                        cursor="pointer"
+                      />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </CardContent>
           </Card>
         </motion.div>
@@ -204,11 +572,110 @@ export function Analytics() {
           </Card>
         </motion.div>
 
-        {/* Peak Hours */}
+        {/* Revenue Trends Chart */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.6 }}
+          className="lg:col-span-2"
+        >
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Xu hướng Doanh thu - {PERIOD_LABELS[period]} 
+                {paymentMethod !== 'all' && ` - ${ANALYTICS_PAYMENT_METHOD_LABELS[paymentMethod]}`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingTrends ? (
+                <div className="h-80 flex items-center justify-center">
+                  <div className="text-center">
+                    <RefreshCw className="h-8 w-8 animate-spin text-primary-600 mx-auto mb-2" />
+                    <p className="text-gray-500 dark:text-gray-400">Đang tải dữ liệu...</p>
+                  </div>
+                </div>
+              ) : revenueTrends.length === 0 ? (
+                <div className="h-80 flex items-center justify-center">
+                  <p className="text-gray-500 dark:text-gray-400">Không có dữ liệu</p>
+                </div>
+              ) : (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={revenueTrends}>
+                      <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                      <XAxis 
+                        dataKey="date" 
+                        tick={{ fontSize: 12 }}
+                        className="text-gray-600 dark:text-gray-400"
+                        tickFormatter={(value) => {
+                          // Format date based on period
+                          if (period === 'today') {
+                            return new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                          } else if (period === 'week' || period === 'month') {
+                            return new Date(value).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
+                          } else {
+                            return new Date(value).toLocaleDateString('vi-VN', { month: '2-digit', year: 'numeric' });
+                          }
+                        }}
+                      />
+                      <YAxis 
+                        yAxisId="left"
+                        tick={{ fontSize: 12 }}
+                        className="text-gray-600 dark:text-gray-400"
+                        tickFormatter={(value) => `${(value/1000000).toFixed(1)}M`}
+                      />
+                      <YAxis 
+                        yAxisId="right"
+                        orientation="right"
+                        tick={{ fontSize: 12 }}
+                        className="text-gray-600 dark:text-gray-400"
+                      />
+                      <Tooltip 
+                        formatter={(value: number, name: string) => {
+                          if (name === 'revenue') {
+                            return [formatCurrency(value), 'Doanh thu'];
+                          }
+                          return [value, 'Số giao dịch'];
+                        }}
+                        labelFormatter={(label) => `Ngày: ${formatDate(label)}`}
+                        contentStyle={{
+                          backgroundColor: 'white',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px'
+                        }}
+                      />
+                      <Legend />
+                      <Line 
+                        yAxisId="left"
+                        type="monotone" 
+                        dataKey="revenue" 
+                        name="Doanh thu"
+                        stroke="#1976D2" 
+                        strokeWidth={3}
+                        dot={{ fill: '#1976D2', strokeWidth: 2, r: 4 }}
+                      />
+                      <Line 
+                        yAxisId="right"
+                        type="monotone" 
+                        dataKey="transactionCount" 
+                        name="Số giao dịch"
+                        stroke="#4CAF50" 
+                        strokeWidth={2}
+                        dot={{ fill: '#4CAF50', strokeWidth: 2, r: 3 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* Peak Hours */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.7 }}
           className="lg:col-span-2"
         >
           <Card>
@@ -251,6 +718,22 @@ export function Analytics() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Station Revenue Detail Modal */}
+      {selectedStationForDetail && (
+        <StationRevenueDetailModal
+          isOpen={showStationDetail}
+          onClose={() => {
+            setShowStationDetail(false);
+            setSelectedStationForDetail(null);
+          }}
+          stationId={selectedStationForDetail.id}
+          stationName={selectedStationForDetail.name}
+          period={period}
+          date={selectedDate}
+          paymentMethod={paymentMethod}
+        />
+      )}
     </div>
   );
 }
