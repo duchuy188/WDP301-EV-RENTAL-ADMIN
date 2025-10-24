@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserCog, MapPin, Star, Activity, Loader2, ChevronLeft, ChevronRight, User as UserIcon, UserPlus, Filter, X } from 'lucide-react';
+import { UserCog, MapPin, Star, Activity, Loader2, ChevronLeft, ChevronRight, User as UserIcon, UserPlus, Filter, X, RefreshCw } from 'lucide-react';
 import { DataTable } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -23,6 +23,7 @@ export function Staff() {
     pages: 0
   });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   
   // Filter states
   const [stations, setStations] = useState<Station[]>([]);
@@ -123,7 +124,7 @@ export function Staff() {
     };
 
     fetchStaff();
-  }, [pagination.page, pagination.limit, selectedStationId]);
+  }, [pagination.page, pagination.limit, selectedStationId, refreshTrigger]);
 
   const columns = [
     {
@@ -235,13 +236,32 @@ export function Staff() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
+        className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden"
       >
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Quản lý nhân viên
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Theo dõi hiệu suất và quản lý đội ngũ nhân viên
-        </p>
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">
+              Quản lý nhân viên
+            </h1>
+            <p className="text-green-50 dark:text-green-100">
+              Theo dõi hiệu suất và quản lý đội ngũ nhân viên
+            </p>
+          </div>
+          <Button
+            onClick={() => setRefreshTrigger(prev => prev + 1)}
+            disabled={loading}
+            variant="outline"
+            className="flex items-center space-x-2 bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </Button>
+        </div>
       </motion.div>
 
       {/* Staff Statistics */}

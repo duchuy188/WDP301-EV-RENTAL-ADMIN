@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { formatDate } from '../utils/dateUtils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Car, 
@@ -17,7 +16,9 @@ import {
   List,
   Map,
   Filter,
-  X
+  X,
+  Eye,
+  RefreshCw
 } from 'lucide-react';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { VehicleCardGrid } from '../components/VehicleCardGrid';
@@ -31,6 +32,7 @@ import { BulkVehicleModal } from '../components/BulkVehicleModal';
 import { LicensePlateModal } from '../components/LicensePlateModal';
 import { BulkPricingModal } from '../components/BulkPricingModal';
 import { VehicleAssignmentModal } from '../components/VehicleAssignmentModal';
+import { VehicleDetailModal } from '../components/VehicleDetailModal';
 import { vehicleService } from '../components/service/vehicleService';
 import { formatVehicleStatus, getVehicleStatusColor } from '../components/service/utils/apiUtils';
 import { BatteryIndicator } from '../components/ui/battery-indicator';
@@ -49,6 +51,7 @@ export function Fleet() {
   
   // Modal states
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [viewDetailModalOpen, setViewDetailModalOpen] = useState(false);
   const [bulkModalOpen, setBulkModalOpen] = useState(false);
   const [licensePlateModalOpen, setLicensePlateModalOpen] = useState(false);
   const [bulkPricingModalOpen, setBulkPricingModalOpen] = useState(false);
@@ -196,9 +199,8 @@ export function Fleet() {
   };
 
   const handleViewVehicle = (vehicle: VehicleUI) => {
-    // For now, just log the vehicle. Can be extended to show detail modal
-    console.log('Viewing vehicle:', vehicle);
-    // Could open a detail modal here
+    setSelectedVehicle(vehicle);
+    setViewDetailModalOpen(true);
   };
 
   const handleBulkAction = (action: string, vehicles: VehicleUI[]) => {
@@ -334,55 +336,6 @@ export function Fleet() {
       }
     },
     {
-      key: 'location',
-      header: 'Vị trí',
-      render: (_value: any, row: VehicleUI) => (
-        <div className="flex items-center space-x-2">
-          <MapPin className="h-4 w-4 text-blue-500" />
-          <div>
-            <div className="text-sm text-gray-900">{row.stationName || 'Chưa phân bổ'}</div>
-            {row.stationId && (
-              <div className="text-xs text-gray-500">Trạm: {String(row.stationId).slice(0, 8)}...</div>
-            )}
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'specifications',
-      header: 'Thông số',
-      render: (_value: any, row: VehicleUI) => (
-        <div className="text-sm">
-          <div className="text-gray-900">Màu: {row.color}</div>
-          <div className="text-gray-500">Tầm xa: {row.maxRange}km</div>
-          <div className="text-gray-500">Pin: {row.batteryCapacity}kWh</div>
-        </div>
-      )
-    },
-    {
-      key: 'pricing',
-      header: 'Giá thuê',
-      render: (_value: any, row: VehicleUI) => (
-        <div className="text-sm">
-          <div className="font-medium text-gray-900">
-            {row.pricePerDay.toLocaleString('vi-VN')} VNĐ/ngày
-          </div>
-          <div className="text-gray-500">
-            Cọc: {row.depositPercentage}%
-          </div>
-        </div>
-      )
-    },
-    {
-      key: 'createdAt',
-      header: 'Ngày tạo',
-      render: (value: string) => (
-        <div className="text-sm text-gray-500 dark:text-gray-400">
-          {formatDate(value)}
-        </div>
-      )
-    },
-    {
       key: 'actions',
       header: 'Thao tác',
       render: (_value: any, row: VehicleUI) => (
@@ -390,7 +343,22 @@ export function Fleet() {
           <Button 
             size="sm" 
             variant="outline"
-            onClick={() => handleEditVehicle(row)}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewVehicle(row);
+            }}
+            className="hover:bg-blue-50 hover:border-blue-300"
+          >
+            <Eye className="h-3 w-3 mr-1" />
+            Xem
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEditVehicle(row);
+            }}
           >
             <Edit className="h-3 w-3 mr-1" />
             Sửa
@@ -398,8 +366,11 @@ export function Fleet() {
           <Button 
             size="sm" 
             variant="outline" 
-            className="text-red-600 hover:text-red-700"
-            onClick={() => handleDeleteVehicle(row)}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-300"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteVehicle(row);
+            }}
           >
             <Trash2 className="h-3 w-3 mr-1" />
             Xóa
@@ -437,53 +408,36 @@ export function Fleet() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="bg-gradient-to-r from-green-50 to-indigo-50 dark:from-gray-800 dark:to-gray-900 rounded-2xl p-8 shadow-sm border border-green-100 dark:border-gray-700"
+        className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden"
       >
-        <div className="flex items-center justify-between">
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+        
+        <div className="flex items-center justify-between relative z-10">
           <div className="flex items-center space-x-4">
-
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
+              <h1 className="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">
                 Quản lý đội xe
               </h1>
-              <p className="text-gray-600 dark:text-gray-400 flex items-center space-x-2">
+              <p className="text-green-50 dark:text-green-100 flex items-center space-x-2">
                 <span>Theo dõi và quản lý toàn bộ đội xe điện của bạn</span>
               </p>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2 justify-end">
-            <Button 
-              variant="outline" 
-              className="flex items-center space-x-2 hover:bg-white hover:shadow-md transition-all"
-              onClick={() => setLicensePlateModalOpen(true)}
-            >
-              <FileSpreadsheet className="h-4 w-4" />
-              <span className="hidden sm:inline">Export/ Import Biển số</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex items-center space-x-2 hover:bg-white hover:shadow-md transition-all"
-              onClick={() => setBulkPricingModalOpen(true)}
-            >
-              <DollarSign className="h-4 w-4" />
-              <span className="hidden sm:inline">Cập nhật Giá</span>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="flex items-center space-x-2 hover:bg-white hover:shadow-md transition-all"
-              onClick={() => setAssignmentModalOpen(true)}
-            >
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Phân bổ xe</span>
-            </Button>
-            <Button 
-              className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 shadow-lg hover:shadow-xl transition-all"
-              onClick={() => setBulkModalOpen(true)}
-            >
-              <Plus className="h-4 w-4" />
-              <span>Tạo xe</span>
-            </Button>
-          </div>
+          <Button
+            onClick={() => {
+              loadVehicles();
+              loadStatistics();
+            }}
+            disabled={loading}
+            variant="outline"
+            className="flex items-center space-x-2 bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </Button>
         </div>
       </motion.div>
 
@@ -498,20 +452,20 @@ export function Fleet() {
           <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-16 -mt-16" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Tổng số xe
               </CardTitle>
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                <Car className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent className="relative">
-              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
+              <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
                 {statistics?.totalVehicles || 0}
               </div>
-              <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-2 text-xs font-medium text-gray-600 dark:text-gray-400">
                 <div className="flex items-center">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-1 animate-pulse" />
+                  <div className="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse shadow-sm" />
                   <span>{statistics?.averageBatteryLevel || 0}% pin TB</span>
                 </div>
               </div>
@@ -528,18 +482,18 @@ export function Fleet() {
           <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
             <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 dark:bg-green-900/20 rounded-full -mr-16 -mt-16" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Xe sẵn sàng
               </CardTitle>
-              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+              <div className="p-2.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
+                <CheckCircle className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent className="relative">
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400 mb-1">
+              <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
                 {statistics?.availableVehicles || 0}
               </div>
-              <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-2 text-xs font-medium text-gray-600 dark:text-gray-400">
                 <MapPin className="h-3 w-3" />
                 <span>{statistics?.stationsWithVehicles || 0} trạm có xe</span>
               </div>
@@ -556,18 +510,18 @@ export function Fleet() {
           <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
             <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-100 dark:bg-yellow-900/20 rounded-full -mr-16 -mt-16" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Xe đang thuê
               </CardTitle>
-              <div className="p-2 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg">
-                <Users className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+              <div className="p-2.5 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-xl shadow-md">
+                <Users className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent className="relative">
-              <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400 mb-1">
+              <div className="text-4xl font-bold bg-gradient-to-r from-amber-600 to-yellow-600 bg-clip-text text-transparent mb-2">
                 {statistics?.rentedVehicles || 0}
               </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                 Đang được sử dụng
               </p>
             </CardContent>
@@ -583,18 +537,18 @@ export function Fleet() {
           <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
             <div className="absolute top-0 right-0 w-32 h-32 bg-red-100 dark:bg-red-900/20 rounded-full -mr-16 -mt-16" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-              <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Cần bảo trì
               </CardTitle>
-              <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-                <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+              <div className="p-2.5 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl shadow-md">
+                <AlertTriangle className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent className="relative">
-              <div className="text-3xl font-bold text-red-600 dark:text-red-400 mb-1">
+              <div className="text-4xl font-bold bg-gradient-to-r from-red-600 to-rose-600 bg-clip-text text-transparent mb-2">
                 {statistics?.maintenanceVehicles || 0}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
                 Xe đang bảo trì
               </div>
             </CardContent>
@@ -609,47 +563,51 @@ export function Fleet() {
         transition={{ duration: 0.4, delay: 0.5 }}
         className="space-y-4"
       >
-        {/* Search and Filter Toggle */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <Input
-              placeholder="Tìm kiếm xe theo tên, biển số, thương hiệu..."
-              value={searchTerm}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-              className="pl-10 h-11"
-            />
-          </div>
+        <Card className="border-2 border-gray-200 dark:border-gray-700 shadow-md">
+          <CardContent className="p-6">
+            {/* Search and Filter Toggle */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              {/* Search */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Input
+                  placeholder="Tìm kiếm xe theo tên, biển số, thương hiệu..."
+                  value={searchTerm}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                  className="pl-12 h-12 border-2 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 text-base"
+                />
+              </div>
 
-          {/* Filter Toggle Button */}
-          <Button
-            variant="outline"
-            onClick={() => {
-              const newState = !showFilterPanel;
-              setShowFilterPanel(newState);
-              
-              // Scroll to vehicle list when closing filter
-              if (!newState) {
-                setTimeout(() => {
-                  const element = document.getElementById('vehicle-list-section');
-                  if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+              {/* Filter Toggle Button */}
+              <Button
+                variant="outline"
+                onClick={() => {
+                  const newState = !showFilterPanel;
+                  setShowFilterPanel(newState);
+                  
+                  // Scroll to vehicle list when closing filter
+                  if (!newState) {
+                    setTimeout(() => {
+                      const element = document.getElementById('vehicle-list-section');
+                      if (element) {
+                        element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      }
+                    }, 100);
                   }
-                }, 100);
-              }
-            }}
-            className={`flex items-center space-x-2 h-11 ${
-              showFilterPanel 
-                ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-400' 
-                : ''
-            }`}
-          >
-            <Filter className="h-4 w-4" />
-            <span>Bộ lọc</span>
-            {showFilterPanel && <X className="h-3 w-3 ml-1" />}
-          </Button>
-        </div>
+                }}
+                className={`flex items-center space-x-2 h-12 px-6 border-2 font-semibold transition-all ${
+                  showFilterPanel 
+                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-400 shadow-md' 
+                    : 'border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-600'
+                }`}
+              >
+                <Filter className="h-5 w-5" />
+                <span>Bộ lọc</span>
+                {showFilterPanel && <X className="h-4 w-4 ml-1" />}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Expanded Filters */}
         <AnimatePresence mode="wait">
@@ -661,11 +619,14 @@ export function Fleet() {
               transition={{ duration: 0.3, ease: 'easeInOut' }}
               className="overflow-hidden"
             >
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg border-2 border-gray-200 dark:border-gray-700 max-h-[450px] overflow-y-auto custom-scrollbar">
+              <Card className="shadow-lg border-2 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6 max-h-[450px] overflow-y-auto custom-scrollbar">
                 {/* Filter Header */}
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 dark:border-gray-700">
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center">
-                    <Filter className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+                <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-blue-200 dark:border-blue-800">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-3">
+                      <Filter className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    </div>
                     Bộ lọc nâng cao
                   </h3>
                   <div className="flex items-center space-x-2">
@@ -678,8 +639,9 @@ export function Fleet() {
                           setTypeFilter(null);
                           setSearchTerm('');
                         }}
-                        className="h-8 px-3 text-xs border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20"
+                        className="h-9 px-4 text-sm border-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 font-semibold"
                       >
+                        <X className="h-4 w-4 mr-1" />
                         Xóa bộ lọc
                       </Button>
                     )}
@@ -687,30 +649,32 @@ export function Fleet() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowFilterPanel(false)}
-                      className="h-8 px-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                      className="h-9 px-3 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                 {/* Status Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="flex items-center text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
+                    <div className="w-1 h-4 bg-blue-600 rounded-full mr-2"></div>
                     Trạng thái
                   </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
+                  <div className="space-y-2.5">
+                    <label className="flex items-center space-x-3 cursor-pointer group p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <input
                         type="radio"
                         name="status"
                         checked={statusFilter === null}
                         onChange={() => setStatusFilter(null)}
-                        className="text-blue-600"
+                        className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
-                        Tất cả trạng thái ({vehicles.length})
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
+                        Tất cả trạng thái 
+                        <span className="ml-1.5 text-xs text-gray-500 dark:text-gray-400 font-semibold">({vehicles.length})</span>
                       </span>
                     </label>
                     <label className="flex items-center space-x-2 cursor-pointer">
@@ -879,114 +843,33 @@ export function Fleet() {
                 </div>
 
                 {/* Filter Actions */}
-                <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <Badge variant="secondary" className="text-xs">
+                <div className="col-span-full flex items-center justify-end gap-3 mt-4 pt-4 border-t-2 border-blue-200 dark:border-blue-800">
+                  <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     {filteredVehicles.length} xe tìm thấy
                   </Badge>
                   {filteredVehicles.length > 0 && (
                     <Button
                       size="sm"
-                      variant="default"
                       onClick={() => {
                         const element = document.getElementById('vehicle-list-section');
                         if (element) {
                           element.scrollIntoView({ behavior: 'smooth', block: 'start' });
                         }
                       }}
-                      className="h-8 px-4 text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
+                      className="h-9 px-5 text-sm bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-md"
                     >
                       Xem kết quả
                     </Button>
                   )}
                 </div>
               </div>
-              </div>
+                </CardContent>
+              </Card>
             </motion.div>
           )}
         </AnimatePresence>
       </motion.div>
 
-      {/* View Toggle */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.6 }}
-      >
-        <Card className="border-0 shadow-md bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-900">
-          <CardContent className="p-4">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center space-x-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
-                  <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-                    Danh sách xe
-                  </span>
-                  <span className="ml-2 text-gray-500 dark:text-gray-400">
-                    ({filteredVehicles.length})
-                  </span>
-                </h3>
-                {isUsingMockData && (
-                  <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-200">
-                    📊 Dữ liệu demo
-                  </Badge>
-                )}
-                {(statusFilter || typeFilter || searchTerm) && (
-                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-200">
-                    🔍 Đang lọc
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-400 hidden sm:inline">
-                  Chế độ xem:
-                </span>
-                <div className="flex items-center bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-1 shadow-sm">
-                <Button
-                    size="sm"
-                    variant={viewMode === 'table' ? 'default' : 'ghost'}
-                    className={`h-9 px-4 rounded-lg transition-all ${
-                      viewMode === 'table' 
-                        ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => setViewMode('table')}
-                  >
-                    <List className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Table</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                    className={`h-9 px-4 rounded-lg transition-all ${
-                      viewMode === 'grid' 
-                        ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => setViewMode('grid')}
-                  >
-                    <Grid3X3 className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Card</span>
-                  </Button>
-                  
-                  <Button
-                    size="sm"
-                    variant={viewMode === 'map' ? 'default' : 'ghost'}
-                    className={`h-9 px-4 rounded-lg transition-all ${
-                      viewMode === 'map' 
-                        ? 'bg-blue-600 text-white shadow-md hover:bg-blue-700' 
-                        : 'hover:bg-gray-100 dark:hover:bg-gray-700'
-                    }`}
-                    onClick={() => setViewMode('map')}
-                  >
-                    <Map className="h-4 w-4 mr-2" />
-                    <span className="hidden sm:inline">Map</span>
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
 
       {/* Vehicle Views */}
       <motion.div
@@ -997,35 +880,304 @@ export function Fleet() {
         className="min-h-[400px]"
       >
         {viewMode === 'grid' ? (
-          <VehicleCardGrid
-            vehicles={filteredVehicles}
-            loading={loading}
-            onEdit={handleEditVehicle}
-            onAssign={handleAssignVehicle}
-            onView={handleViewVehicle}
-            onBulkAction={handleBulkAction}
-          />
+          <div>
+            {/* Card View Header */}
+            <div className="bg-white dark:bg-gray-800 rounded-t-lg shadow-md px-6 py-5 border-b-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Danh sách xe <span className="text-blue-600 dark:text-blue-400">({filteredVehicles.length})</span>
+                </h3>
+                {isUsingMockData && (
+                  <Badge className="text-xs bg-amber-100 text-amber-700 border-2 border-amber-300 font-semibold px-3 py-1">
+                    📊 Dữ liệu demo
+                  </Badge>
+                )}
+                {(statusFilter || typeFilter || searchTerm) && (
+                  <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
+                    🔍 Đang lọc
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* View Mode Buttons */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
+                  onClick={() => setViewMode('table')}
+                >
+                  <List className="h-4 w-4 mr-1.5" />
+                  Table
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid3X3 className="h-4 w-4 mr-1.5" />
+                  Card
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
+                  onClick={() => setViewMode('map')}
+                >
+                  <Map className="h-4 w-4 mr-1.5" />
+                  Map
+                </Button>
+
+                {/* Action Buttons */}
+                <div className="h-7 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold dark:border-blue-800 dark:text-blue-400"
+                  onClick={() => setLicensePlateModalOpen(true)}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                  Biển số
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold dark:border-amber-800 dark:text-amber-400"
+                  onClick={() => setBulkPricingModalOpen(true)}
+                >
+                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  Giá
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400 font-semibold dark:border-purple-800 dark:text-purple-400"
+                  onClick={() => setAssignmentModalOpen(true)}
+                >
+                  <Users className="h-4 w-4 mr-1.5" />
+                  Phân bổ
+                </Button>
+                <Button 
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md"
+                  onClick={() => setBulkModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Tạo xe
+                </Button>
+              </div>
+            </div>
+            
+            <div className="bg-white dark:bg-gray-800">
+              <VehicleCardGrid
+                vehicles={filteredVehicles}
+                loading={loading}
+                onEdit={handleEditVehicle}
+                onAssign={handleAssignVehicle}
+                onView={handleViewVehicle}
+                onBulkAction={handleBulkAction}
+              />
+            </div>
+          </div>
         ) : viewMode === 'table' ? (
-          <EnhancedDataTable
-            columns={vehicleColumns}
-            data={filteredVehicles}
-            loading={loading}
-            searchable={false}
-            exportable={false}
-            selectable={false}
-            pageSize={10}
-            pageSizeOptions={[5, 10, 20, 50]}
-            onRowClick={handleViewVehicle}
-            emptyMessage="Không có xe nào"
-            showInfo={false}
-            showColumnSettings={false}
-          />
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+            {/* Table Header with Actions */}
+            <div className="px-6 py-5 bg-white dark:bg-gray-800 border-b-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Danh sách xe <span className="text-blue-600 dark:text-blue-400">({filteredVehicles.length})</span>
+                </h3>
+                {isUsingMockData && (
+                  <Badge className="text-xs bg-amber-100 text-amber-700 border-2 border-amber-300 font-semibold px-3 py-1">
+                    📊 Dữ liệu demo
+                  </Badge>
+                )}
+                {(statusFilter || typeFilter || searchTerm) && (
+                  <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
+                    🔍 Đang lọc
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* View Mode Buttons */}
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md"
+                  onClick={() => setViewMode('table')}
+                >
+                  <List className="h-4 w-4 mr-1.5" />
+                  Table
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid3X3 className="h-4 w-4 mr-1.5" />
+                  Card
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
+                  onClick={() => setViewMode('map')}
+                >
+                  <Map className="h-4 w-4 mr-1.5" />
+                  Map
+                </Button>
+
+                {/* Action Buttons */}
+                <div className="h-7 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold dark:border-blue-800 dark:text-blue-400"
+                  onClick={() => setLicensePlateModalOpen(true)}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                  Biển số
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold dark:border-amber-800 dark:text-amber-400"
+                  onClick={() => setBulkPricingModalOpen(true)}
+                >
+                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  Giá
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400 font-semibold dark:border-purple-800 dark:text-purple-400"
+                  onClick={() => setAssignmentModalOpen(true)}
+                >
+                  <Users className="h-4 w-4 mr-1.5" />
+                  Phân bổ
+                </Button>
+                <Button 
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md"
+                  onClick={() => setBulkModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Tạo xe
+                </Button>
+              </div>
+            </div>
+
+            <EnhancedDataTable
+              columns={vehicleColumns}
+              data={filteredVehicles}
+              loading={loading}
+              searchable={false}
+              exportable={false}
+              selectable={false}
+              pageSize={10}
+              pageSizeOptions={[5, 10, 20, 50]}
+              onRowClick={handleViewVehicle}
+              emptyMessage="Không có xe nào"
+              showInfo={false}
+              showColumnSettings={false}
+            />
+          </div>
         ) : (
-          <VehicleMapView
-            vehicles={filteredVehicles}
-            loading={loading}
-            onVehicleClick={handleViewVehicle}
-          />
+          <div>
+            {/* Map View Header */}
+            <div className="bg-white dark:bg-gray-800 rounded-t-lg shadow-md px-6 py-5 border-b-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                  Danh sách xe <span className="text-blue-600 dark:text-blue-400">({filteredVehicles.length})</span>
+                </h3>
+                {isUsingMockData && (
+                  <Badge className="text-xs bg-amber-100 text-amber-700 border-2 border-amber-300 font-semibold px-3 py-1">
+                    📊 Dữ liệu demo
+                  </Badge>
+                )}
+                {(statusFilter || typeFilter || searchTerm) && (
+                  <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
+                    🔍 Đang lọc
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex items-center gap-2">
+                {/* View Mode Buttons */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
+                  onClick={() => setViewMode('table')}
+                >
+                  <List className="h-4 w-4 mr-1.5" />
+                  Table
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
+                  onClick={() => setViewMode('grid')}
+                >
+                  <Grid3X3 className="h-4 w-4 mr-1.5" />
+                  Card
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md"
+                  onClick={() => setViewMode('map')}
+                >
+                  <Map className="h-4 w-4 mr-1.5" />
+                  Map
+                </Button>
+
+                {/* Action Buttons */}
+                <div className="h-7 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold dark:border-blue-800 dark:text-blue-400"
+                  onClick={() => setLicensePlateModalOpen(true)}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                  Biển số
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold dark:border-amber-800 dark:text-amber-400"
+                  onClick={() => setBulkPricingModalOpen(true)}
+                >
+                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  Giá
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400 font-semibold dark:border-purple-800 dark:text-purple-400"
+                  onClick={() => setAssignmentModalOpen(true)}
+                >
+                  <Users className="h-4 w-4 mr-1.5" />
+                  Phân bổ
+                </Button>
+                <Button 
+                  size="sm"
+                  className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md"
+                  onClick={() => setBulkModalOpen(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Tạo xe
+                </Button>
+              </div>
+            </div>
+
+            <VehicleMapView
+              vehicles={filteredVehicles}
+              loading={loading}
+              onVehicleClick={handleViewVehicle}
+            />
+          </div>
         )}
       </motion.div>
 
@@ -1063,6 +1215,19 @@ export function Fleet() {
         isOpen={assignmentModalOpen}
         onClose={() => setAssignmentModalOpen(false)}
         onSuccess={handleVehicleUpdated}
+      />
+
+      <VehicleDetailModal
+        isOpen={viewDetailModalOpen}
+        onClose={() => {
+          setViewDetailModalOpen(false);
+          setSelectedVehicle(null);
+        }}
+        vehicle={selectedVehicle}
+        onEdit={(vehicle) => {
+          setSelectedVehicle(vehicle);
+          setEditModalOpen(true);
+        }}
       />
     </div>
   );

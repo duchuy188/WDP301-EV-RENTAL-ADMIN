@@ -68,6 +68,10 @@ export default function RiskyCustomers() {
     setPagination(prev => ({ ...prev, page: 1 }));
   };
 
+  const handleRefresh = () => {
+    fetchRiskyCustomers();
+  };
+
   const getRiskLevelBadge = (level: string) => {
     switch (level) {
       case 'critical':
@@ -85,14 +89,37 @@ export default function RiskyCustomers() {
 
   return (
     <div className="space-y-6 p-6">
-      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-2">
-          <AlertTriangle className="h-8 w-8 text-red-500" />
-          Khách hàng rủi ro
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Theo dõi và quản lý khách hàng có hành vi rủi ro cao
-        </p>
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }} 
+        animate={{ opacity: 1, y: 0 }} 
+        transition={{ duration: 0.3 }}
+        className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden"
+      >
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-0.5 drop-shadow-lg flex items-center gap-2">
+              <AlertTriangle className="h-8 w-8 text-yellow-300 drop-shadow-lg" />
+              Khách hàng rủi ro
+            </h1>
+            <p className="text-green-50 dark:text-green-100">
+              Theo dõi và quản lý khách hàng có hành vi rủi ro cao
+            </p>
+          </div>
+          <Button
+            onClick={handleRefresh}
+            disabled={loading}
+            variant="outline"
+            className="flex items-center space-x-2 bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </Button>
+        </div>
       </motion.div>
 
       {/* Search & Filters */}

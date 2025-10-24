@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, CreditCard, Loader2, Search, Eye, Lock, Unlock } from 'lucide-react';
+import { User, CreditCard, Loader2, Search, Eye, Lock, Unlock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw } from 'lucide-react';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -101,7 +101,13 @@ export function Customers() {
 
   // Handle filter changes
   const handleFilterChange = (key: keyof UsersParams, value: any) => {
-    setFilters(prev => ({ ...prev, [key]: value, page: 1 }));
+    setFilters(prev => {
+      // Chỉ reset về page 1 khi thay đổi filter khác, không phải khi đổi page
+      if (key === 'page') {
+        return { ...prev, [key]: value };
+      }
+      return { ...prev, [key]: value, page: 1 };
+    });
   };
 
   // Handle modal
@@ -291,13 +297,34 @@ export function Customers() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
+        className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden"
       >
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Quản lý khách hàng (EV Renter)
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400">
-          Quản lý thông tin và theo dõi hoạt động của khách hàng thuê xe điện
-        </p>
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">
+              Quản lý khách hàng (EV Renter)
+            </h1>
+            <p className="text-green-50 dark:text-green-100">
+              Quản lý thông tin và theo dõi hoạt động của khách hàng thuê xe điện
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              setFilters(prev => ({ ...prev }));
+            }}
+            disabled={loading}
+            variant="outline"
+            className="flex items-center space-x-2 bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </Button>
+        </div>
       </motion.div>
 
       {/* Statistics */}
@@ -447,19 +474,122 @@ export function Customers() {
           </div>
         </div>
       ) : (
-        <EnhancedDataTable
-          title="Danh sách khách hàng EV Renter"
-          columns={columns}
-          data={users}
-          loading={loading}
-          searchable={true}
-          exportable={true}
-          selectable={false}
-          pageSize={10}
-          pageSizeOptions={[5, 10, 20, 50]}
-          onRowClick={handleViewUser}
-          emptyMessage="Không có khách hàng nào"
-        />
+        <>
+          <EnhancedDataTable
+            title="Danh sách khách hàng EV Renter"
+            columns={columns}
+            data={users}
+            loading={loading}
+            searchable={false}
+            exportable={true}
+            selectable={false}
+            pageSize={users.length}
+            pageSizeOptions={[25, 50, 100]}
+            onRowClick={handleViewUser}
+            emptyMessage="Không có khách hàng nào"
+          />
+          
+          {/* Server-side Pagination */}
+          {pagination.pages > 1 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700"
+            >
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                {/* Page info */}
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Hiển thị {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số <span className="font-semibold text-gray-900 dark:text-white">{pagination.total}</span> khách hàng
+                </div>
+
+                {/* Items per page selector */}
+                <div className="flex items-center gap-2">
+                  <label className="text-sm text-gray-600 dark:text-gray-400">
+                    Hiển thị:
+                  </label>
+                  <select
+                    value={filters.limit}
+                    onChange={(e) => handleFilterChange('limit', Number(e.target.value))}
+                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                    title="Số mục mỗi trang"
+                    aria-label="Số mục mỗi trang"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span className="text-sm text-gray-600 dark:text-gray-400">/ trang</span>
+                </div>
+
+                {/* Pagination buttons */}
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFilterChange('page', 1)}
+                    disabled={pagination.page === 1}
+                  >
+                    <ChevronsLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFilterChange('page', pagination.page - 1)}
+                    disabled={pagination.page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  
+                  {/* Page numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
+                      let pageNum;
+                      if (pagination.pages <= 5) {
+                        pageNum = i + 1;
+                      } else if (pagination.page <= 3) {
+                        pageNum = i + 1;
+                      } else if (pagination.page >= pagination.pages - 2) {
+                        pageNum = pagination.pages - 4 + i;
+                      } else {
+                        pageNum = pagination.page - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={pagination.page === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => handleFilterChange('page', pageNum)}
+                          className="min-w-[36px]"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFilterChange('page', pagination.page + 1)}
+                    disabled={pagination.page === pagination.pages}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleFilterChange('page', pagination.pages)}
+                    disabled={pagination.page === pagination.pages}
+                  >
+                    <ChevronsRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </>
       )}
 
 

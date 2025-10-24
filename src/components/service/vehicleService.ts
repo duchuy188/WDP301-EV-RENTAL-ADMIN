@@ -307,8 +307,34 @@ class VehicleService {
    */
   async bulkCreateVehicles(bulkData: any): Promise<any> {
     try {
-      const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.bulkCreate, bulkData, {
-        responseType: bulkData.export_excel ? 'blob' : 'json'
+      // Create FormData to handle image uploads
+      const formData = new FormData();
+      
+      // Append text fields
+      formData.append('model', bulkData.model);
+      formData.append('year', bulkData.year.toString());
+      formData.append('color', bulkData.color);
+      formData.append('type', bulkData.type);
+      formData.append('battery_capacity', bulkData.battery_capacity.toString());
+      formData.append('max_range', bulkData.max_range.toString());
+      formData.append('current_battery', bulkData.current_battery.toString());
+      formData.append('price_per_day', bulkData.price_per_day.toString());
+      formData.append('deposit_percentage', bulkData.deposit_percentage.toString());
+      formData.append('quantity', bulkData.quantity.toString());
+      formData.append('export_excel', bulkData.export_excel.toString());
+      
+      // Append images (if any)
+      if (bulkData.images && bulkData.images.length > 0) {
+        bulkData.images.forEach((image: File) => {
+          formData.append('images', image);
+        });
+      }
+      
+      const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.bulkCreate, formData, {
+        responseType: bulkData.export_excel ? 'blob' : 'json',
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
       });
       
       if (bulkData.export_excel) {

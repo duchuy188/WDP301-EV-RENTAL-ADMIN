@@ -95,20 +95,25 @@ export function Dashboard() {
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-gradient-to-r from-green-800 to-green-600 rounded-2xl p-6 text-white"
+        className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden"
       >
-        <div className="flex items-center justify-between">
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+        
+        <div className="flex items-center justify-between relative z-10">
           <div>
-            <h1 className="text-3xl font-bold mb-2">
+            <h1 className="text-3xl font-bold mb-0.5 text-white drop-shadow-lg">
               Xin chào, Admin! 👋
             </h1>
-            <p className="text-green-100 text-lg">
+            <p className="text-green-50 dark:text-green-100">
               Tổng quan hệ thống quản lý EV Rental
             </p>
           </div>
           <div className="text-right">
-            <p className="text-green-100">Hôm nay</p>
-            <p className="text-2xl font-bold">
+            <p className="text-green-50 dark:text-green-100">Hôm nay</p>
+            <p className="text-2xl font-bold text-white drop-shadow-lg">
               {new Date().toLocaleDateString('vi-VN')}
             </p>
           </div>

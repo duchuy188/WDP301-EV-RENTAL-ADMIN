@@ -321,7 +321,34 @@ export interface WithdrawVehiclesResponse {
 }
 
 // Utility function to normalize API vehicle to UI vehicle
-export function normalizeVehicleForUI(vehicle: Vehicle): VehicleUI {
+export function normalizeVehicleForUI(vehicle: any): VehicleUI {
+  // Handle station_id which might be a string or populated object
+  let stationId: string | undefined;
+  let stationName: string | undefined;
+  
+  if (vehicle.station_id) {
+    if (typeof vehicle.station_id === 'object') {
+      // station_id is populated as object
+      stationId = vehicle.station_id._id || vehicle.station_id.code;
+      stationName = vehicle.station_id.name;
+    } else {
+      // station_id is just a string
+      stationId = vehicle.station_id;
+    }
+  }
+  
+  // Handle created_by which might be a string or populated object
+  let createdBy: string = '';
+  if (vehicle.created_by) {
+    if (typeof vehicle.created_by === 'object') {
+      // created_by is populated as object
+      createdBy = vehicle.created_by.fullname || vehicle.created_by.email || '';
+    } else {
+      // created_by is just a string
+      createdBy = vehicle.created_by;
+    }
+  }
+  
   return {
     id: vehicle._id || '',
     licensePlate: vehicle.license_plate || '',
@@ -331,8 +358,8 @@ export function normalizeVehicleForUI(vehicle: Vehicle): VehicleUI {
     color: vehicle.color || '',
     batteryLevel: vehicle.current_battery || 0,
     status: vehicle.status || 'available',
-    stationId: vehicle.station_id,
-    stationName: undefined, // Will be populated by join if needed
+    stationId: stationId,
+    stationName: stationName,
     isActive: vehicle.is_active !== false, // Default to true if undefined
     createdAt: vehicle.createdAt || '',
     updatedAt: vehicle.updatedAt || '',
@@ -346,7 +373,7 @@ export function normalizeVehicleForUI(vehicle: Vehicle): VehicleUI {
     depositPercentage: vehicle.deposit_percentage || 0,
     technicalStatus: vehicle.technical_status || 'good',
     images: vehicle.images || [],
-    createdBy: vehicle.created_by || ''
+    createdBy: createdBy
   };
 }
 

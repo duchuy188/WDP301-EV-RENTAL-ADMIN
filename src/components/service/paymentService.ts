@@ -56,10 +56,18 @@ class PaymentService {
       // Normalize payments for UI
       const normalizedPayments = apiResponse.payments.map((payment, index) => {
         try {
+          // Log payment data for debugging
+          if (index === 0) {
+            console.log('Sample payment data:', payment);
+          }
           return normalizePaymentForUI(payment);
         } catch (error) {
           console.error(`Error normalizing payment at index ${index}:`, error, payment);
           // Return a fallback payment object
+          const createdAt = payment.created_at || payment.createdAt || payment.date_created || '';
+          const updatedAt = payment.updated_at || payment.updatedAt || payment.date_updated || '';
+          const user = typeof payment.user_id === 'object' ? payment.user_id : null;
+          
           return {
             id: payment._id || `fallback-${index}`,
             code: payment.code || 'N/A',
@@ -67,12 +75,14 @@ class PaymentService {
             paymentMethod: payment.payment_method || 'N/A',
             paymentType: payment.payment_type || 'N/A',
             status: payment.status || 'pending',
-            customerName: 'N/A',
+            customerName: user?.full_name || user?.fullname || 'N/A',
+            customerEmail: user?.email,
+            customerAvatar: user?.avatar,
             transactionId: payment.transaction_id,
             notes: payment.notes,
             refundAmount: payment.refund_amount,
-            createdAt: payment.created_at || '',
-            updatedAt: payment.updated_at || ''
+            createdAt: createdAt,
+            updatedAt: updatedAt
           } as PaymentUI;
         }
       });

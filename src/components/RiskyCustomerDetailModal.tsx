@@ -8,7 +8,6 @@ import {
   TrendingUp,
   CheckCircle,
   XCircle,
-  Plus,
   RotateCcw,
   User,
   Mail,
@@ -18,11 +17,9 @@ import {
 import { Card } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Input } from './ui/input';
 import { UserService } from './service/userService';
 import { 
   RiskyCustomerDetailResponse,
-  AddViolationRequest,
   Violation
 } from './service/type/userTypes';
 import { formatDate } from '../utils/dateUtils';
@@ -66,13 +63,6 @@ export function RiskyCustomerDetailModal({
   
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<RiskyCustomerDetailResponse | null>(null);
-  const [showAddViolation, setShowAddViolation] = useState(false);
-  const [violationForm, setViolationForm] = useState<AddViolationRequest>({
-    type: '',
-    description: '',
-    severity: 'medium',
-    points: 10
-  });
 
   useEffect(() => {
     if (isOpen && customerId) {
@@ -113,31 +103,6 @@ export function RiskyCustomerDetailModal({
     }
   };
 
-  const handleAddViolation = async () => {
-    if (!customerId) return;
-    
-    if (!violationForm.type || !violationForm.description) {
-      showToast.error('Vui lòng điền đầy đủ thông tin vi phạm');
-      return;
-    }
-
-    try {
-      await UserService.addViolation(customerId, violationForm);
-      showToast.success('Đã thêm vi phạm thành công');
-      setShowAddViolation(false);
-      setViolationForm({
-        type: '',
-        description: '',
-        severity: 'medium',
-        points: 10
-      });
-      fetchDetail();
-      onUpdate?.();
-    } catch (error: any) {
-      console.error('Error adding violation:', error);
-      showToast.error(error.response?.data?.message || 'Không thể thêm vi phạm');
-    }
-  };
 
   if (!isOpen) return null;
 
@@ -268,63 +233,7 @@ export function RiskyCustomerDetailModal({
                       <AlertTriangle className="h-5 w-5 mr-2 text-orange-600" />
                       Danh sách Vi phạm ({data.riskInfo.violations?.length || 0})
                     </h3>
-                    <Button
-                      onClick={() => setShowAddViolation(!showAddViolation)}
-                      size="sm"
-                      className="bg-orange-600 hover:bg-orange-700"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Thêm Vi phạm
-                    </Button>
                   </div>
-
-                  {/* Add Violation Form */}
-                  {showAddViolation && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-                    >
-                      <div className="grid grid-cols-2 gap-4">
-                        <Input
-                          placeholder="Loại vi phạm (vd: late_return)"
-                          value={violationForm.type}
-                          onChange={(e) => setViolationForm({ ...violationForm, type: e.target.value })}
-                        />
-                        <select
-                          id="violation-severity"
-                          title="Mức độ nghiêm trọng"
-                          value={violationForm.severity}
-                          onChange={(e) => setViolationForm({ ...violationForm, severity: e.target.value as any })}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                        >
-                          <option value="low">Nhẹ</option>
-                          <option value="medium">Trung bình</option>
-                          <option value="high">Cao</option>
-                          <option value="critical">Nghiêm trọng</option>
-                        </select>
-                        <Input
-                          type="number"
-                          placeholder="Điểm"
-                          value={violationForm.points}
-                          onChange={(e) => setViolationForm({ ...violationForm, points: parseInt(e.target.value) || 0 })}
-                        />
-                        <Input
-                          placeholder="Mô tả"
-                          value={violationForm.description}
-                          onChange={(e) => setViolationForm({ ...violationForm, description: e.target.value })}
-                        />
-                      </div>
-                      <div className="flex gap-2 mt-3">
-                        <Button onClick={handleAddViolation} size="sm" className="bg-orange-600 hover:bg-orange-700">
-                          Thêm
-                        </Button>
-                        <Button onClick={() => setShowAddViolation(false)} size="sm" variant="outline">
-                          Hủy
-                        </Button>
-                      </div>
-                    </motion.div>
-                  )}
 
                   {/* Violations List */}
                   {(!data.riskInfo.violations || data.riskInfo.violations.length === 0) ? (

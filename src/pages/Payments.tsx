@@ -158,23 +158,46 @@ export function Payments() {
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            Quản lý Thanh toán
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Quản lý và theo dõi các giao dịch thanh toán
-          </p>
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden"
+      >
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+        
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">
+              Quản lý Thanh toán
+            </h1>
+            <p className="text-green-50 dark:text-green-100">
+              Quản lý và theo dõi các giao dịch thanh toán
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={fetchPayments}
+              disabled={loading}
+              variant="outline"
+              className="flex items-center space-x-2 bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+              <span>Làm mới</span>
+            </Button>
+            <Button
+              onClick={handleExport}
+              className="bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Xuất Excel
+            </Button>
+          </div>
         </div>
-        <Button
-          onClick={handleExport}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          <Download className="h-4 w-4 mr-2" />
-          Xuất Excel
-        </Button>
-      </div>
+      </motion.div>
 
       {/* Summary Cards */}
       {summary && (
@@ -342,6 +365,9 @@ export function Payments() {
             <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  STT
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Mã thanh toán
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
@@ -367,7 +393,7 @@ export function Payments() {
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
+                  <td colSpan={8} className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                       <span className="ml-3 text-gray-500">Đang tải...</span>
@@ -376,36 +402,45 @@ export function Payments() {
                 </tr>
               ) : payments.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
                     Không có dữ liệu thanh toán
                   </td>
                 </tr>
               ) : (
-                payments.map((payment) => (
-                  <motion.tr
-                    key={payment.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <CreditCard className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">
-                          {payment.code}
+                payments.map((payment, index) => {
+                  const stt = (currentPage - 1) * itemsPerPage + index + 1;
+                  return (
+                    <motion.tr
+                      key={payment.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                          {stt}
                         </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {payment.customerName}
-                      </div>
-                      {payment.customerEmail && (
-                        <div className="text-sm text-gray-500">
-                          {payment.customerEmail}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <CreditCard className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {payment.code}
+                          </span>
                         </div>
-                      )}
-                    </td>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {payment.customerName}
+                          </div>
+                          {payment.customerEmail && (
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              {payment.customerEmail}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gray-900 dark:text-white">
                         {formatCurrency(payment.amount)}
@@ -431,11 +466,12 @@ export function Payments() {
                         {PAYMENT_STATUS_LABELS[payment.status] || payment.status}
                       </Badge>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                      {formatDate(payment.createdAt)}
-                    </td>
-                  </motion.tr>
-                ))
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                        {formatDate(payment.createdAt)}
+                      </td>
+                    </motion.tr>
+                  );
+                })
               )}
             </tbody>
           </table>

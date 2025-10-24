@@ -54,6 +54,12 @@ export const API_CONFIG = {
     assignment: {
       unassignedStaff: '/api/users/staff/unassigned',
       assignStaff: '/api/users/staff/assign'
+    },
+    feedback: {
+      list: '/api/feedback',
+      getById: (id: string) => `/api/feedback/${id}`,
+      updateStatus: (id: string) => `/api/feedback/${id}/status`,
+      delete: (id: string) => `/api/feedback/${id}`
     }
   }
 };

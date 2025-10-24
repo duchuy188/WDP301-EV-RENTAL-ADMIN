@@ -52,10 +52,10 @@ export function parseDateString(dateString: string | null | undefined): Date | n
 /**
  * Format date to Vietnamese locale date string (DD/MM/YYYY)
  * @param date - Date object, date string, or null
- * @returns Formatted date string or 'Invalid Date'
+ * @returns Formatted date string or 'N/A'
  */
 export function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return 'Invalid Date';
+  if (!date || date === '') return 'N/A';
   
   try {
     let dateObj: Date | null;
@@ -67,23 +67,28 @@ export function formatDate(date: Date | string | null | undefined): string {
     }
     
     if (!dateObj || isNaN(dateObj.getTime())) {
-      return 'Invalid Date';
+      console.warn('Invalid date value:', date);
+      return 'N/A';
     }
     
-    return dateObj.toLocaleDateString('vi-VN');
+    return dateObj.toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    });
   } catch (error) {
     console.error('Error formatting date:', date, error);
-    return 'Invalid Date';
+    return 'N/A';
   }
 }
 
 /**
  * Format date to Vietnamese locale date and time string
  * @param date - Date object, date string, or null
- * @returns Formatted date time string or 'Invalid Date'
+ * @returns Formatted date time string or 'N/A'
  */
 export function formatDateTime(date: Date | string | null | undefined): string {
-  if (!date) return 'Invalid Date';
+  if (!date || date === '') return 'N/A';
   
   try {
     let dateObj: Date | null;
@@ -95,13 +100,21 @@ export function formatDateTime(date: Date | string | null | undefined): string {
     }
     
     if (!dateObj || isNaN(dateObj.getTime())) {
-      return 'Invalid Date';
+      console.warn('Invalid date time value:', date);
+      return 'N/A';
     }
     
-    return dateObj.toLocaleString('vi-VN');
+    return dateObj.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
   } catch (error) {
     console.error('Error formatting date time:', date, error);
-    return 'Invalid Date';
+    return 'N/A';
   }
 }
 

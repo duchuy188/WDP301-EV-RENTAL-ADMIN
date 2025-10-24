@@ -15,7 +15,8 @@ import {
   UserCheck,
   UserX,
   BadgeCheck,
-  DollarSign
+  DollarSign,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import AuthService from './service/authService';
@@ -60,6 +61,7 @@ const menuItems = [
   },
   { name: 'Quản lý đặt và thuê xe', icon: BadgeCheck, path: '/staff/rentals' },
   { name: 'Quản lý Thanh toán', icon: DollarSign, path: '/payments' },
+  { name: 'Quản lý phản hồi', icon: MessageSquare, path: '/feedback' },
   { name: 'Báo cáo & Phân tích', icon: BarChart3, path: '/analytics' },
 ];
 

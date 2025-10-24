@@ -9,7 +9,9 @@ import {
   Sparkles,
   Download,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Upload,
+  Image as ImageIcon
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -45,6 +47,43 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
   });
   
   const [bulkResult, setBulkResult] = useState<BulkCreateResponse | null>(null);
+  const [vehicleImage, setVehicleImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    
+    if (!file) return;
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showToast.error('File không phải là ảnh hợp lệ');
+      return;
+    }
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      showToast.error('Ảnh vượt quá dung lượng 5MB');
+      return;
+    }
+    
+    setVehicleImage(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    
+    // Reset input
+    e.target.value = '';
+  };
+
+  const handleRemoveImage = () => {
+    setVehicleImage(null);
+    setImagePreview('');
+  };
 
   const handleBulkCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +106,7 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
       deposit_percentage: bulkFormData.depositPercentage,
       quantity: bulkFormData.quantity,
       export_excel: true,
-      images: []
+      images: vehicleImage ? [vehicleImage] : []
     };
 
     try {
@@ -104,6 +143,8 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
         depositPercentage: 50,
         quantity: 1
       });
+      setVehicleImage(null);
+      setImagePreview('');
       
       // Notify and close
       showToast.success(`Đã tạo thành công ${bulkFormData.quantity} xe!`);
@@ -140,6 +181,8 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
 
   const handleClose = () => {
     setBulkResult(null);
+    setVehicleImage(null);
+    setImagePreview('');
     onClose();
   };
 
@@ -363,6 +406,68 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                           onChange={(color) => setBulkFormData({ ...bulkFormData, color })}
                         />
                       </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Hình ảnh xe */}
+                  <Card className="border-2 border-gray-200 dark:border-gray-700">
+                    <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <CardTitle className="flex items-center space-x-2 text-base">
+                        <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
+                          <ImageIcon className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                        </div>
+                        <span>Hình ảnh xe</span>
+                        <span className="text-xs text-gray-500 font-normal ml-2">(Tùy chọn, chỉ 1 ảnh)</span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6 space-y-4">
+                      {/* Image Upload Button */}
+                      <div>
+                        <label htmlFor="vehicle-image" className="cursor-pointer">
+                          <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 hover:border-purple-500 dark:hover:border-purple-400 transition-colors text-center">
+                            <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                              <span className="text-purple-600 dark:text-purple-400 font-semibold">Click để chọn ảnh xe</span> hoặc kéo thả vào đây
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              PNG, JPG, JPEG, WEBP (tối đa 5MB)
+                            </p>
+                          </div>
+                        </label>
+                        <input
+                          id="vehicle-image"
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageChange}
+                          className="hidden"
+                        />
+                      </div>
+
+                      {/* Image Preview */}
+                      {imagePreview && (
+                        <div className="relative group w-full max-w-xs mx-auto">
+                          <img
+                            src={imagePreview}
+                            alt="Vehicle preview"
+                            className="w-full h-48 object-cover rounded-lg border-2 border-gray-200 dark:border-gray-600"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRemoveImage}
+                            className="absolute -top-2 -right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Xóa ảnh"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      )}
+
+                      {imagePreview && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 flex items-center justify-center">
+                          <ImageIcon className="h-4 w-4 mr-1.5 text-purple-600" />
+                          Đã chọn ảnh xe
+                        </p>
+                      )}
                     </CardContent>
                   </Card>
 

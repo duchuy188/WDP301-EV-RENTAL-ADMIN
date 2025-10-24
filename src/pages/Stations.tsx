@@ -523,127 +523,144 @@ export function Stations() {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
+        className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden"
       >
-        <div className="flex items-center justify-between">
+        {/* Decorative background pattern */}
+        <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+        <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+        <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+        
+        <div className="flex items-center justify-between relative z-10">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            <h1 className="text-3xl font-bold text-white mb-0.5 drop-shadow-lg">
               Quản lý trạm thuê
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">
+            <p className="text-green-50 dark:text-green-100">
               Quản lý và theo dõi các trạm thuê xe điện trong hệ thống
             </p>
           </div>
-          <div className="flex space-x-3">
-            <Button
-              onClick={() => loadStations()}
-              disabled={loading}
-              variant="outline"
-              className="flex items-center space-x-2 border-gray-300 hover:border-gray-400"
-            >
-              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Làm mới</span>
-            </Button>
-            <Button 
-              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
-              onClick={() => setShowCreateModal(true)}
-            >
-              <Plus className="h-4 w-4" />
-              <span>Thêm trạm</span>
-            </Button>
-          </div>
+          <Button
+            onClick={() => loadStations()}
+            disabled={loading}
+            variant="outline"
+            className="flex items-center space-x-2 bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </Button>
         </div>
       </motion.div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Tổng số trạm
               </CardTitle>
-              <Building2 className="h-4 w-4 text-blue-600" />
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                <Building2 className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-blue-600">
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
                 {statistics?.totalStations || 0}
               </div>
-              <p className="text-xs text-gray-500">
-                {statistics?.activeStations || 0} đang hoạt động
-              </p>
+              <div className="flex items-center space-x-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-1.5 animate-pulse shadow-sm" />
+                  <span>{statistics?.activeStations || 0} đang hoạt động</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 0 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.2 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 dark:bg-green-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Trạm có xe
               </CardTitle>
-              <Car className="h-4 w-4 text-green-600" />
+              <div className="p-2.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
+                <Car className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
                 {statistics?.stationsWithVehicles || 0}
               </div>
-              <p className="text-xs text-gray-500">
-                Trung bình {statistics?.averageVehiclesPerStation || 0} xe/trạm
-              </p>
+              <div className="flex items-center space-x-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+                <MapPin className="h-3 w-3" />
+                <span>Trung bình {statistics?.averageVehiclesPerStation || 0} xe/trạm</span>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 0 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.3 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 dark:bg-orange-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Trạm hoạt động
               </CardTitle>
-              <Globe className="h-4 w-4 text-green-600" />
+              <div className="p-2.5 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl shadow-md">
+                <Globe className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent mb-2">
                 {statistics?.activeStations || 0}
               </div>
-              <p className="text-xs text-gray-500">
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
                 {statistics?.inactiveStations || 0} tạm dừng
-              </p>
+              </div>
             </CardContent>
           </Card>
         </motion.div>
 
         <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3, delay: 0.4 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+          whileHover={{ y: -4 }}
         >
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-100 dark:bg-purple-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Tỷ lệ hoạt động
               </CardTitle>
-              <BarChart3 className="h-4 w-4 text-purple-600" />
+              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-md">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent mb-2">
                 {statistics ? 
                   Math.round((statistics.activeStations / statistics.totalStations) * 100) : 0
                 }%
               </div>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400">
                 Trạm đang hoạt động
               </p>
             </CardContent>
@@ -707,9 +724,24 @@ export function Stations() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.6 }}
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
       >
+        {/* Table Header with Actions */}
+        <div className="px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Danh sách trạm ({filteredStations.length})
+          </h3>
+          <Button 
+            className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus className="h-4 w-4" />
+            <span>Thêm trạm</span>
+          </Button>
+        </div>
+        
+        {/* DataTable without title */}
         <DataTable
-          title={`Danh sách trạm (${filteredStations.length})`}
           columns={stationColumns}
           data={filteredStations}
           loading={loading}

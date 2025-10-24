@@ -31,6 +31,7 @@ export interface UserInfo {
   full_name: string;
   email: string;
   phone_number?: string;
+  avatar?: string;
 }
 
 export interface PaymentSummary {
@@ -76,6 +77,7 @@ export interface PaymentUI {
   status: string;
   customerName: string;
   customerEmail?: string;
+  customerAvatar?: string;
   transactionId?: string;
   notes?: string;
   refundAmount?: number;
@@ -84,8 +86,12 @@ export interface PaymentUI {
 }
 
 // Helper function to normalize payment for UI display
-export function normalizePaymentForUI(payment: Payment): PaymentUI {
+export function normalizePaymentForUI(payment: any): PaymentUI {
   const user = typeof payment.user_id === 'object' ? payment.user_id : null;
+  
+  // Handle both snake_case and camelCase field names from API
+  const createdAt = payment.created_at || payment.createdAt || payment.date_created || '';
+  const updatedAt = payment.updated_at || payment.updatedAt || payment.date_updated || '';
   
   return {
     id: payment._id,
@@ -94,13 +100,14 @@ export function normalizePaymentForUI(payment: Payment): PaymentUI {
     paymentMethod: payment.payment_method,
     paymentType: payment.payment_type,
     status: payment.status,
-    customerName: user?.full_name || 'N/A',
+    customerName: user?.full_name || user?.fullname || 'N/A',
     customerEmail: user?.email,
+    customerAvatar: user?.avatar,
     transactionId: payment.transaction_id || payment.vnpay_transaction_no,
     notes: payment.notes,
     refundAmount: payment.refund_amount,
-    createdAt: payment.created_at,
-    updatedAt: payment.updated_at
+    createdAt: createdAt,
+    updatedAt: updatedAt
   };
 }
 
