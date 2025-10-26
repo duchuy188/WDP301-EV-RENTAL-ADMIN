@@ -40,6 +40,7 @@ export interface Vehicle {
 // Normalized Vehicle interface for UI (to maintain compatibility)
 export interface VehicleUI {
   id: string;
+  station?: any; // Station object with coordinates if populated
   licensePlate: string;
   model: string;
   brand: string;

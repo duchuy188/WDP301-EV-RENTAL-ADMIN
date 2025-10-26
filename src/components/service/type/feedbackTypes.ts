@@ -8,10 +8,10 @@ export type FeedbackCategory = 'vehicle' | 'staff' | 'payment' | 'service' | 'ot
 
 export interface Feedback {
   _id: string;
-  rental_id?: string;
-  user_id: string;
-  staff_id?: string;
-  staff_ids?: string[];
+  rental_id?: string | { _id: string; [key: string]: any };
+  user_id: string | { _id: string; [key: string]: any };
+  staff_id?: string | { _id: string; [key: string]: any };
+  staff_ids?: (string | { _id: string; [key: string]: any })[];
   type: FeedbackType;
   
   // Rating fields
@@ -28,7 +28,7 @@ export interface Feedback {
   category?: FeedbackCategory;
   status?: FeedbackStatus;
   response?: string;
-  resolved_by?: string;
+  resolved_by?: string | { _id: string; [key: string]: any };
   
   // Common fields
   images?: string[];
@@ -77,6 +77,18 @@ export interface UpdateFeedbackStatusPayload {
 
 export interface UpdateFeedbackStatusResponse {
   success: boolean;
+  data: Feedback;
+}
+
+export interface UpdateFeedbackPayload {
+  status?: FeedbackStatus;
+  response?: string;
+  comment?: string;
+}
+
+export interface UpdateFeedbackResponse {
+  success: boolean;
+  message: string;
   data: Feedback;
 }
 

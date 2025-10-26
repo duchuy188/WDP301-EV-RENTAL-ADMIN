@@ -205,78 +205,65 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
           >
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[calc(95vh-1rem)] overflow-hidden border border-gray-200/50 dark:border-gray-700/50">
               {/* Header */}
-              <div className="relative bg-gradient-to-r from-green-50 to-emerald-50 dark:from-gray-800 dark:to-gray-700 p-6 border-b border-gray-200/50 dark:border-gray-700/50">
-                <div className="flex items-center justify-between">
+              <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 dark:from-green-700 dark:to-emerald-800 p-6">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <div className="h-16 w-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center overflow-hidden shadow-lg ring-4 ring-white/20">
-                        {user.avatar ? (
-                          <img 
-                            src={user.avatar} 
-                            alt={user.fullname}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                              e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                            }}
-                          />
-                        ) : null}
-                        <User className={`h-8 w-8 text-white ${user.avatar ? 'hidden' : ''}`} />
-                      </div>
-                      {user.status === 'active' && (
-                        <div className="absolute -bottom-1 -right-1 h-5 w-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
-                          <div className="h-2 w-2 bg-white rounded-full"></div>
-                        </div>
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                      {user.avatar ? (
+                        <img 
+                          src={user.avatar} 
+                          alt={user.fullname}
+                          className="h-6 w-6 rounded-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>';
+                            }
+                          }}
+                        />
+                      ) : (
+                        <User className="h-6 w-6 text-white" />
                       )}
                     </div>
-                    <div className="flex-1">
+                    <div>
                       {isEditing ? (
                         <input
                           value={form.fullname || ''}
                           onChange={(e) => handleChange('fullname', e.target.value)}
-                          className="text-2xl font-bold bg-transparent border-b-2 border-green-300 dark:border-green-600 focus:outline-none focus:border-green-500 text-gray-900 dark:text-white transition-colors"
+                          className="text-2xl font-bold bg-white/20 border-b-2 border-white/40 focus:outline-none focus:border-white text-white placeholder-white/60 transition-colors px-2 py-1 rounded"
                           aria-label="Họ tên"
                           placeholder="Họ tên"
                         />
                       ) : (
-                        <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{user.fullname}</h2>
+                        <h2 className="text-2xl font-bold text-white">{user.fullname}</h2>
                       )}
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Badge variant="secondary" className="text-xs">
-                          {user.role}
-                        </Badge>
-                        <Badge variant={getStatusColor(user.status) as any} className="text-xs">
-                          {getStatusText(user.status)}
-                        </Badge>
-                      </div>
+                      <p className="text-green-100 text-sm mt-1 font-medium">
+                        {user.role} • {getStatusText(user.status)}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Button
-                      variant={isEditing ? "outline" : "default"}
-                      size="sm"
-                      onClick={() => setIsEditing((v) => !v)}
-                      className="h-9 px-4 transition-all duration-200 hover:scale-105"
-                    >
-                      {isEditing ? (
-                        <>
-                          <X className="h-4 w-4 mr-2" />
-                          Hủy
-                        </>
-                      ) : (
-                        <>
-                          <Edit3 className="h-4 w-4 mr-2" />
-                          Chỉnh sửa
-                        </>
-                      )}
-                    </Button>
+                    {!isEditing && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsEditing(true)}
+                        className="h-9 px-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white"
+                      >
+                        <Edit3 className="h-4 w-4 mr-2" />
+                        Chỉnh sửa
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={onClose}
-                      className="h-9 w-9 p-0 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      className="h-10 w-10 p-0 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full"
+                      title="Đóng"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-5 w-5" />
                     </Button>
                   </div>
                 </div>
@@ -507,34 +494,39 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
               </div>
 
               {/* Footer */}
-              <div className="flex justify-between items-center p-6 border-t border-gray-200/50 dark:border-gray-700/50 bg-gray-50/50 dark:bg-gray-800/50">
-                <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                  <div className="h-2 w-2 rounded-full bg-green-500"></div>
-                  <span>Thông tin được cập nhật theo thời gian thực</span>
-                </div>
-                <div className="flex space-x-3">
+              <div className="flex-shrink-0 border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-6">
+                <div className="flex justify-end space-x-3">
                   <Button 
+                    type="button"
                     variant="outline" 
-                    onClick={onClose} 
+                    onClick={isEditing ? () => setIsEditing(false) : onClose} 
                     disabled={saving}
-                    className="px-6 py-2 transition-all duration-200 hover:scale-105"
+                    className="px-6 py-3 h-12 border-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                   >
-                    Đóng
+                    {isEditing ? (
+                      <>
+                        <X className="h-4 w-4 mr-2" />
+                        Hủy
+                      </>
+                    ) : (
+                      'Đóng'
+                    )}
                   </Button>
                   {isEditing && (
                     <Button 
+                      type="button"
                       onClick={handleSave} 
                       disabled={saving}
-                      className="px-6 py-2 bg-green-600 hover:bg-green-700 transition-all duration-200 hover:scale-105"
+                      className="px-8 py-3 h-12 min-w-[160px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                     >
                       {saving ? (
                         <>
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                           Đang lưu...
                         </>
                       ) : (
                         <>
-                          <Save className="h-4 w-4 mr-2" />
+                          <Save className="h-5 w-5 mr-2" />
                           Lưu thay đổi
                         </>
                       )}

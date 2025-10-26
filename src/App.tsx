@@ -16,6 +16,9 @@ import RiskyCustomers from './pages/RiskyCustomers';
 import Assignment from './pages/Assignment';
 import Payments from './pages/Payments';
 import { FeedbackPage } from './pages/Feedback';
+import { MyRentalsPage } from './pages/MyRentals';
+import { MaintenancePage } from './pages/Maintenance';
+import { Chatbot } from './components/Chatbot';
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
@@ -73,14 +76,19 @@ function AppContent() {
                 <Route path="/customers/risky" element={<RiskyCustomers />} />
                 <Route path="/staff" element={<Staff />} />
                 <Route path="/staff/assignment" element={<Assignment />} />
+                <Route path="/staff/rentals" element={<MyRentalsPage />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/feedback" element={<FeedbackPage />} />
+                <Route path="/maintenance" element={<MaintenancePage />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </AnimatePresence>
           </div>
         </main>
+        
+        {/* Chatbot - Available on all pages */}
+        <Chatbot />
       </div>
     </div>
   );

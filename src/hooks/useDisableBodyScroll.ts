@@ -9,25 +9,26 @@ import { useEffect } from 'react';
 function useDisableBodyScroll(isOpen: boolean) {
   useEffect(() => {
     if (isOpen) {
-      // Save current scroll position
-      const scrollY = window.scrollY;
+      // Get original values
+      const originalOverflow = document.body.style.overflow;
+      const originalPaddingRight = document.body.style.paddingRight;
+      
+      // Calculate scrollbar width to prevent layout shift
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
       
       // Disable scroll on body
       document.body.style.overflow = 'hidden';
-      document.body.style.position = 'fixed';
-      document.body.style.top = `-${scrollY}px`;
-      document.body.style.width = '100%';
+      
+      // Add padding to prevent layout shift when scrollbar disappears
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
       
       // Cleanup function to restore scroll when modal closes
       return () => {
-        // Restore scroll
-        document.body.style.overflow = '';
-        document.body.style.position = '';
-        document.body.style.top = '';
-        document.body.style.width = '';
-        
-        // Restore scroll position
-        window.scrollTo(0, scrollY);
+        // Restore original styles
+        document.body.style.overflow = originalOverflow;
+        document.body.style.paddingRight = originalPaddingRight;
       };
     }
   }, [isOpen]);

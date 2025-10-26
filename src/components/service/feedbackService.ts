@@ -10,6 +10,8 @@ import type {
   GetFeedbackByIdResponse,
   UpdateFeedbackStatusPayload,
   UpdateFeedbackStatusResponse,
+  UpdateFeedbackPayload,
+  UpdateFeedbackResponse,
 } from './type/feedbackTypes';
 
 class FeedbackService {
@@ -66,7 +68,48 @@ class FeedbackService {
   }
 
   /**
+   * Update feedback (Admin)
+   * Updates feedback status, response, and comment
+   */
+  async updateFeedback(
+    id: string,
+    payload: UpdateFeedbackPayload
+  ): Promise<UpdateFeedbackResponse> {
+    try {
+      console.log('📝 FeedbackService: Updating feedback:', { id, payload });
+      
+      const response = await axiosInstance.put<UpdateFeedbackResponse>(
+        `/api/feedback/${id}`,
+        payload
+      );
+      
+      console.log('✅ FeedbackService: Feedback updated successfully:', response.data);
+      
+      // Validate response structure
+      if (!response.data || !response.data.data) {
+        throw new Error('Invalid response structure from server');
+      }
+      
+      return response.data;
+    } catch (error: any) {
+      console.error('❌ FeedbackService: Error updating feedback:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 403) {
+        throw new Error('Không có quyền cập nhật feedback này');
+      } else if (error.response?.status === 404) {
+        throw new Error('Không tìm thấy feedback');
+      } else if (error.response?.status === 500) {
+        throw new Error('Lỗi server khi cập nhật feedback');
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
    * Update feedback status (resolve complaint)
+   * @deprecated Use updateFeedback instead
    */
   async updateFeedbackStatus(
     id: string,
@@ -89,7 +132,7 @@ class FeedbackService {
   }
 
   /**
-   * Delete feedback
+   * Delete feedback (Admin - Soft delete)
    */
   async deleteFeedback(id: string): Promise<{ success: boolean; message: string }> {
     try {
@@ -98,9 +141,23 @@ class FeedbackService {
       const response = await axiosInstance.delete(`/api/feedback/${id}`);
       
       console.log('✅ FeedbackService: Feedback deleted successfully:', response.data);
+      
+      // Validate response structure
+      if (!response.data) {
+        throw new Error('Invalid response structure from server');
+      }
+      
       return response.data;
     } catch (error: any) {
       console.error('❌ FeedbackService: Error deleting feedback:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 404) {
+        throw new Error('Không tìm thấy feedback');
+      } else if (error.response?.status === 500) {
+        throw new Error('Lỗi server khi xóa feedback');
+      }
+      
       throw error;
     }
   }

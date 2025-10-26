@@ -16,6 +16,7 @@ import {
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
+import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import FeedbackService from '../components/service/feedbackService';
 import { Feedback, GetFeedbacksParams, FeedbackType, FeedbackStatus, FeedbackCategory } from '../components/service/type/feedbackTypes';
 import { showToast } from '../lib/toast';
@@ -131,12 +132,12 @@ export function FeedbackPage() {
   };
 
   // Table columns configuration
-  const columns: EnhancedColumn<Feedback>[] = [
+  const columns: EnhancedColumn[] = [
     {
       key: '_id',
-      label: 'ID',
+      header: 'ID',
       width: '120px',
-      render: (value) => (
+      render: (value: any) => (
         <div className="flex items-center gap-2">
           <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-400">
             {value.substring(0, 8)}
@@ -146,9 +147,9 @@ export function FeedbackPage() {
     },
     {
       key: 'type',
-      label: 'Loại',
+      header: 'Loại',
       width: '130px',
-      render: (value) => (
+      render: (value: any) => (
         <Badge variant={value === 'rating' ? 'default' : 'warning'} className="font-medium">
           {value === 'rating' ? (
             <><ThumbsUp className="w-3.5 h-3.5 mr-1.5" /> Đánh giá</>
@@ -160,9 +161,9 @@ export function FeedbackPage() {
     },
     {
       key: 'title',
-      label: 'Nội dung',
+      header: 'Nội dung',
       sortable: true,
-      render: (value, row) => (
+      render: (value: any, row: any) => (
         <div className="max-w-md py-1">
           <p className="font-semibold text-gray-900 dark:text-white truncate mb-1">
             {row.type === 'complaint' ? row.title : 'Đánh giá dịch vụ'}
@@ -175,9 +176,9 @@ export function FeedbackPage() {
     },
     {
       key: 'overall_rating',
-      label: 'Đánh giá',
+      header: 'Đánh giá',
       width: '140px',
-      render: (value, row) => {
+      render: (value: any, row: any) => {
         if (row.type === 'complaint') {
           return <span className="text-gray-400 text-sm">—</span>;
         }
@@ -195,9 +196,9 @@ export function FeedbackPage() {
     },
     {
       key: 'category',
-      label: 'Danh mục',
+      header: 'Danh mục',
       width: '130px',
-      render: (value, row) => {
+      render: (value: any, row: any) => {
         if (row.type === 'rating' || !value) {
           return <span className="text-gray-400 text-sm">—</span>;
         }
@@ -218,9 +219,9 @@ export function FeedbackPage() {
     },
     {
       key: 'status',
-      label: 'Trạng thái',
+      header: 'Trạng thái',
       width: '150px',
-      render: (value, row) => {
+      render: (value: any, row: any) => {
         if (row.type === 'rating') {
           return (
             <Badge variant="success" className="font-medium">
@@ -242,10 +243,10 @@ export function FeedbackPage() {
     },
     {
       key: 'createdAt',
-      label: 'Ngày tạo',
+      header: 'Ngày tạo',
       sortable: true,
       width: '180px',
-      render: (value) => (
+      render: (value: any) => (
         <div className="text-sm">
           <div className="font-medium text-gray-900 dark:text-white">
             {new Date(value).toLocaleDateString('vi-VN')}
@@ -258,18 +259,21 @@ export function FeedbackPage() {
     },
     {
       key: '_id',
-      label: 'Thao tác',
-      width: '120px',
-      render: (value, row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => handleViewDetails(row)}
-          className="hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300"
-        >
-          <Eye className="w-4 h-4 mr-1.5" />
-          Chi tiết
-        </Button>
+      header: 'Hành động',
+      width: '100px',
+      render: (value: any, row: any) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleViewDetails(row)}
+            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+            title="Xem chi tiết"
+            aria-label="Xem chi tiết"
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ];
@@ -479,11 +483,27 @@ export function FeedbackPage() {
             data={feedbacks}
             columns={columns}
             loading={loading}
-            pagination={pagination}
-            onPageChange={handlePageChange}
-            onLimitChange={handleLimitChange}
+            searchable={false}
+            exportable={false}
             emptyMessage="Không có phản hồi nào"
+            showInfo={false}
           />
+          
+          {/* Professional Pagination */}
+          {pagination.pages > 1 && (
+            <ProfessionalPagination
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleLimitChange}
+              pageSizeOptions={[10, 25, 50, 100]}
+              loading={loading}
+              itemsLabel="phản hồi"
+              className="mt-6"
+            />
+          )}
         </motion.div>
       </div>
 

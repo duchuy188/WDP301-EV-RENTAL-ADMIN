@@ -5,6 +5,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card } from '../components/ui/card';
+import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import { UserService } from '../components/service/userService';
 import { RiskyCustomer, RiskyCustomersParams } from '../components/service/type/userTypes';
 import { formatDate } from '../utils/dateUtils';
@@ -217,155 +218,136 @@ export default function RiskyCustomers() {
           <span className="ml-2 text-gray-600 dark:text-gray-400">Đang tải dữ liệu...</span>
         </div>
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Khách hàng
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Liên hệ
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Điểm rủi ro
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Mức độ
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Vi phạm
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Vi phạm gần nhất
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Trạng thái
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Thao tác
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {customers.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
-                      Không tìm thấy khách hàng rủi ro
-                    </td>
-                  </tr>
-                ) : (
-                  customers.map((customer) => (
-                    <motion.tr
-                      key={customer._id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {customer.fullname}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {customer.email}
-                        </div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {customer.phone}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-lg font-bold text-red-600">
-                          {customer.riskInfo.risk_score}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getRiskLevelBadge(customer.riskInfo.risk_level)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900 dark:text-white">
-                          {customer.riskInfo.total_violations} lần
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-500 dark:text-gray-400">
-                          {customer.riskInfo.last_violation_date 
-                            ? formatDate(customer.riskInfo.last_violation_date)
-                            : 'N/A'
-                          }
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Badge variant={customer.status === 'active' ? 'success' : 'destructive'}>
-                          {customer.status === 'active' ? 'Hoạt động' : 'Bị chặn'}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Button
-                          onClick={() => handleViewDetail(customer._id)}
-                          size="sm"
-                          variant="outline"
-                          className="border-primary-600 text-primary-600 hover:bg-primary-50"
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          Chi tiết
-                        </Button>
-                      </td>
-                    </motion.tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-500 dark:text-gray-400">
-                  Hiển thị {((pagination.page - 1) * pagination.limit) + 1} đến {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số {pagination.total} khách hàng
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setPagination(prev => ({ ...prev, page: Math.max(1, prev.page - 1) }))}
-                    disabled={pagination.page === 1}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Trước
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
-                      const page = i + 1;
-                      return (
-                        <Button
-                          key={page}
-                          onClick={() => setPagination(prev => ({ ...prev, page }))}
-                          variant={pagination.page === page ? 'default' : 'outline'}
-                          size="sm"
-                          className="min-w-[40px]"
-                        >
-                          {page}
-                        </Button>
-                      );
-                    })}
-                    {pagination.pages > 5 && <span className="px-2">...</span>}
-                  </div>
-                  <Button
-                    onClick={() => setPagination(prev => ({ ...prev, page: Math.min(prev.pages, prev.page + 1) }))}
-                    disabled={pagination.page === pagination.pages}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Sau
-                  </Button>
-                </div>
-              </div>
+        <>
+          <Card>
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Danh sách khách hàng rủi ro
+              </h2>
             </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Khách hàng
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Liên hệ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Điểm rủi ro
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Mức độ
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Vi phạm
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Vi phạm gần nhất
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Trạng thái
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Hành động
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                  {customers.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                        Không tìm thấy khách hàng rủi ro
+                      </td>
+                    </tr>
+                  ) : (
+                    customers.map((customer) => (
+                      <motion.tr
+                        key={customer._id}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900 dark:text-white">
+                            {customer.fullname}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {customer.email}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {customer.phone}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-lg font-bold text-red-600">
+                            {customer.riskInfo.risk_score}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getRiskLevelBadge(customer.riskInfo.risk_level)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 dark:text-white">
+                            {customer.riskInfo.total_violations} lần
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500 dark:text-gray-400">
+                            {customer.riskInfo.last_violation_date 
+                              ? formatDate(customer.riskInfo.last_violation_date)
+                              : 'Chưa có'
+                            }
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <Badge variant={customer.status === 'active' ? 'success' : 'destructive'}>
+                            {customer.status === 'active' ? 'Hoạt động' : 'Bị chặn'}
+                          </Badge>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDetail(customer._id)}
+                              className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+                              title="Xem chi tiết khách hàng rủi ro"
+                              aria-label="Xem chi tiết khách hàng rủi ro"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Professional Pagination */}
+          {pagination.pages > 1 && (
+            <ProfessionalPagination
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+              onPageChange={(page) => setPagination(prev => ({ ...prev, page }))}
+              onItemsPerPageChange={(limit) => {
+                setPagination(prev => ({ ...prev, limit, page: 1 }));
+              }}
+              pageSizeOptions={[10, 25, 50, 100]}
+              loading={loading}
+              itemsLabel="khách hàng rủi ro"
+            />
           )}
-        </Card>
+        </>
       )}
 
       {/* Detail Modal */}

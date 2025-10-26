@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react';
-import { X, Save, AlertCircle, CheckCircle, Car, Zap, DollarSign, MapPin, RefreshCw, Edit } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Save, AlertCircle, Car, Zap, DollarSign, MapPin, RefreshCw, Edit } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { ColorPicker } from './ui/color-picker';
 import { vehicleService } from './service/vehicleService';
 import { stationService } from './service/stationService';
+import { showToast } from '../lib/toast';
 import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 import type { VehicleUI, UpdateVehicleRequest, VehicleStatus, VehicleType } from './service/type/vehicleTypes';
 import type { Station } from './service/type/stationTypes';
@@ -26,8 +28,7 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
   const [brands, setBrands] = useState<string[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [loadingBrands, setLoadingBrands] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
     name: '',
@@ -67,6 +68,7 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
         stationId: vehicle.stationId || '',
         isActive: vehicle.isActive !== false
       });
+      setErrors({});
     }
   }, [vehicle]);
 
@@ -113,15 +115,34 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
     }
   };
 
+  const validateForm = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.name.trim()) newErrors.name = 'Tên xe là bắt buộc';
+    if (!formData.licensePlate.trim()) newErrors.licensePlate = 'Biển số là bắt buộc';
+    if (!formData.brand.trim()) newErrors.brand = 'Thương hiệu là bắt buộc';
+    if (!formData.model.trim()) newErrors.model = 'Model là bắt buộc';
+    if (!formData.color.trim()) newErrors.color = 'Màu sắc là bắt buộc';
+    if (formData.year < 2000 || formData.year > 2030) newErrors.year = 'Năm sản xuất không hợp lệ';
+    if (formData.batteryCapacity <= 0) newErrors.batteryCapacity = 'Dung lượng pin phải lớn hơn 0';
+    if (formData.maxRange <= 0) newErrors.maxRange = 'Quãng đường tối đa phải lớn hơn 0';
+    if (formData.batteryLevel < 0 || formData.batteryLevel > 100) newErrors.batteryLevel = 'Mức pin phải từ 0-100%';
+    if (formData.pricePerDay <= 0) newErrors.pricePerDay = 'Giá thuê phải lớn hơn 0';
+    if (formData.depositPercentage < 0 || formData.depositPercentage > 100) newErrors.depositPercentage = 'Phần trăm cọc phải từ 0-100%';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!vehicle) return;
+    
+    if (!validateForm()) return;
 
     try {
       setLoading(true);
-      setError(null);
-      setSuccess(false);
 
       const updateData: UpdateVehicleRequest = {
         name: formData.name,
@@ -151,130 +172,126 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
         await vehicleService.updateVehicleStatus(vehicle.id, { status: formData.status });
       }
 
-      setSuccess(true);
-      setTimeout(() => {
-        onVehicleUpdated();
-        onClose();
-      }, 1500);
+      showToast.success('Cập nhật thông tin xe thành công!');
+      onVehicleUpdated();
+      onClose();
     } catch (error: any) {
       console.error('Error updating vehicle:', error);
-      setError(error.message || 'Có lỗi xảy ra khi cập nhật xe');
+      const errorMessage = error.response?.data?.message || error.message || 'Có lỗi xảy ra khi cập nhật xe';
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
   const handleClose = () => {
-    setError(null);
-    setSuccess(false);
+    setErrors({});
     onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="modal-backdrop flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-hidden">
-        {/* Header */}
-        <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-                <Edit className="h-6 w-6" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-bold">
-                  Chỉnh sửa thông tin xe
-                </h2>
-                <p className="text-sm text-blue-100 mt-1 font-medium">
-                  {vehicle?.licensePlate} • {vehicle?.brand} {vehicle?.model}
-                </p>
-              </div>
-            </div>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={handleClose}
-              className="text-white hover:bg-white/20 transition-colors"
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="modal-backdrop"
+            onClick={handleClose}
+          />
+
+          {/* Modal Container */}
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 pointer-events-none">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="h-5 w-5" />
-            </Button>
+          {/* Header with gradient - Fixed */}
+          <div className="relative bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-700 dark:to-indigo-800 p-6 flex-shrink-0">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+            <div className="relative flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                  <Edit className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    Chỉnh sửa thông tin xe
+                  </h2>
+                  <p className="text-sm text-blue-100 mt-1 font-medium">
+                    {vehicle?.licensePlate} • {vehicle?.brand} {vehicle?.model}
+                  </p>
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={handleClose}
+                className="text-white hover:bg-white/20 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
           </div>
-        </div>
         
         <div className="max-h-[calc(90vh-100px)] overflow-y-auto">
 
           {/* Content */}
           <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Success Message */}
-            {success && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-300 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-green-500 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-green-800 block">
-                      Cập nhật thành công!
-                    </span>
-                    <span className="text-xs text-green-600">
-                      Thông tin xe đã được cập nhật
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-              <div className="bg-gradient-to-r from-red-50 to-rose-50 border-2 border-red-300 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <div className="p-2 bg-red-500 rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-red-800 block">
-                      Có lỗi xảy ra!
-                    </span>
-                    <span className="text-xs text-red-600">
-                      {error}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
 
             {/* Basic Information */}
-            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg mr-3">
+            <Card className="border-2 border-gray-200 dark:border-gray-700">
+              <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="flex items-center space-x-2 text-base">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
                     <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
-                  Thông tin cơ bản
+                  <span>Thông tin cơ bản</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Tên xe *
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Tên xe <span className="text-red-500">*</span>
                   </label>
                   <Input
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className={errors.name ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {errors.name && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.name}
+                    </p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Biển số *
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                    Biển số <span className="text-red-500">*</span>
                   </label>
                   <Input
                     value={formData.licensePlate}
                     onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
+                    className={errors.licensePlate ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {errors.licensePlate && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.licensePlate}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -357,6 +374,12 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                     value={formData.color}
                     onChange={(color) => setFormData({ ...formData, color })}
                   />
+                  {errors.color && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.color}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -379,16 +402,16 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
           </Card>
 
             {/* Technical Specifications */}
-            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
-                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg mr-3">
+            <Card className="border-2 border-gray-200 dark:border-gray-700">
+              <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="flex items-center space-x-2 text-base">
+                  <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                     <Zap className="h-5 w-5 text-green-600 dark:text-green-400" />
                   </div>
-                  Thông số kỹ thuật
+                  <span>Thông số kỹ thuật</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -436,16 +459,16 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
           </Card>
 
             {/* Pricing */}
-            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
-                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg mr-3">
+            <Card className="border-2 border-gray-200 dark:border-gray-700">
+              <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="flex items-center space-x-2 text-base">
+                  <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
                     <DollarSign className="h-5 w-5 text-amber-600 dark:text-amber-400" />
                   </div>
-                  Giá thuê
+                  <span>Giá thuê</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -479,16 +502,16 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
           </Card>
 
             {/* Status and Location */}
-            <Card className="border-2 border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-md transition-shadow">
-              <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg mr-3">
+            <Card className="border-2 border-gray-200 dark:border-gray-700">
+              <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
+                <CardTitle className="flex items-center space-x-2 text-base">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
                     <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                   </div>
-                  Trạng thái và vị trí
+                  <span>Trạng thái và vị trí</span>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6">
+              <CardContent className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -576,7 +599,10 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
             </div>
           </form>
         </div>
-      </div>
-    </div>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

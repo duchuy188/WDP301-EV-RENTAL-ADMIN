@@ -14,7 +14,6 @@ import {
   Users,
   Grid3X3,
   List,
-  Map,
   Filter,
   X,
   Eye,
@@ -22,7 +21,6 @@ import {
 } from 'lucide-react';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { VehicleCardGrid } from '../components/VehicleCardGrid';
-import { VehicleMapView } from '../components/VehicleMapView';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -45,6 +43,7 @@ export function Fleet() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | null>(null);
   const [typeFilter, setTypeFilter] = useState<VehicleType | null>(null);
+  const [colorFilter, setColorFilter] = useState<string | null>(null);
   const [batteryFilter] = useState<{ min: number; max: number } | null>(null);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [sortBy, setSortBy] = useState<'name' | 'battery' | 'price' | 'year'>('name');
@@ -58,7 +57,7 @@ export function Fleet() {
   const [assignmentModalOpen, setAssignmentModalOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleUI | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
-  const [viewMode, setViewMode] = useState<'table' | 'grid' | 'map'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   // Load data
   useEffect(() => {
@@ -73,7 +72,7 @@ export function Fleet() {
     }, 300); // Debounce search
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter, typeFilter, batteryFilter]);
+  }, [searchTerm, statusFilter, typeFilter, colorFilter, batteryFilter]);
 
   const loadVehicles = async () => {
     try {
@@ -84,6 +83,7 @@ export function Fleet() {
         search: searchTerm,
         status: statusFilter || undefined,
         type: typeFilter || undefined,
+        color: colorFilter || undefined,
         batteryLevelMin: batteryFilter?.min,
         batteryLevelMax: batteryFilter?.max
       });
@@ -235,11 +235,32 @@ export function Fleet() {
       
       const matchesStatus = !statusFilter || vehicle.status === statusFilter;
       const matchesType = !typeFilter || vehicle.type === typeFilter;
+      const matchesColor = !colorFilter || (() => {
+        const vehicleColorLower = vehicle.color.toLowerCase();
+        const filterColorLower = colorFilter.toLowerCase();
+        
+        // Map filter colors to possible vehicle color values
+        const colorMappings: { [key: string]: string[] } = {
+          'red': ['red', 'đỏ'],
+          'blue': ['blue', 'xanh dương', 'xanh d'],
+          'green': ['green', 'xanh lá', 'xanh l'],
+          'yellow': ['yellow', 'vàng'],
+          'black': ['black', 'đen'],
+          'white': ['white', 'trắng'],
+          'orange': ['orange', 'cam'],
+          'purple': ['purple', 'tím'],
+          'pink': ['pink', 'hồng'],
+          'gray': ['gray', 'grey', 'xám']
+        };
+        
+        const possibleValues = colorMappings[filterColorLower] || [filterColorLower];
+        return possibleValues.some(value => vehicleColorLower.includes(value));
+      })();
       
       const matchesBattery = !batteryFilter || 
         (vehicle.batteryLevel >= batteryFilter.min && vehicle.batteryLevel <= batteryFilter.max);
       
-      return matchesSearch && matchesStatus && matchesType && matchesBattery;
+      return matchesSearch && matchesStatus && matchesType && matchesColor && matchesBattery;
     })
     .sort((a, b) => {
       switch (sortBy) {
@@ -313,6 +334,55 @@ export function Fleet() {
       )
     },
     {
+      key: 'color',
+      header: 'Màu sắc',
+      sortable: true,
+      filterable: true,
+      render: (value: string) => {
+        // Map color values to display properties
+        const getColorConfig = (color: string) => {
+          const colorLower = color.toLowerCase();
+          if (colorLower.includes('red') || colorLower.includes('đỏ')) {
+            return { bgClass: 'bg-red-500', label: 'Đỏ' };
+          } else if (colorLower.includes('blue') || colorLower.includes('xanh dương') || colorLower.includes('xanh d')) {
+            return { bgClass: 'bg-blue-500', label: 'Xanh dương' };
+          } else if (colorLower.includes('green') || colorLower.includes('xanh lá') || colorLower.includes('xanh l')) {
+            return { bgClass: 'bg-green-500', label: 'Xanh lá' };
+          } else if (colorLower.includes('yellow') || colorLower.includes('vàng')) {
+            return { bgClass: 'bg-yellow-500', label: 'Vàng' };
+          } else if (colorLower.includes('black') || colorLower.includes('đen')) {
+            return { bgClass: 'bg-gray-900', label: 'Đen' };
+          } else if (colorLower.includes('white') || colorLower.includes('trắng')) {
+            return { bgClass: 'bg-white border border-gray-300', label: 'Trắng' };
+          } else if (colorLower.includes('orange') || colorLower.includes('cam')) {
+            return { bgClass: 'bg-orange-500', label: 'Cam' };
+          } else if (colorLower.includes('purple') || colorLower.includes('tím')) {
+            return { bgClass: 'bg-purple-500', label: 'Tím' };
+          } else if (colorLower.includes('pink') || colorLower.includes('hồng')) {
+            return { bgClass: 'bg-pink-500', label: 'Hồng' };
+          } else if (colorLower.includes('gray') || colorLower.includes('grey') || colorLower.includes('xám')) {
+            return { bgClass: 'bg-gray-500', label: 'Xám' };
+          } else {
+            return { bgClass: 'bg-gray-400', label: value };
+          }
+        };
+
+        const colorConfig = getColorConfig(value);
+        
+        return (
+          <div className="flex items-center space-x-2">
+            <div 
+              className={`w-4 h-4 rounded-full border border-gray-300 ${colorConfig.bgClass}`}
+              title={value}
+            />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {colorConfig.label}
+            </span>
+          </div>
+        );
+      }
+    },
+    {
       key: 'batteryLevel',
       header: 'Pin (%)',
       sortable: true,
@@ -337,43 +407,47 @@ export function Fleet() {
     },
     {
       key: 'actions',
-      header: 'Thao tác',
+      header: 'Hành động',
       render: (_value: any, row: VehicleUI) => (
-        <div className="flex space-x-2">
+        <div className="flex items-center gap-2">
           <Button 
-            size="sm" 
-            variant="outline"
+            variant="ghost"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               handleViewVehicle(row);
             }}
-            className="hover:bg-blue-50 hover:border-blue-300"
+            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+            title="Xem chi tiết xe"
+            aria-label="Xem chi tiết xe"
           >
-            <Eye className="h-3 w-3 mr-1" />
-            Xem
+            <Eye className="h-4 w-4" />
           </Button>
           <Button 
-            size="sm" 
-            variant="outline"
+            variant="ghost"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               handleEditVehicle(row);
             }}
+            className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400 border border-green-200 dark:border-green-800"
+            title="Chỉnh sửa xe"
+            aria-label="Chỉnh sửa xe"
           >
-            <Edit className="h-3 w-3 mr-1" />
-            Sửa
+            <Edit className="h-4 w-4" />
           </Button>
           <Button 
-            size="sm" 
-            variant="outline" 
-            className="text-red-600 hover:text-red-700 hover:bg-red-50 hover:border-red-300"
+            variant="ghost"
+            size="sm"
             onClick={(e) => {
               e.stopPropagation();
               handleDeleteVehicle(row);
             }}
+            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border border-red-200 dark:border-red-800"
+            title="Xóa xe"
+            aria-label="Xóa xe"
           >
-            <Trash2 className="h-3 w-3 mr-1" />
-            Xóa
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       )
@@ -630,13 +704,14 @@ export function Fleet() {
                     Bộ lọc nâng cao
                   </h3>
                   <div className="flex items-center space-x-2">
-                    {(statusFilter || typeFilter || searchTerm) && (
+                    {(statusFilter || typeFilter || colorFilter || searchTerm) && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => {
                           setStatusFilter(null);
                           setTypeFilter(null);
+                          setColorFilter(null);
                           setSearchTerm('');
                         }}
                         className="h-9 px-4 text-sm border-2 border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-900/20 font-semibold"
@@ -656,7 +731,7 @@ export function Fleet() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
                 {/* Status Filter */}
                 <div>
                   <label className="flex items-center text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
@@ -742,7 +817,8 @@ export function Fleet() {
 
                 {/* Type Filter */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="flex items-center text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
+                    <div className="w-1 h-4 bg-green-600 rounded-full mr-2"></div>
                     Loại xe
                   </label>
                   <div className="space-y-2">
@@ -782,6 +858,58 @@ export function Fleet() {
                         Mô tô điện
                       </span>
                     </label>
+                  </div>
+                </div>
+
+                {/* Color Filter */}
+                <div>
+                  <label className="flex items-center text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
+                    <div className="w-1 h-4 bg-purple-600 rounded-full mr-2"></div>
+                    Màu sắc
+                  </label>
+                  <div className="space-y-2">
+                    <label className="flex items-center space-x-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="color"
+                        checked={colorFilter === null}
+                        onChange={() => setColorFilter(null)}
+                        className="text-blue-600"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Tất cả màu
+                      </span>
+                    </label>
+                    {[
+                      { key: 'red', label: 'Đỏ', bgClass: 'bg-red-500' },
+                      { key: 'blue', label: 'Xanh dương', bgClass: 'bg-blue-500' },
+                      { key: 'green', label: 'Xanh lá', bgClass: 'bg-green-500' },
+                      { key: 'yellow', label: 'Vàng', bgClass: 'bg-yellow-500' },
+                      { key: 'black', label: 'Đen', bgClass: 'bg-gray-900' },
+                      { key: 'white', label: 'Trắng', bgClass: 'bg-white border border-gray-300' },
+                      { key: 'orange', label: 'Cam', bgClass: 'bg-orange-500' },
+                      { key: 'purple', label: 'Tím', bgClass: 'bg-purple-500' },
+                      { key: 'pink', label: 'Hồng', bgClass: 'bg-pink-500' },
+                      { key: 'gray', label: 'Xám', bgClass: 'bg-gray-500' }
+                    ].map((color) => (
+                      <label key={color.key} className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="color"
+                          checked={colorFilter === color.key}
+                          onChange={() => setColorFilter(color.key)}
+                          className="text-blue-600"
+                        />
+                        <div className="flex items-center space-x-2">
+                          <div 
+                            className={`w-3 h-3 rounded-full border border-gray-300 ${color.bgClass}`}
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            {color.label}
+                          </span>
+                        </div>
+                      </label>
+                    ))}
                   </div>
                 </div>
 
@@ -892,7 +1020,7 @@ export function Fleet() {
                     📊 Dữ liệu demo
                   </Badge>
                 )}
-                {(statusFilter || typeFilter || searchTerm) && (
+                {(statusFilter || typeFilter || colorFilter || searchTerm) && (
                   <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     🔍 Đang lọc
                   </Badge>
@@ -917,15 +1045,6 @@ export function Fleet() {
                 >
                   <Grid3X3 className="h-4 w-4 mr-1.5" />
                   Card
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
-                  onClick={() => setViewMode('map')}
-                >
-                  <Map className="h-4 w-4 mr-1.5" />
-                  Map
                 </Button>
 
                 {/* Action Buttons */}
@@ -992,7 +1111,7 @@ export function Fleet() {
                     📊 Dữ liệu demo
                   </Badge>
                 )}
-                {(statusFilter || typeFilter || searchTerm) && (
+                {(statusFilter || typeFilter || colorFilter || searchTerm) && (
                   <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     🔍 Đang lọc
                   </Badge>
@@ -1017,15 +1136,6 @@ export function Fleet() {
                 >
                   <Grid3X3 className="h-4 w-4 mr-1.5" />
                   Card
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="border-2 border-gray-300 hover:bg-gray-50 font-medium"
-                  onClick={() => setViewMode('map')}
-                >
-                  <Map className="h-4 w-4 mr-1.5" />
-                  Map
                 </Button>
 
                 {/* Action Buttons */}
@@ -1080,7 +1190,6 @@ export function Fleet() {
               onRowClick={handleViewVehicle}
               emptyMessage="Không có xe nào"
               showInfo={false}
-              showColumnSettings={false}
             />
           </div>
         ) : (
@@ -1096,7 +1205,7 @@ export function Fleet() {
                     📊 Dữ liệu demo
                   </Badge>
                 )}
-                {(statusFilter || typeFilter || searchTerm) && (
+                {(statusFilter || typeFilter || colorFilter || searchTerm) && (
                   <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     🔍 Đang lọc
                   </Badge>
@@ -1122,14 +1231,6 @@ export function Fleet() {
                 >
                   <Grid3X3 className="h-4 w-4 mr-1.5" />
                   Card
-                </Button>
-                <Button
-                  size="sm"
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md"
-                  onClick={() => setViewMode('map')}
-                >
-                  <Map className="h-4 w-4 mr-1.5" />
-                  Map
                 </Button>
 
                 {/* Action Buttons */}
@@ -1172,10 +1273,19 @@ export function Fleet() {
               </div>
             </div>
 
-            <VehicleMapView
-              vehicles={filteredVehicles}
+            {/* Table View */}
+            <EnhancedDataTable
+              columns={vehicleColumns}
+              data={filteredVehicles}
               loading={loading}
-              onVehicleClick={handleViewVehicle}
+              searchable={false}
+              exportable={false}
+              selectable={false}
+              pageSize={10}
+              pageSizeOptions={[5, 10, 20, 50]}
+              onRowClick={handleViewVehicle}
+              emptyMessage="Không có xe nào"
+              showInfo={false}
             />
           </div>
         )}

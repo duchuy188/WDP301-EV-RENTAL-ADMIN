@@ -32,6 +32,7 @@ import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { stationService } from './service/stationService';
+import { vehicleService } from './service/vehicleService';
 import { StationDetail, StationVehicle, StationStaff } from './service/type/stationTypes';
 import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
@@ -56,7 +57,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
   // Vehicle filters
   const [vehicleFilter, setVehicleFilter] = useState<{
     type?: 'scooter' | 'motorcycle';
-    status?: 'available' | 'rented' | 'maintenance';
+    status?: 'draft' | 'available' | 'reserved' | 'rented' | 'maintenance';
     sort?: 'name' | 'price';
   }>({ sort: 'name' });
   
@@ -92,11 +93,68 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('🔍 Loading station detail for ID:', stationId);
+      console.log('📋 Vehicle filters:', vehicleFilter);
+      
+      // Load station basic info
       const response = await stationService.getStationById(stationId, vehicleFilter);
+      
+      console.log('✅ Station detail response:', response);
+      console.log('📦 Response structure:', {
+        hasStation: !!response.station,
+        hasVehicles: !!response.station?.vehicles,
+        vehicleCount: response.station?.vehicles?.length || 0,
+        currentVehicles: response.station?.current_vehicles,
+        vehicles: response.station?.vehicles
+      });
+      
+      // If API doesn't return vehicles array, fetch them separately
+      if (!response.station?.vehicles || response.station.vehicles.length === 0) {
+        if (response.station.current_vehicles > 0) {
+          console.log('⚠️ API không trả về mảng vehicles, đang fetch riêng...');
+          
+          try {
+            // Fetch vehicles for this station using vehicles API
+            const vehiclesResponse = await vehicleService.getVehiclesForAdmin({
+              page: 1,
+              limit: 1000,
+              // Filter by station if backend supports it
+            });
+            
+            console.log('🚗 Fetched vehicles from vehicles API:', vehiclesResponse);
+            
+            // Filter vehicles by station ID on client side
+            const stationVehicles = (vehiclesResponse.data || [])
+              .filter((v: any) => {
+                const vStationId = v.stationId || v.station_id || v.station?._id;
+                return vStationId === stationId;
+              })
+              .map((v: any) => ({
+                _id: v._id || v.id,
+                name: v.name || v.licensePlate,
+                model: v.model,
+                type: v.type,
+                price_per_day: v.price_per_day || v.pricePerDay || 0,
+                status: v.status,
+                current_battery: v.current_battery || v.currentBattery || v.batteryLevel || 0,
+                main_image: v.main_image || v.mainImage || v.images?.[0] || ''
+              }));
+            
+            console.log('✅ Filtered vehicles for this station:', stationVehicles.length);
+            
+            // Update station with vehicles
+            response.station.vehicles = stationVehicles;
+          } catch (vehicleError) {
+            console.error('❌ Error fetching vehicles:', vehicleError);
+          }
+        }
+      }
+      
       setStation(response.station);
       setCurrentImageIndex(0); // Reset image index
     } catch (error) {
-      console.error('Error loading station detail:', error);
+      console.error('❌ Error loading station detail:', error);
       setError('Không thể tải dữ liệu trạm. Vui lòng thử lại.');
     } finally {
       setLoading(false);
@@ -124,27 +182,52 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
 
   const getVehicleStatusColor = (status: string) => {
     switch (status) {
+      case 'draft':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       case 'available':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300';
+      case 'reserved':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300';
       case 'rented':
-        return 'bg-green-100 text-green-800';
+        return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300';
       case 'maintenance':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
 
   const getVehicleStatusIcon = (status: string) => {
     switch (status) {
+      case 'draft':
+        return <XCircle className="h-4 w-4" />;
       case 'available':
         return <CheckCircle className="h-4 w-4" />;
+      case 'reserved':
+        return <Calendar className="h-4 w-4" />;
       case 'rented':
         return <Car className="h-4 w-4" />;
       case 'maintenance':
         return <AlertTriangle className="h-4 w-4" />;
       default:
         return <XCircle className="h-4 w-4" />;
+    }
+  };
+
+  const getVehicleStatusText = (status: string) => {
+    switch (status) {
+      case 'draft':
+        return 'Draft';
+      case 'available':
+        return 'Sẵn sàng';
+      case 'reserved':
+        return 'Đã đặt';
+      case 'rented':
+        return 'Đang thuê';
+      case 'maintenance':
+        return 'Bảo trì';
+      default:
+        return status;
     }
   };
 
@@ -747,26 +830,41 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                 {activeTab === 'vehicles' && (
                   <div className="space-y-6">
                     {/* Vehicle Statistics - Compact */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                        <XCircle className="h-5 w-5 mx-auto mb-2 text-gray-600" />
+                        <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
+                          {(station.vehicles || []).filter(v => v.status === 'draft').length}
+                        </div>
+                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Draft</div>
+                      </div>
                       <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800 hover:shadow-md transition-shadow">
                         <CheckCircle className="h-5 w-5 mx-auto mb-2 text-green-600" />
-                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">{station.available_vehicles}</div>
+                        <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+                          {(station.vehicles || []).filter(v => v.status === 'available').length}
+                        </div>
                         <div className="text-xs font-medium text-green-700 dark:text-green-300">Sẵn sàng</div>
                       </div>
                       <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800 hover:shadow-md transition-shadow">
-                        <Car className="h-5 w-5 mx-auto mb-2 text-blue-600" />
-                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{station.rented_vehicles}</div>
-                        <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Đang thuê</div>
+                        <Calendar className="h-5 w-5 mx-auto mb-2 text-blue-600" />
+                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                          {(station.vehicles || []).filter(v => v.status === 'reserved').length}
+                        </div>
+                        <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Đã đặt</div>
+                      </div>
+                      <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl border border-indigo-200 dark:border-indigo-800 hover:shadow-md transition-shadow">
+                        <Car className="h-5 w-5 mx-auto mb-2 text-indigo-600" />
+                        <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                          {(station.vehicles || []).filter(v => v.status === 'rented').length}
+                        </div>
+                        <div className="text-xs font-medium text-indigo-700 dark:text-indigo-300">Đang thuê</div>
                       </div>
                       <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl border border-yellow-200 dark:border-yellow-800 hover:shadow-md transition-shadow">
                         <AlertTriangle className="h-5 w-5 mx-auto mb-2 text-yellow-600" />
-                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">{station.maintenance_vehicles}</div>
+                        <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                          {(station.vehicles || []).filter(v => v.status === 'maintenance').length}
+                        </div>
                         <div className="text-xs font-medium text-yellow-700 dark:text-yellow-300">Bảo trì</div>
-                      </div>
-                      <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                        <BarChart3 className="h-5 w-5 mx-auto mb-2 text-gray-600" />
-                        <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">{station.current_vehicles}</div>
-                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Tổng cộng</div>
                       </div>
                     </div>
 
@@ -787,7 +885,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                 ...prev, 
                                 type: e.target.value as 'scooter' | 'motorcycle' || undefined 
                               }))}
-                              className="text-sm border rounded-md px-2 py-1"
+                              className="text-sm border rounded-md px-2 py-1 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                               title="Lọc theo loại xe"
                             >
                               <option value="">Tất cả loại</option>
@@ -799,13 +897,15 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                               value={vehicleFilter.status || ''}
                               onChange={(e) => setVehicleFilter(prev => ({ 
                                 ...prev, 
-                                status: e.target.value as 'available' | 'rented' | 'maintenance' || undefined 
+                                status: e.target.value as 'draft' | 'available' | 'reserved' | 'rented' | 'maintenance' || undefined 
                               }))}
-                              className="text-sm border rounded-md px-2 py-1"
+                              className="text-sm border rounded-md px-2 py-1 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                               title="Lọc theo trạng thái xe"
                             >
                               <option value="">Tất cả trạng thái</option>
+                              <option value="draft">Draft</option>
                               <option value="available">Sẵn sàng</option>
+                              <option value="reserved">Đã đặt</option>
                               <option value="rented">Đang thuê</option>
                               <option value="maintenance">Bảo trì</option>
                             </select>
@@ -816,7 +916,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                 ...prev, 
                                 sort: e.target.value as 'name' | 'price' 
                               }))}
-                              className="text-sm border rounded-md px-2 py-1"
+                              className="text-sm border rounded-md px-2 py-1 dark:bg-gray-700 dark:text-white dark:border-gray-600"
                               title="Sắp xếp xe"
                             >
                               <option value="name">Sắp xếp theo tên</option>
@@ -833,11 +933,12 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                               <Car className="relative h-20 w-20 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Chưa có phương tiện</h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">Trạm này chưa có xe nào được phân bổ</p>
-                            <Button variant="outline" className="mt-2">
-                              <Plus className="h-4 w-4 mr-2" />
-                              Thêm xe vào trạm
-                            </Button>
+                            <p className="text-gray-500 dark:text-gray-400 mb-6">Trạm này chưa có xe nào được phân bổ</p>
+                            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4 max-w-md mx-auto">
+                              <p className="text-sm text-blue-800 dark:text-blue-300">
+                                💡 Để phân bổ xe cho trạm này, vui lòng vào trang <strong>Quản lý đội xe</strong>
+                              </p>
+                            </div>
                           </div>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -864,10 +965,9 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                       <p className="text-sm text-gray-500">{vehicle.model}</p>
                                       
                                       <div className="flex items-center justify-between mt-2">
-                                        <Badge className={getVehicleStatusColor(vehicle.status)}>
+                                        <Badge className={`${getVehicleStatusColor(vehicle.status)} flex items-center gap-1`}>
                                           {getVehicleStatusIcon(vehicle.status)}
-                                          {vehicle.status === 'available' ? 'Sẵn sàng' :
-                                           vehicle.status === 'rented' ? 'Đang thuê' : 'Bảo trì'}
+                                          <span>{getVehicleStatusText(vehicle.status)}</span>
                                         </Badge>
                                         
                                         <div className="flex items-center space-x-1 text-xs text-gray-500">
@@ -882,13 +982,9 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                         <div className="text-lg font-bold text-green-600">
                                           {formatPrice(vehicle.price_per_day)}
                                         </div>
-                                        <Button 
-                                          size="sm" 
-                                          className="text-xs"
-                                          disabled={vehicle.status !== 'available'}
-                                        >
-                                          Thuê ngay
-                                        </Button>
+                                        <div className="text-xs text-gray-500">
+                                          /ngày
+                                        </div>
                                       </div>
                                     </div>
                                   </div>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, Clock, Users, Phone, Mail, Image, Building2, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, MapPin, Clock, Phone, Building2, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -298,6 +298,7 @@ export function EditStationModal({ isOpen, onClose, onSuccess, station }: EditSt
                           )}
                         </div>
                       </div>
+
 
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">

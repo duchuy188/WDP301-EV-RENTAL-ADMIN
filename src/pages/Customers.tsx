@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, CreditCard, Loader2, Search, Eye, Lock, Unlock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, RefreshCw } from 'lucide-react';
+import { User, CreditCard, Loader2, Search, Eye, Lock, Unlock, RefreshCw } from 'lucide-react';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import { UserService } from '../components/service/userService';
 import { User as UserType, UsersParams } from '../components/service/type/userTypes';
 import { UserDetailModal } from '../components/UserDetailModal';
@@ -212,7 +213,9 @@ export function Customers() {
       render: (value: string, _row: any) => (
         <div className="flex items-center space-x-2">
           <CreditCard className="h-4 w-4 text-gray-500" />
-          <span className="font-mono text-sm">{value}</span>
+          <span className={`font-mono text-sm ${!value ? 'text-gray-400 italic' : ''}`}>
+            {value || 'Chưa có SĐT'}
+          </span>
         </div>
       )
     },
@@ -489,105 +492,20 @@ export function Customers() {
             emptyMessage="Không có khách hàng nào"
           />
           
-          {/* Server-side Pagination */}
+          {/* Professional Pagination */}
           {pagination.pages > 1 && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-6 bg-white dark:bg-gray-800 rounded-lg p-4 shadow-sm border border-gray-200 dark:border-gray-700"
-            >
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-                {/* Page info */}
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Hiển thị {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số <span className="font-semibold text-gray-900 dark:text-white">{pagination.total}</span> khách hàng
-                </div>
-
-                {/* Items per page selector */}
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-600 dark:text-gray-400">
-                    Hiển thị:
-                  </label>
-                  <select
-                    value={filters.limit}
-                    onChange={(e) => handleFilterChange('limit', Number(e.target.value))}
-                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
-                    title="Số mục mỗi trang"
-                    aria-label="Số mục mỗi trang"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                    <option value={100}>100</option>
-                  </select>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">/ trang</span>
-                </div>
-
-                {/* Pagination buttons */}
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('page', 1)}
-                    disabled={pagination.page === 1}
-                  >
-                    <ChevronsLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('page', pagination.page - 1)}
-                    disabled={pagination.page === 1}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  
-                  {/* Page numbers */}
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: Math.min(5, pagination.pages) }, (_, i) => {
-                      let pageNum;
-                      if (pagination.pages <= 5) {
-                        pageNum = i + 1;
-                      } else if (pagination.page <= 3) {
-                        pageNum = i + 1;
-                      } else if (pagination.page >= pagination.pages - 2) {
-                        pageNum = pagination.pages - 4 + i;
-                      } else {
-                        pageNum = pagination.page - 2 + i;
-                      }
-                      
-                      return (
-                        <Button
-                          key={pageNum}
-                          variant={pagination.page === pageNum ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => handleFilterChange('page', pageNum)}
-                          className="min-w-[36px]"
-                        >
-                          {pageNum}
-                        </Button>
-                      );
-                    })}
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('page', pagination.page + 1)}
-                    disabled={pagination.page === pagination.pages}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleFilterChange('page', pagination.pages)}
-                    disabled={pagination.page === pagination.pages}
-                  >
-                    <ChevronsRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            </motion.div>
+            <ProfessionalPagination
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+              onPageChange={(page) => handleFilterChange('page', page)}
+              onItemsPerPageChange={(limit) => handleFilterChange('limit', limit)}
+              pageSizeOptions={[10, 25, 50, 100]}
+              loading={loading}
+              itemsLabel="khách hàng"
+              className="mt-6"
+            />
           )}
         </>
       )}

@@ -7,25 +7,28 @@ import {
   User, 
   Phone, 
   Calendar,
-  ChevronLeft,
-  ChevronRight,
   AlertCircle,
   CheckCircle,
-  RefreshCw
+  RefreshCw,
+  Settings
 } from 'lucide-react';
 import { showToast } from '../lib/toast';
-import { DataTable } from '../components/DataTable';
+import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
+import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import { AssignmentModal } from '../components/AssignmentModal';
+import { StaffManagementModal } from '../components/StaffManagementModal';
 import { AssignmentService, UnassignedStaff, UnassignedStaffParams } from '../components/service/assignmentService';
 import { formatDate } from '../utils/dateUtils';
 
 export default function Assignment() {
   const [staff, setStaff] = useState<UnassignedStaff[]>([]);
+  const [assignedStaff, setAssignedStaff] = useState<UnassignedStaff[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingAssigned, setLoadingAssigned] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
@@ -40,6 +43,7 @@ export default function Assignment() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStaff, setSelectedStaff] = useState<UnassignedStaff | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Fetch unassigned staff
@@ -65,6 +69,42 @@ export default function Assignment() {
     }
   };
 
+  // Fetch assigned staff (nhân viên đã phân công)
+  const fetchAssignedStaff = async () => {
+    try {
+      setLoadingAssigned(true);
+      const { UserService } = await import('../components/service/userService');
+      const response = await UserService.getUsersByRole('Station Staff', {
+        page: 1,
+        limit: 999 // Get all assigned staff
+      });
+      
+      // Filter only staff that have stationId (đã được phân công) and map to UnassignedStaff format
+      const staffWithStation = response.users
+        .filter((user: any) => user.stationId)
+        .map((user: any) => ({
+          _id: user._id,
+          fullname: user.fullname,
+          email: user.email,
+          phone: user.phone,
+          avatar: user.avatar,
+          status: user.status,
+          role: user.role,
+          stationId: user.stationId,
+          kyc_status: user.kycStatus || 'not_submitted',
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        }));
+      
+      setAssignedStaff(staffWithStation);
+      console.log('📋 Assigned staff:', staffWithStation);
+    } catch (err: any) {
+      console.error('Error fetching assigned staff:', err);
+    } finally {
+      setLoadingAssigned(false);
+    }
+  };
+
   // Fetch data on component mount and when filters change
   useEffect(() => {
     fetchStaff();
@@ -84,8 +124,15 @@ export default function Assignment() {
   // Handle assignment success
   const handleAssignmentSuccess = () => {
     setSuccessMessage('Phân công nhân viên thành công!');
-    fetchStaff(); // Refresh the list
+    fetchStaff(); // Refresh unassigned list
+    fetchAssignedStaff(); // Refresh assigned list
     setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  // Handle opening management modal
+  const handleOpenManagementModal = () => {
+    fetchAssignedStaff(); // Fetch assigned staff when opening modal
+    setIsManagementModalOpen(true);
   };
 
   // Handle assign staff
@@ -95,10 +142,12 @@ export default function Assignment() {
   };
 
   // Table columns
-  const columns = [
+  const columns: EnhancedColumn[] = [
     {
       key: 'fullname',
       header: 'Tên nhân viên',
+      sortable: true,
+      filterable: true,
       render: (value: string, row: UnassignedStaff) => (
         <div className="flex items-center space-x-3">
           <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
@@ -114,7 +163,9 @@ export default function Assignment() {
     {
       key: 'phone',
       header: 'Số điện thoại',
-      render: (value: string) => (
+      sortable: true,
+      filterable: true,
+      render: (value: any) => (
         <div className="flex items-center space-x-2">
           <Phone className="w-4 h-4 text-gray-400" />
           <span className="text-sm">{value}</span>
@@ -124,7 +175,9 @@ export default function Assignment() {
     {
       key: 'role',
       header: 'Vai trò',
-      render: (value: string) => (
+      sortable: true,
+      filterable: true,
+      render: (value: any) => (
         <Badge variant="outline" className="text-xs">
           {value}
         </Badge>
@@ -133,7 +186,9 @@ export default function Assignment() {
     {
       key: 'status',
       header: 'Trạng thái',
-      render: (value: string) => (
+      sortable: true,
+      filterable: true,
+      render: (value: any) => (
         <Badge 
           variant={value === 'active' ? 'success' : 'secondary'}
           className="text-xs"
@@ -145,7 +200,9 @@ export default function Assignment() {
     {
       key: 'createdAt',
       header: 'Ngày tạo',
-      render: (value: string) => (
+      sortable: true,
+      filterable: false,
+      render: (value: any) => (
         <div className="flex items-center space-x-2">
           <Calendar className="w-4 h-4 text-gray-400" />
           <span className="text-sm">
@@ -157,6 +214,8 @@ export default function Assignment() {
     {
       key: 'actions',
       header: 'Thao tác',
+      sortable: false,
+      filterable: false,
       render: (_: any, row: UnassignedStaff) => (
         <Button
           size="sm"
@@ -287,47 +346,45 @@ export default function Assignment() {
       </Card>
 
       {/* Data Table */}
-      <DataTable
+      <EnhancedDataTable
         title="Danh sách nhân viên chưa phân công"
         columns={columns}
         data={staff}
         loading={loading}
+        searchable={false}
+        exportable={true}
+        selectable={false}
+        pageSize={10}
+        pageSizeOptions={[5, 10, 20, 50]}
+        emptyMessage="Không có nhân viên chưa phân công"
+        customActions={
+          <Button
+            onClick={handleOpenManagementModal}
+            disabled={loadingAssigned}
+            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+            size="sm"
+          >
+            <Settings className={`h-4 w-4 mr-2 ${loadingAssigned ? 'animate-spin' : ''}`} />
+            Quản lý phân công
+          </Button>
+        }
       />
 
-      {/* Pagination */}
-      {!loading && staff.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Hiển thị {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số {pagination.total} nhân viên
-              </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page - 1)}
-                  disabled={pagination.page <= 1}
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  Trang {pagination.page} / {pagination.pages}
-                </span>
-                
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handlePageChange(pagination.page + 1)}
-                  disabled={pagination.page >= pagination.pages}
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* Professional Pagination */}
+      {!loading && pagination.pages > 1 && (
+        <ProfessionalPagination
+          currentPage={pagination.page}
+          totalPages={pagination.pages}
+          totalItems={pagination.total}
+          itemsPerPage={pagination.limit}
+          onPageChange={handlePageChange}
+          onItemsPerPageChange={(limit) => {
+            setFilters(prev => ({ ...prev, limit, page: 1 }));
+          }}
+          pageSizeOptions={[5, 10, 20, 50]}
+          loading={loading}
+          itemsLabel="nhân viên"
+        />
       )}
 
       {/* Error State */}
@@ -347,6 +404,14 @@ export default function Assignment() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         staff={selectedStaff}
+        onSuccess={handleAssignmentSuccess}
+      />
+
+      {/* Staff Management Modal - For assigned staff only */}
+      <StaffManagementModal
+        isOpen={isManagementModalOpen}
+        onClose={() => setIsManagementModalOpen(false)}
+        staff={assignedStaff}
         onSuccess={handleAssignmentSuccess}
       />
     </div>

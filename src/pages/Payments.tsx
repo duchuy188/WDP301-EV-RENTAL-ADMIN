@@ -7,16 +7,14 @@ import {
   DollarSign,
   CreditCard,
   CheckCircle,
-  XCircle,
   Clock,
-  RefreshCw,
-  TrendingUp,
-  TrendingDown
+  RefreshCw
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
+import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import paymentService from '../components/service/paymentService';
 import {
   PaymentUI,
@@ -477,52 +475,26 @@ export function Payments() {
           </table>
         </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Hiển thị {((currentPage - 1) * itemsPerPage) + 1} đến {Math.min(currentPage * itemsPerPage, totalPayments)} trong tổng số {totalPayments} thanh toán
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                  disabled={currentPage === 1}
-                  variant="outline"
-                  size="sm"
-                >
-                  Trước
-                </Button>
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                    const page = i + 1;
-                    return (
-                      <Button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
-                        variant={currentPage === page ? 'default' : 'outline'}
-                        size="sm"
-                        className="min-w-[40px]"
-                      >
-                        {page}
-                      </Button>
-                    );
-                  })}
-                  {totalPages > 5 && <span className="px-2">...</span>}
-                </div>
-                <Button
-                  onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                  disabled={currentPage === totalPages}
-                  variant="outline"
-                  size="sm"
-                >
-                  Sau
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </Card>
+
+      {/* Professional Pagination */}
+      {totalPages > 1 && (
+        <ProfessionalPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={totalPayments}
+          itemsPerPage={itemsPerPage}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newSize) => {
+            setCurrentPage(1);
+            // You may need to update itemsPerPage state and refetch
+            fetchPayments();
+          }}
+          pageSizeOptions={[10, 25, 50, 100]}
+          loading={loading}
+          itemsLabel="thanh toán"
+        />
+      )}
     </div>
   );
 }

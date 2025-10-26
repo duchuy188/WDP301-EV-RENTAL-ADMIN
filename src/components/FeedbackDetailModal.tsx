@@ -13,7 +13,8 @@ import {
   Clock,
   Send,
   RefreshCw,
-  Loader2
+  Loader2,
+  Trash2
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -34,14 +35,25 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
   const [feedback, setFeedback] = useState<Feedback | null>(initialFeedback);
   const [isResolving, setIsResolving] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [response, setResponse] = useState('');
   const [showResolveForm, setShowResolveForm] = useState(false);
+
+  // Helper function to extract ID from string or object
+  const extractId = (value: string | { _id: string; [key: string]: any } | undefined): string | null => {
+    if (!value) return null;
+    if (typeof value === 'string') return value;
+    if (typeof value === 'object' && value._id) return value._id;
+    return String(value);
+  };
 
   // Update local feedback when prop changes
   useEffect(() => {
     setFeedback(initialFeedback);
     setResponse('');
     setShowResolveForm(false);
+    setShowDeleteConfirm(false);
   }, [initialFeedback, isOpen]);
 
   // Fetch fresh feedback data
@@ -78,7 +90,7 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
 
     try {
       setIsResolving(true);
-      const result = await FeedbackService.updateFeedbackStatus(feedback._id, {
+      const result = await FeedbackService.updateFeedback(feedback._id, {
         status: 'resolved',
         response: response.trim()
       });
@@ -95,6 +107,28 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
       showToast.error(error.message || 'Không thể giải quyết khiếu nại');
     } finally {
       setIsResolving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!feedback?._id) {
+      showToast.error('Không tìm thấy thông tin feedback');
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      await FeedbackService.deleteFeedback(feedback._id);
+      
+      showToast.success('Đã xóa feedback thành công');
+      onUpdate(); // Refresh parent list
+      onClose(); // Close modal
+    } catch (error: any) {
+      console.error('Error deleting feedback:', error);
+      showToast.error(error.message || 'Không thể xóa feedback');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
     }
   };
 
@@ -145,45 +179,46 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
               className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden pointer-events-auto"
             >
               {/* Header */}
-              <div className="relative bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800 px-6 py-5">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    {isComplaint ? (
-                      <div className="p-2 bg-white/20 rounded-lg">
-                        <AlertCircle className="w-6 h-6 text-white" />
-                      </div>
-                    ) : (
-                      <div className="p-2 bg-white/20 rounded-lg">
-                        <ThumbsUp className="w-6 h-6 text-white" />
-                      </div>
-                    )}
+              <div className="relative bg-gradient-to-r from-green-500 to-emerald-600 dark:from-green-700 dark:to-emerald-800 p-6">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+                      {isComplaint ? (
+                        <AlertCircle className="h-6 w-6 text-white" />
+                      ) : (
+                        <ThumbsUp className="h-6 w-6 text-white" />
+                      )}
+                    </div>
                     <div>
-                      <h2 className="text-xl font-bold text-white">
+                      <h2 className="text-2xl font-bold text-white">
                         {isComplaint ? 'Chi tiết khiếu nại' : 'Chi tiết đánh giá'}
                       </h2>
-                      <p className="text-sm text-white/80 mt-0.5">
-                        ID: {feedback._id.substring(0, 12)}...
+                      <p className="text-green-100 text-sm mt-1">
+                        {feedback.type === 'complaint' ? 'Khiếu nại' : 'Đánh giá'} từ khách hàng
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <button
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={handleRefreshFeedback}
                       disabled={isRefreshing}
-                      className="p-2 hover:bg-white/20 rounded-lg transition-colors disabled:opacity-50"
+                      className="h-9 px-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white"
                       title="Làm mới"
-                      aria-label="Làm mới"
                     >
-                      <RefreshCw className={`w-5 h-5 text-white ${isRefreshing ? 'animate-spin' : ''}`} />
-                    </button>
-                    <button
+                      <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={onClose}
-                      className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                      className="h-10 w-10 p-0 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-full"
                       title="Đóng"
-                      aria-label="Đóng"
                     >
-                      <X className="w-5 h-5 text-white" />
-                    </button>
+                      <X className="h-5 w-5" />
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -360,27 +395,27 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
                       Thông tin bổ sung
                     </h3>
                     <div className="grid grid-cols-2 gap-4">
-                      {feedback.user_id && (
+                      {feedback.user_id && extractId(feedback.user_id) && (
                         <div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">ID Khách hàng</p>
                           <p className="text-sm font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white">
-                            {feedback.user_id.substring(0, 12)}...
+                            {extractId(feedback.user_id)!.substring(0, 12)}...
                           </p>
                         </div>
                       )}
-                      {feedback.rental_id && (
+                      {feedback.rental_id && extractId(feedback.rental_id) && (
                         <div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">ID Đơn thuê</p>
                           <p className="text-sm font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white">
-                            {feedback.rental_id.substring(0, 12)}...
+                            {extractId(feedback.rental_id)!.substring(0, 12)}...
                           </p>
                         </div>
                       )}
-                      {feedback.staff_id && (
+                      {feedback.staff_id && extractId(feedback.staff_id) && (
                         <div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">ID Nhân viên</p>
                           <p className="text-sm font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white">
-                            {feedback.staff_id.substring(0, 12)}...
+                            {extractId(feedback.staff_id)!.substring(0, 12)}...
                           </p>
                         </div>
                       )}
@@ -390,22 +425,25 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
                             Nhân viên liên quan ({feedback.staff_ids.length})
                           </p>
                           <div className="flex flex-wrap gap-2">
-                            {feedback.staff_ids.map((staffId, index) => (
-                              <span 
-                                key={index}
-                                className="text-xs font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white"
-                              >
-                                {staffId.substring(0, 8)}...
-                              </span>
-                            ))}
+                            {feedback.staff_ids.map((staffId, index) => {
+                              const id = extractId(staffId);
+                              return id ? (
+                                <span 
+                                  key={index}
+                                  className="text-xs font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white"
+                                >
+                                  {id.substring(0, 8)}...
+                                </span>
+                              ) : null;
+                            })}
                           </div>
                         </div>
                       )}
-                      {feedback.resolved_by && (
+                      {feedback.resolved_by && extractId(feedback.resolved_by) && (
                         <div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Giải quyết bởi</p>
                           <p className="text-sm font-mono bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-900 dark:text-white">
-                            {feedback.resolved_by.substring(0, 12)}...
+                            {extractId(feedback.resolved_by)!.substring(0, 12)}...
                           </p>
                         </div>
                       )}
@@ -476,57 +514,121 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
               </div>
 
               {/* Footer */}
-              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex justify-end gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={onClose}
+              <div className="flex-shrink-0 border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-6">
+                {/* Delete Confirmation */}
+                {showDeleteConfirm && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    className="mb-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800"
                   >
-                    Đóng
-                  </Button>
-                  {canResolve && !showResolveForm && (
-                    <Button
-                      onClick={() => setShowResolveForm(true)}
-                      className="bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Giải quyết khiếu nại
-                    </Button>
-                  )}
-                  {canResolve && showResolveForm && (
-                    <>
+                    <div className="flex items-start gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5" />
+                      <div className="flex-1">
+                        <h4 className="text-sm font-semibold text-red-900 dark:text-red-100 mb-1">
+                          Xác nhận xóa feedback
+                        </h4>
+                        <p className="text-sm text-red-800 dark:text-red-200">
+                          Bạn có chắc chắn muốn xóa feedback này? Hành động này không thể hoàn tác.
+                        </p>
+                        <div className="flex gap-2 mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowDeleteConfirm(false)}
+                            disabled={isDeleting}
+                          >
+                            Hủy
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleDelete}
+                            disabled={isDeleting}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            {isDeleting ? (
+                              <>
+                                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                Đang xóa...
+                              </>
+                            ) : (
+                              <>
+                                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                                Xác nhận xóa
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+
+                <div className="flex justify-between gap-3">
+                  <div>
+                    {!showDeleteConfirm && (
                       <Button
                         variant="outline"
-                        onClick={() => {
-                          setShowResolveForm(false);
-                          setResponse('');
-                        }}
+                        onClick={() => setShowDeleteConfirm(true)}
+                        disabled={isDeleting}
+                        className="px-6 py-3 h-12 border-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
                       >
-                        Hủy
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Xóa feedback
                       </Button>
+                    )}
+                  </div>
+                  <div className="flex gap-3">
+                    {!showResolveForm && (
                       <Button
-                        onClick={handleResolve}
-                        disabled={isResolving || !response.trim()}
-                        className="bg-green-600 hover:bg-green-700"
+                        variant="outline"
+                        onClick={onClose}
+                        className="px-6 py-3 h-12 border-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                       >
-                        {isResolving ? (
-                          <>
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                              className="w-4 h-4 border-2 border-white border-t-transparent rounded-full mr-2"
-                            />
-                            Đang xử lý...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4 mr-2" />
-                            Xác nhận giải quyết
-                          </>
-                        )}
+                        Đóng
                       </Button>
-                    </>
-                  )}
+                    )}
+                    {canResolve && !showResolveForm && (
+                      <Button
+                        onClick={() => setShowResolveForm(true)}
+                        className="px-8 py-3 h-12 min-w-[160px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                      >
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        Giải quyết khiếu nại
+                      </Button>
+                    )}
+                    {canResolve && showResolveForm && (
+                      <>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setShowResolveForm(false);
+                            setResponse('');
+                          }}
+                          className="px-6 py-3 h-12 border-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        >
+                          Hủy
+                        </Button>
+                        <Button
+                          onClick={handleResolve}
+                          disabled={isResolving || !response.trim()}
+                          className="px-8 py-3 h-12 min-w-[160px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                        >
+                          {isResolving ? (
+                            <>
+                              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                              Đang xử lý...
+                            </>
+                          ) : (
+                            <>
+                              <Send className="h-5 w-5 mr-2" />
+                              Xác nhận giải quyết
+                            </>
+                          )}
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </motion.div>

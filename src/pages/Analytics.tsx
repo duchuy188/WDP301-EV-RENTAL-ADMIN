@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button';
 import { storage } from '@/lib/storage';
 import analyticsService from '@/components/service/analyticsService';
 import StationRevenueDetailModal from '@/components/StationRevenueDetailModal';
+import { AIDashboard } from '@/components/AIDashboard';
 import { 
   RevenueTrendUI, 
   RevenueOverviewData,
@@ -221,6 +222,15 @@ export function Analytics() {
             </p>
           </div>
         </div>
+      </motion.div>
+
+      {/* AI Dashboard - Featured Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <AIDashboard />
       </motion.div>
 
       {/* Revenue Trends Filters */}

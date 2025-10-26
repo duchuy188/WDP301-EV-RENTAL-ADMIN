@@ -47,6 +47,21 @@ export interface AssignStaffResponse {
   };
 }
 
+export interface UnassignStaffRequest {
+  userId: string;
+}
+
+export interface UnassignStaffResponse {
+  message: string;
+  user: {
+    _id: string;
+    fullname: string;
+    email: string;
+    stationId: null;
+    previousStationId: string;
+  };
+}
+
 export interface Station {
   _id: string;
   name: string;
@@ -80,6 +95,16 @@ export class AssignmentService {
    */
   static async assignStaff(data: AssignStaffRequest): Promise<AssignStaffResponse> {
     const response = await axiosInstance.post('/api/users/staff/assign', data);
+    return response.data;
+  }
+
+  /**
+   * Unassign staff from current station
+   * @param data - Unassign request data
+   * @returns Promise<UnassignStaffResponse>
+   */
+  static async unassignStaff(data: UnassignStaffRequest): Promise<UnassignStaffResponse> {
+    const response = await axiosInstance.post('/api/users/staff/unassign', data);
     return response.data;
   }
 

@@ -4,21 +4,12 @@ import {
   ChevronUp, 
   ChevronDown, 
   Search, 
-  Filter, 
-  Download, 
-  MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  Eye,
-  EyeOff,
-  Settings
+  Download
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Badge } from './ui/badge';
+import { ProfessionalPagination } from './ui/professional-pagination';
 
 export interface EnhancedColumn {
   key: string;
@@ -48,7 +39,7 @@ export interface EnhancedDataTableProps {
   emptyMessage?: string;
   loadingRows?: number;
   showInfo?: boolean;
-  showColumnSettings?: boolean;
+  customActions?: React.ReactNode;
 }
 
 type SortDirection = 'asc' | 'desc' | null;
@@ -74,15 +65,15 @@ export function EnhancedDataTable({
   emptyMessage = 'Không có dữ liệu',
   loadingRows = 5,
   showInfo = true,
-  showColumnSettings = true
+  customActions
 }: EnhancedDataTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortState, setSortState] = useState<SortState>({ column: null, direction: null });
   const [currentPage, setCurrentPage] = useState(1);
   const [currentPageSize, setCurrentPageSize] = useState(pageSize);
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+  const [columnFilters] = useState<Record<string, string>>({});
+  const [visibleColumns] = useState<Set<string>>(
     new Set(columns.map(col => col.key))
   );
 
@@ -185,14 +176,22 @@ export function EnhancedDataTable({
       ...processedData.map(row => 
         displayColumns.map(col => {
           const value = row[col.key];
-          return typeof value === 'string' && value.includes(',') 
-            ? `"${value}"` 
-            : value || '';
+          // Handle different value types and escape properly
+          if (value === null || value === undefined) return '';
+          const stringValue = String(value);
+          // Remove any React elements or complex objects, just get text content
+          const cleanValue = stringValue.replace(/<[^>]*>/g, '').replace(/\[object Object\]/g, '');
+          // Escape quotes and wrap in quotes if contains comma, newline, or quote
+          return cleanValue.includes(',') || cleanValue.includes('\n') || cleanValue.includes('"')
+            ? `"${cleanValue.replace(/"/g, '""')}"` 
+            : cleanValue;
         }).join(',')
       )
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    // Add UTF-8 BOM for Excel to properly display Vietnamese characters
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -241,15 +240,12 @@ export function EnhancedDataTable({
     >
       <Card>
         {/* Header */}
-        {(showInfo || searchable || exportable || showColumnSettings || (selectable && selectedRows.size > 0)) && (
+        {(showInfo || searchable || exportable || (selectable && selectedRows.size > 0)) && (
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               {showInfo && (
                 <div>
                   {title && <CardTitle className="text-xl">{title}</CardTitle>}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Hiển thị {paginatedData.length} / {processedData.length} mục
-                  </p>
                 </div>
               )}
               
@@ -280,14 +276,8 @@ export function EnhancedDataTable({
                   </Button>
                 )}
 
-                {/* Column Visibility */}
-                {showColumnSettings && (
-                  <div className="relative">
-                    <Button variant="outline" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
+                {/* Custom Actions */}
+                {customActions}
               </div>
             </div>
 
@@ -415,72 +405,22 @@ export function EnhancedDataTable({
                 </table>
               </div>
 
-              {/* Pagination */}
+              {/* Professional Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      Hiển thị
-                    </span>
-                    <select
-                      value={currentPageSize}
-                      onChange={(e) => {
-                        setCurrentPageSize(Number(e.target.value));
-                        setCurrentPage(1);
-                      }}
-                      className="border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm bg-white dark:bg-gray-800"
-                      aria-label="Số mục mỗi trang"
-                      title="Số mục mỗi trang"
-                    >
-                      {pageSizeOptions.map(size => (
-                        <option key={size} value={size}>{size}</option>
-                      ))}
-                    </select>
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      mục mỗi trang
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600 dark:text-gray-400">
-                      Trang {currentPage} / {totalPages}
-                    </span>
-                    
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(1)}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronsLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(totalPages)}
-                        disabled={currentPage === totalPages}
-                      >
-                        <ChevronsRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                <div className="p-2">
+                  <ProfessionalPagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    totalItems={processedData.length}
+                    itemsPerPage={currentPageSize}
+                    onPageChange={setCurrentPage}
+                    onItemsPerPageChange={(size) => {
+                      setCurrentPageSize(size);
+                      setCurrentPage(1);
+                    }}
+                    pageSizeOptions={pageSizeOptions}
+                    loading={loading}
+                  />
                 </div>
               )}
             </>

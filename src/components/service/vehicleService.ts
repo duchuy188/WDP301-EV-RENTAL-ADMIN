@@ -264,6 +264,53 @@ class VehicleService {
   }
 
   /**
+   * Cập nhật thông tin xe với hình ảnh (FormData)
+   * QUAN TRỌNG: API documentation nói images là array<string> (URLs) nhưng vẫn chấp nhận File upload
+   * Backend sẽ tự động upload lên Cloudinary và convert thành URL
+   */
+  async updateVehicleWithImages(id: string, formData: FormData): Promise<ApiResponse<Vehicle>> {
+    try {
+      console.log('🔄 Updating vehicle with images:', id);
+      console.log('📦 FormData contents:');
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`  ${key}:`, value);
+        }
+      }
+      
+      // Dùng PUT như API documentation (không phải POST!)
+      const response = await axiosInstance.put(API_CONFIG.endpoints.vehicles.update(id), formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        }
+      });
+      
+      console.log('✅ Vehicle updated successfully with images');
+      console.log('📸 Response:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error(`❌ Error updating vehicle ${id} with images:`, error);
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
+        console.error('Response headers:', error.response.headers);
+        
+        // Log readable error message
+        const errorMsg = error.response.data?.message || error.response.data?.error || 'Unknown error';
+        console.error('📛 Error message from server:', errorMsg);
+      } else if (error.request) {
+        console.error('No response received from server');
+        console.error('Request:', error.request);
+      } else {
+        console.error('Error setting up request:', error.message);
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Cập nhật trạng thái xe
    */
   async updateVehicleStatus(id: string, statusData: UpdateVehicleStatusRequest): Promise<ApiResponse<Vehicle>> {

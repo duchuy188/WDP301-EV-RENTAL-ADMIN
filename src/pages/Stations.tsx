@@ -9,13 +9,15 @@ import {
   Building2,
   Globe,
   Car,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 import { DataTable } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import { CreateStationModal } from '../components/CreateStationModal';
 import { EditStationModal } from '../components/EditStationModal';
 import { StationDetailModal } from '../components/StationDetailModal';
@@ -35,6 +37,10 @@ export function Stations() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [syncingStations, setSyncingStations] = useState<Set<string>>(new Set());
   const [stationsWithErrors, setStationsWithErrors] = useState<Set<string>>(new Set());
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Calculate statistics from stations data
   const calculateStationStatistics = (stationsData: Station[]): StationStatistics => {
@@ -129,6 +135,11 @@ export function Stations() {
   const handleViewStation = (station: Station) => {
     setSelectedStationId(station._id);
     setShowDetailModal(true);
+  };
+
+  const handleEditStation = (station: Station) => {
+    setSelectedStation(station);
+    setShowEditModal(true);
   };
 
 
@@ -316,11 +327,15 @@ export function Stations() {
       issues.push(`Trạm đã đạt sức chứa tối đa (${station.current_vehicles}/${station.max_capacity})`);
     }
     
-    // Check if there's a mismatch in vehicle counts
-    const totalCounted = station.available_vehicles + station.rented_vehicles + station.maintenance_vehicles;
-    if (totalCounted !== station.current_vehicles) {
-      issues.push(`Không khớp số lượng xe: ${totalCounted} (đếm) vs ${station.current_vehicles} (tổng)`);
-    }
+    // NOTE: Không check mismatch nữa vì:
+    // - Backend chỉ trả về: available_vehicles, rented_vehicles, maintenance_vehicles
+    // - Nhưng thực tế có 5 trạng thái: draft, available, reserved, rented, maintenance
+    // - Sự chênh lệch là bình thường (draft + reserved vehicles)
+    // const totalCounted = station.available_vehicles + station.rented_vehicles + station.maintenance_vehicles;
+    // if (totalCounted !== station.current_vehicles) {
+    //   const difference = station.current_vehicles - totalCounted;
+    //   console.log(`ℹ️ Trạm ${station.name}: ${difference} xe có thể đang ở trạng thái draft hoặc reserved`);
+    // }
     
     // Check if station is inactive but has vehicles
     if (station.status !== 'active' && station.current_vehicles > 0) {
@@ -341,14 +356,6 @@ export function Stations() {
       solutions.push('   3. Kiểm tra xe nào đang bảo trì có thể di chuyển');
     }
     
-    const totalCounted = station.available_vehicles + station.rented_vehicles + station.maintenance_vehicles;
-    if (totalCounted !== station.current_vehicles) {
-      solutions.push('💡 Giải pháp cho dữ liệu không nhất quán:');
-      solutions.push('   1. Chạy script kiểm tra và sửa dữ liệu database');
-      solutions.push('   2. Sync lại từ hệ thống quản lý xe');
-      solutions.push('   3. Liên hệ IT để kiểm tra tính toàn vẹn dữ liệu');
-    }
-    
     return solutions;
   };
 
@@ -365,6 +372,16 @@ export function Stations() {
     
     return matchesSearch && matchesFilter;
   });
+
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredStations.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedStations = filteredStations.slice(startIndex, startIndex + itemsPerPage);
+
+  // Reset to page 1 when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterActive]);
 
   const stationColumns = [
     {
@@ -460,56 +477,63 @@ export function Stations() {
     },
     {
       key: 'actions',
-      header: 'THAO TÁC',
+      header: 'Hành động',
       render: (_value: any, row: Station) => (
-        <div className="flex space-x-1">
+        <div className="flex items-center gap-2">
           <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => handleViewStation(row)}
-            title="Xem chi tiết"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewStation(row);
+            }}
+            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+            title="Xem chi tiết trạm"
+            aria-label="Xem chi tiết trạm"
           >
-            <Building2 className="h-3 w-3" />
+            <Building2 className="h-4 w-4" />
           </Button>
           <Button 
-            size="sm" 
-            variant="outline"
-            onClick={() => handleSyncStation(row)}
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSyncStation(row);
+            }}
             disabled={
               syncingStations.has(row._id) || 
               row.current_vehicles >= row.max_capacity
             }
-            className={`${
+            className={`h-8 w-8 p-0 border transition-all ${
               stationsWithErrors.has(row._id) 
-                ? 'border-red-300 text-red-600 hover:bg-red-50' 
+                ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border-red-200 dark:border-red-800' 
                 : row.current_vehicles >= row.max_capacity
                 ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                : ''
+                : 'hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-900/20 dark:hover:text-purple-400 border-purple-200 dark:border-purple-800'
             }`}
             title={
               row.current_vehicles >= row.max_capacity
-                ? `Không thể sync: Trạm đã đạt sức chứa tối đa (${row.current_vehicles}/${row.max_capacity}). Cần di chuyển xe hoặc tăng capacity.`
+                ? `Không thể sync: Trạm đã đạt sức chứa tối đa (${row.current_vehicles}/${row.max_capacity})`
                 : stationsWithErrors.has(row._id) 
                 ? 'Trạm này gặp lỗi khi sync lần trước. Click để thử lại.' 
                 : `Đồng bộ xe (${row.current_vehicles}/${row.max_capacity})`
             }
+            aria-label="Đồng bộ xe"
           >
-            <RefreshCw className={`h-3 w-3 ${
-              syncingStations.has(row._id) ? 'animate-spin' : 
-              row.current_vehicles >= row.max_capacity ? 'text-gray-400' : ''
-            }`} />
-            {stationsWithErrors.has(row._id) && !(row.current_vehicles >= row.max_capacity) && (
-              <span className="ml-1 text-red-500 text-xs">⚠️</span>
-            )}
+            <RefreshCw className={`h-4 w-4 ${syncingStations.has(row._id) ? 'animate-spin' : ''}`} />
           </Button>
           <Button 
-            size="sm" 
-            variant="outline" 
-            className="text-red-600 hover:text-red-700"
-            onClick={() => handleDeleteStation(row)}
-            title="Xóa"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeleteStation(row);
+            }}
+            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border border-red-200 dark:border-red-800"
+            title="Xóa trạm"
+            aria-label="Xóa trạm"
           >
-            <X className="h-3 w-3" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       )
@@ -719,33 +743,58 @@ export function Stations() {
         </Card>
       </motion.div>
 
-      {/* Stations Table */}
+      {/* Stations View */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.6 }}
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden"
       >
-        {/* Table Header with Actions */}
-        <div className="px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Danh sách trạm ({filteredStations.length})
-          </h3>
-          <Button 
-            className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
-            onClick={() => setShowCreateModal(true)}
-          >
-            <Plus className="h-4 w-4" />
-            <span>Thêm trạm</span>
-          </Button>
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden">
+          {/* Table Header with Actions */}
+          <div className="px-6 py-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Danh sách trạm ({filteredStations.length})
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button 
+                className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+                onClick={() => setShowCreateModal(true)}
+              >
+                <Plus className="h-4 w-4" />
+                <span>Thêm trạm</span>
+              </Button>
+            </div>
+          </div>
+            
+            {/* DataTable without title */}
+            <DataTable
+              columns={stationColumns}
+              data={paginatedStations}
+              loading={loading}
+            />
+
+            {/* Professional Pagination */}
+            {totalPages > 1 && (
+              <div className="px-6 pb-4">
+                <ProfessionalPagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalItems={filteredStations.length}
+                  itemsPerPage={itemsPerPage}
+                  onPageChange={setCurrentPage}
+                  onItemsPerPageChange={(newSize) => {
+                    setItemsPerPage(newSize);
+                    setCurrentPage(1);
+                  }}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  loading={loading}
+                  itemsLabel="trạm"
+                />
+              </div>
+            )}
         </div>
-        
-        {/* DataTable without title */}
-        <DataTable
-          columns={stationColumns}
-          data={filteredStations}
-          loading={loading}
-        />
       </motion.div>
 
       {/* Create Station Modal */}

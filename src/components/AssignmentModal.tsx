@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, MapPin, User, CheckCircle, Loader2, Building2, Phone, Mail, Calendar, Shield, Search } from 'lucide-react';
 import { Button } from './ui/button';
@@ -61,8 +61,6 @@ export function AssignmentModal({ isOpen, onClose, staff, onSuccess }: Assignmen
         const bName = b.name.toLowerCase();
         const aCode = a.code.toLowerCase();
         const bCode = b.code.toLowerCase();
-        const aAddress = a.address?.toLowerCase() || '';
-        const bAddress = b.address?.toLowerCase() || '';
         
         // Exact matches first
         if (aName === searchLower || aCode === searchLower) return -1;
@@ -167,29 +165,36 @@ export function AssignmentModal({ isOpen, onClose, staff, onSuccess }: Assignmen
             className="bg-white dark:bg-gray-800 rounded-3xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-3xl h-auto max-h-[95vh] flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
-              <div className="flex items-center space-x-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg">
-                  <MapPin className="w-6 h-6 text-white" />
+            <div className="relative bg-gradient-to-r from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 p-6 border-0 overflow-hidden">
+              {/* Decorative background pattern */}
+              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+              <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+              <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+              
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center shadow-lg">
+                    <MapPin className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white drop-shadow-lg">
+                      Phân công nhân viên
+                    </h2>
+                    <p className="text-sm text-green-50 dark:text-green-100 mt-1">
+                      Chọn trạm để phân công nhân viên
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Phân công nhân viên
-                  </h2>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Chọn trạm để phân công nhân viên
-                  </p>
-                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClose}
+                  disabled={assigning}
+                  className="h-10 w-10 bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white rounded-xl transition-all duration-200"
+                >
+                  <X className="h-5 w-5" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleClose}
-                disabled={assigning}
-                className="h-10 w-10 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-xl transition-all duration-200"
-              >
-                <X className="h-5 w-5" />
-              </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto overflow-x-hidden">
@@ -281,19 +286,19 @@ export function AssignmentModal({ isOpen, onClose, staff, onSuccess }: Assignmen
                   </div>
                 ) : (
                   <div className="relative mb-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[600px] min-h-[200px] overflow-y-auto overflow-x-hidden pr-2 pb-12 custom-scrollbar">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[280px] min-h-[200px] overflow-y-auto overflow-x-hidden pr-2 pb-4 custom-scrollbar">
                       {filteredStations.map((station) => (
                       <motion.div
                         key={station._id}
                         whileTap={{ scale: 0.98 }}
-                        className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-300 h-full ${
+                        className={`relative p-3 rounded-xl border-2 cursor-pointer transition-all duration-300 ${
                           selectedStationId === station._id
                             ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 shadow-lg shadow-emerald-100 dark:shadow-emerald-900/20'
                             : 'border-gray-200 dark:border-gray-600 hover:border-emerald-300 dark:hover:border-emerald-500 hover:shadow-md hover:bg-gray-50 dark:hover:bg-gray-700/50'
                         }`}
                         onClick={() => setSelectedStationId(station._id)}
                       >
-                        <div className="flex flex-col space-y-2 h-full">
+                        <div className="flex flex-col space-y-2">
                           <div className="flex items-start justify-between">
                             <div className="flex items-start space-x-2 flex-1 min-w-0">
                               <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300 flex-shrink-0 ${

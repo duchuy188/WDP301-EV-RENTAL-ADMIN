@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { UserCog, MapPin, Star, Activity, Loader2, ChevronLeft, ChevronRight, User as UserIcon, UserPlus, Filter, X, RefreshCw } from 'lucide-react';
-import { DataTable } from '../components/DataTable';
+import { UserCog, MapPin, Star, Activity, Loader2, User as UserIcon, UserPlus, Filter, X, RefreshCw, Search } from 'lucide-react';
+import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import { UserService } from '../components/service/userService';
 import { stationService } from '../components/service/stationService';
-import { User, Station as UserStation } from '../components/service/type/userTypes';
+import { User } from '../components/service/type/userTypes';
 import { Station } from '../components/service/type/stationTypes';
 import { CreateStaffModal } from '../components/CreateStaffModal';
 import { showToast } from '../lib/toast';
@@ -29,6 +31,7 @@ export function Staff() {
   const [stations, setStations] = useState<Station[]>([]);
   const [selectedStationId, setSelectedStationId] = useState<string>('');
   const [loadingStations, setLoadingStations] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch stations for filter
   useEffect(() => {
@@ -80,7 +83,7 @@ export function Staff() {
           console.log('📊 Staff array:', staffArray);
           
           // Transform station staff data to match User interface
-          const staffData = staffArray.map((s: any) => ({
+          let staffData = staffArray.map((s: any) => ({
             _id: s._id,
             fullname: s.fullname,
             email: s.email,
@@ -93,6 +96,16 @@ export function Staff() {
             createdAt: s.createdAt,
             updatedAt: s.updatedAt
           }));
+          
+          // Apply search filter
+          if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase().trim();
+            staffData = staffData.filter((s: User) => 
+              s.fullname?.toLowerCase().includes(query) ||
+              s.email?.toLowerCase().includes(query) ||
+              s.phone?.toLowerCase().includes(query)
+            );
+          }
           
           console.log('✅ Transformed staff data:', staffData);
           
@@ -108,7 +121,8 @@ export function Staff() {
           const response = await UserService.getUsersByRole('Station Staff', {
             page: pagination.page,
             limit: pagination.limit,
-            sort: 'createdAt'
+            sort: 'createdAt',
+            search: searchQuery.trim() || undefined
           });
           setStaff(response.users);
           setPagination(response.pagination);
@@ -126,11 +140,13 @@ export function Staff() {
     fetchStaff();
   }, [pagination.page, pagination.limit, selectedStationId, refreshTrigger]);
 
-  const columns = [
+  const columns: EnhancedColumn[] = [
     {
       key: 'stt',
       header: 'STT',
-      render: (_value: any, _row: any, index?: number) => {
+      sortable: false,
+      filterable: false,
+      render: (_value: any, _row: User, index?: number) => {
         const currentPage = pagination.page || 1;
         const limit = pagination.limit || 10;
         const stt = (currentPage - 1) * limit + (index ?? 0) + 1;
@@ -142,7 +158,9 @@ export function Staff() {
     {
       key: 'fullname',
       header: 'Tên nhân viên',
-      render: (value: string, row: any) => (
+      sortable: true,
+      filterable: true,
+      render: (value: any, row: User) => (
         <div className="flex items-center space-x-3 min-w-[220px]">
           <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
             {row.avatar ? (
@@ -168,7 +186,9 @@ export function Staff() {
     {
       key: 'phone',
       header: 'Số điện thoại',
-      render: (value: string) => (
+      sortable: true,
+      filterable: true,
+      render: (value: any) => (
         <div className="flex items-center space-x-2">
           <Star className="h-4 w-4 text-yellow-500 fill-current flex-shrink-0" />
           <span className="font-medium text-gray-900 dark:text-white">{value}</span>
@@ -178,7 +198,9 @@ export function Staff() {
     {
       key: 'stationId',
       header: 'Trạm thuê xe',
-      render: (value: string | UserStation | null) => (
+      sortable: false,
+      filterable: false,
+      render: (value: any) => (
         <div className="flex items-center space-x-2">
           <MapPin className="h-4 w-4 text-blue-500 flex-shrink-0" />
           <span className="text-gray-900 dark:text-white">
@@ -193,7 +215,9 @@ export function Staff() {
     {
       key: 'status',
       header: 'Trạng thái',
-      render: (value: string) => (
+      sortable: true,
+      filterable: true,
+      render: (value: any) => (
         <Badge 
           variant={value === 'active' ? 'success' : 'secondary'}
           className="whitespace-nowrap"
@@ -227,6 +251,19 @@ export function Staff() {
     
     // The useEffect will automatically refetch when selectedStationId changes
     showToast.success('Nhân viên mới đã được tạo thành công!');
+  };
+
+  // Handle search
+  const handleSearch = () => {
+    setPagination(prev => ({ ...prev, page: 1 }));
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  // Handle clear all filters
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedStationId('');
+    setPagination(prev => ({ ...prev, page: 1 }));
   };
 
   return (
@@ -347,7 +384,7 @@ export function Staff() {
         </motion.div>
       </div>
 
-      {/* Filter Section */}
+      {/* Search & Filter Section */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -355,15 +392,24 @@ export function Staff() {
       >
         <Card>
           <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-              <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Lọc theo trạm:</span>
+            <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
+              {/* Search Bar */}
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Tìm kiếm theo tên, email, số điện thoại..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  className="pl-10 h-11"
+                />
               </div>
-              
-              <div className="flex-1 flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1 max-w-md">
-                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+
+              {/* Filter by Station */}
+              <div className="flex items-center gap-3">
+                <div className="relative w-full lg:w-72">
+                  <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
                   <select
                     value={selectedStationId}
                     onChange={(e) => {
@@ -373,7 +419,7 @@ export function Staff() {
                     disabled={loadingStations}
                     title="Chọn trạm để lọc nhân viên"
                     aria-label="Chọn trạm để lọc nhân viên"
-                    className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-11 pl-10 pr-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
                   >
                     <option value="">
                       {loadingStations ? 'Đang tải trạm...' : 'Tất cả trạm'}
@@ -386,7 +432,15 @@ export function Staff() {
                   </select>
                 </div>
 
-                {selectedStationId && (
+                <Button 
+                  onClick={handleSearch} 
+                  className="h-11 px-6 bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
+                >
+                  <Search className="h-4 w-4 mr-2" />
+                  Tìm kiếm
+                </Button>
+
+                {(selectedStationId || searchQuery) && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -394,30 +448,32 @@ export function Staff() {
                   >
                     <Button
                       variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedStationId('')}
-                      className="flex items-center gap-2 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400 transition-all"
+                      onClick={handleClearFilters}
+                      className="h-11 px-4 flex items-center gap-2 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400 transition-all whitespace-nowrap"
+                      title="Xóa bộ lọc"
                     >
                       <X className="h-4 w-4" />
-                      <span className="hidden sm:inline">Xóa lọc</span>
+                      <span className="hidden xl:inline">Xóa bộ lọc</span>
                     </Button>
                   </motion.div>
                 )}
               </div>
-
-              {selectedStationId && (
-                <motion.div
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
-                >
-                  <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
-                  <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-                    {staff.length} nhân viên
-                  </span>
-                </motion.div>
-              )}
             </div>
+
+            {/* Result Badge */}
+            {(selectedStationId || searchQuery) && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 w-fit"
+              >
+                <Filter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
+                  Tìm thấy <strong>{staff.length}</strong> nhân viên
+                  {selectedStationId && <span className="ml-1">tại {stations.find(s => s._id === selectedStationId)?.name}</span>}
+                </span>
+              </motion.div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
@@ -443,90 +499,48 @@ export function Staff() {
         </Card>
       ) : (
         <>
-          {/* Staff List Header with Create Button */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Danh sách nhân viên
-              </h2>
-              {selectedStationId && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  Trạm: <span className="font-medium text-blue-600 dark:text-blue-400">
-                    {stations.find(s => s._id === selectedStationId)?.name || 'Đang tải...'}
-                  </span>
-                </p>
-              )}
-            </div>
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 transition-all duration-200 hover:scale-105 shadow-md"
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Tạo nhân viên mới
-            </Button>
+          {/* Enhanced Data Table with Custom Actions */}
+          <div className="relative">
+            <EnhancedDataTable
+              title={selectedStationId 
+                ? `Danh sách nhân viên - ${stations.find(s => s._id === selectedStationId)?.name || ''}` 
+                : "Danh sách nhân viên"
+              }
+              columns={columns}
+              data={staff}
+              loading={loading}
+              searchable={false}
+              exportable={true}
+              selectable={false}
+              pageSize={staff.length}
+              pageSizeOptions={[10, 25, 50, 100]}
+              emptyMessage="Không có nhân viên nào"
+              customActions={
+                <Button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="bg-green-600 hover:bg-green-700 text-white"
+                  size="sm"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Tạo nhân viên mới
+                </Button>
+              }
+            />
           </div>
           
-          {/* Table Wrapper with Horizontal Scroll */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="overflow-x-auto">
-              <DataTable
-                columns={columns}
-                data={staff}
-              />
-            </div>
-          </div>
-          
-          {/* Pagination Controls */}
+          {/* Professional Pagination */}
           {pagination.pages > 1 && (
-            <Card>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-600">
-                      Hiển thị {((pagination.page - 1) * pagination.limit) + 1} - {Math.min(pagination.page * pagination.limit, pagination.total)} trong tổng số {pagination.total} nhân viên
-                    </span>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <select
-                      value={pagination.limit}
-                      onChange={(e) => handleLimitChange(Number(e.target.value))}
-                      className="px-3 py-1 border border-gray-300 rounded-md text-sm"
-                      title="Chọn số lượng nhân viên hiển thị trên mỗi trang"
-                    >
-                      <option value={5}>5 / trang</option>
-                      <option value={10}>10 / trang</option>
-                      <option value={20}>20 / trang</option>
-                      <option value={50}>50 / trang</option>
-                    </select>
-                    
-                    <div className="flex items-center space-x-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(pagination.page - 1)}
-                        disabled={pagination.page <= 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      
-                      <span className="px-3 py-1 text-sm">
-                        Trang {pagination.page} / {pagination.pages}
-                      </span>
-                      
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(pagination.page + 1)}
-                        disabled={pagination.page >= pagination.pages}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <ProfessionalPagination
+              currentPage={pagination.page}
+              totalPages={pagination.pages}
+              totalItems={pagination.total}
+              itemsPerPage={pagination.limit}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleLimitChange}
+              pageSizeOptions={[5, 10, 20, 50]}
+              loading={loading}
+              itemsLabel="nhân viên"
+            />
           )}
         </>
       )}
