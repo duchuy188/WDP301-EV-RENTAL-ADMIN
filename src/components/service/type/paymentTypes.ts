@@ -4,7 +4,7 @@ export interface Payment {
   code: string;
   amount: number;
   payment_method: 'qr_code' | 'vnpay' | 'cash' | 'bank_transfer';
-  payment_type: 'deposit' | 'rental' | 'penalty' | 'refund';
+  payment_type: 'deposit' | 'rental_fee' | 'additional_fee';
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   reason?: string;
   transaction_id?: string;
@@ -60,7 +60,7 @@ export interface PaymentQueryParams {
   page?: number;
   limit?: number;
   status?: 'pending' | 'completed' | 'failed' | 'refunded';
-  payment_type?: 'deposit' | 'rental' | 'penalty' | 'refund';
+  payment_type?: 'deposit' | 'rental_fee' | 'additional_fee';
   payment_method?: 'qr_code' | 'vnpay' | 'cash' | 'bank_transfer';
   search?: string;
   sort?: string;
@@ -113,18 +113,17 @@ export function normalizePaymentForUI(payment: any): PaymentUI {
 
 // Payment method labels
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  qr_code: 'QR Code',
   vnpay: 'VNPay',
   cash: 'Tiền mặt',
-  bank_transfer: 'Chuyển khoản'
+  qr_code: 'QR Code', // Không sử dụng
+  bank_transfer: 'Chuyển khoản' // Không sử dụng
 };
 
 // Payment type labels
 export const PAYMENT_TYPE_LABELS: Record<string, string> = {
-  deposit: 'Đặt cọc',
-  rental: 'Thuê xe',
-  penalty: 'Phạt',
-  refund: 'Hoàn tiền'
+  deposit: 'Tiền cọc',
+  rental_fee: 'Phí thuê xe',
+  additional_fee: 'Phí phát sinh'
 };
 
 // Payment status labels

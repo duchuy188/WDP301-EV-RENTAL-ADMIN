@@ -4,7 +4,6 @@ import {
   MessageSquare, 
   ThumbsUp, 
   AlertCircle, 
-  Loader2, 
   Eye, 
   Filter,
   Star,
@@ -26,7 +25,6 @@ import { FeedbackDetailModal } from '../components/FeedbackDetailModal';
 export function FeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -51,7 +49,6 @@ export function FeedbackPage() {
   const fetchFeedbacks = async () => {
     try {
       setLoading(true);
-      setError(null);
       
       console.log('🔍 Fetching feedbacks with filters:', filters);
       
@@ -67,7 +64,6 @@ export function FeedbackPage() {
       
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách phản hồi';
-      setError(errorMessage);
       showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
       console.error('❌ Error fetching feedbacks:', err);
     } finally {
@@ -135,15 +131,19 @@ export function FeedbackPage() {
   const columns: EnhancedColumn[] = [
     {
       key: '_id',
-      header: 'ID',
-      width: '120px',
-      render: (value: any) => (
-        <div className="flex items-center gap-2">
-          <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-gray-600 dark:text-gray-400">
-            {value.substring(0, 8)}
+      header: 'STT',
+      width: '80px',
+      render: (_value: any, _row: any, index?: number) => {
+        // Calculate sequential number based on pagination
+        const stt = ((pagination.page - 1) * pagination.limit) + (index || 0) + 1;
+        return (
+          <div className="flex items-center justify-center">
+            <span className="font-semibold text-gray-700 dark:text-gray-300">
+              {stt}
+            </span>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: 'type',
@@ -163,7 +163,7 @@ export function FeedbackPage() {
       key: 'title',
       header: 'Nội dung',
       sortable: true,
-      render: (value: any, row: any) => (
+      render: (_value: any, row: any) => (
         <div className="max-w-md py-1">
           <p className="font-semibold text-gray-900 dark:text-white truncate mb-1">
             {row.type === 'complaint' ? row.title : 'Đánh giá dịch vụ'}
@@ -175,12 +175,72 @@ export function FeedbackPage() {
       ),
     },
     {
+      key: 'category',
+      header: 'Phân loại',
+      width: '180px',
+      render: (value: any, row: any) => {
+        // For complaints - show specific category
+        if (row.type === 'complaint') {
+          if (!value) {
+            return (
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                Chưa phân loại
+              </span>
+            );
+          }
+          
+          const categoryLabels: Record<string, { label: string; color: string }> = {
+            vehicle: { label: 'Xe', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+            staff: { label: 'Nhân viên', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
+            payment: { label: 'Thanh toán', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
+            service: { label: 'Dịch vụ', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
+            other: { label: 'Khác', color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400' }
+          };
+          const cat = categoryLabels[value] || categoryLabels.other;
+          return (
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${cat.color}`}>
+              {cat.label}
+            </span>
+          );
+        }
+        
+        // For ratings - show rating criteria
+        const ratingCriteria = [];
+        if (row.overall_rating) ratingCriteria.push('Tổng thể');
+        if (row.staff_service) ratingCriteria.push('Nhân viên');
+        if (row.vehicle_condition) ratingCriteria.push('Xe');
+        if (row.station_cleanliness) ratingCriteria.push('Trạm');
+        if (row.checkout_process) ratingCriteria.push('Quy trình');
+        
+        return (
+          <div className="text-sm">
+            <div className="flex items-center gap-1.5 mb-1">
+              <ThumbsUp className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                {ratingCriteria.length} tiêu chí
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 pl-5">
+              {ratingCriteria.slice(0, 2).join(', ')}
+              {ratingCriteria.length > 2 && '...'}
+            </div>
+          </div>
+        );
+      },
+    },
+    {
       key: 'overall_rating',
       header: 'Đánh giá',
       width: '140px',
       render: (value: any, row: any) => {
         if (row.type === 'complaint') {
-          return <span className="text-gray-400 text-sm">—</span>;
+          return (
+            <div className="flex items-center gap-1.5">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                Không có
+              </span>
+            </div>
+          );
         }
         const rating = value || 0;
         return (
@@ -191,29 +251,6 @@ export function FeedbackPage() {
               <span className="text-sm text-gray-500 dark:text-gray-400">/5</span>
             </div>
           </div>
-        );
-      },
-    },
-    {
-      key: 'category',
-      header: 'Danh mục',
-      width: '130px',
-      render: (value: any, row: any) => {
-        if (row.type === 'rating' || !value) {
-          return <span className="text-gray-400 text-sm">—</span>;
-        }
-        const categoryLabels: Record<string, { label: string; color: string }> = {
-          vehicle: { label: 'Xe', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-          staff: { label: 'Nhân viên', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-          payment: { label: 'Thanh toán', color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' },
-          service: { label: 'Dịch vụ', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' },
-          other: { label: 'Khác', color: 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400' }
-        };
-        const cat = categoryLabels[value] || categoryLabels.other;
-        return (
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${cat.color}`}>
-            {cat.label}
-          </span>
         );
       },
     },
@@ -261,7 +298,7 @@ export function FeedbackPage() {
       key: '_id',
       header: 'Hành động',
       width: '100px',
-      render: (value: any, row: any) => (
+      render: (_value: any, row: any) => (
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"

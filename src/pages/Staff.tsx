@@ -286,7 +286,7 @@ export function Staff() {
               Quản lý nhân viên
             </h1>
             <p className="text-green-50 dark:text-green-100">
-              Theo dõi hiệu suất và quản lý đội ngũ nhân viên
+              Quản lý và phân công nhân viên vào các trạm
             </p>
           </div>
           <Button

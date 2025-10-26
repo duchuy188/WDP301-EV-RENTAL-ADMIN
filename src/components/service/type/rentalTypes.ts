@@ -19,6 +19,7 @@ export interface Rental {
   user_id: string | { _id: string; [key: string]: any };
   vehicle_id: string | { _id: string; [key: string]: any };
   station_id: string | { _id: string; [key: string]: any };
+  contract?: { _id: string; [key: string]: any };
   actual_start_time: string;
   actual_end_time?: string;
   pickup_staff_id?: string | { _id: string; [key: string]: any };

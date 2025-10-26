@@ -112,7 +112,11 @@ class RentalService {
     try {
       console.log('📝 RentalService: Fetching rental by ID:', id);
       
-      const response = await axiosInstance.get<GetRentalByIdResponse>(`/api/rentals/${id}`);
+      const response = await axiosInstance.get<GetRentalByIdResponse>(`/api/rentals/${id}`, {
+        params: {
+          populate: 'vehicle_id,user_id,station_id,booking_id,pickup_staff_id,return_staff_id,contract'
+        }
+      });
       
       console.log('✅ RentalService: Rental fetched successfully:', response.data);
       

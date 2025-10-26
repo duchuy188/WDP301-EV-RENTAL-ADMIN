@@ -21,8 +21,7 @@ import {
   PaymentQueryParams,
   PaymentSummary,
   PAYMENT_METHOD_LABELS,
-  PAYMENT_TYPE_LABELS,
-  PAYMENT_STATUS_LABELS
+  PAYMENT_TYPE_LABELS
 } from '../components/service/type/paymentTypes';
 import { formatCurrency, formatDate } from '../utils/dateUtils';
 import { showToast } from '../lib/toast';
@@ -37,7 +36,6 @@ export function Payments() {
   const [totalPayments, setTotalPayments] = useState(0);
   
   // Filters
-  const [statusFilter, setStatusFilter] = useState<string>('');
   const [paymentTypeFilter, setPaymentTypeFilter] = useState<string>('');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
@@ -52,7 +50,6 @@ export function Payments() {
         page: currentPage,
         limit: itemsPerPage,
         search: searchTerm || undefined,
-        status: statusFilter || undefined,
         payment_type: paymentTypeFilter || undefined,
         payment_method: paymentMethodFilter || undefined,
         sort: 'createdAt',
@@ -77,7 +74,7 @@ export function Payments() {
 
   useEffect(() => {
     fetchPayments();
-  }, [currentPage, statusFilter, paymentTypeFilter, paymentMethodFilter]);
+  }, [currentPage, paymentTypeFilter, paymentMethodFilter]);
 
   // Handle search
   const handleSearch = () => {
@@ -89,7 +86,6 @@ export function Payments() {
   const handleExport = async () => {
     try {
       const params: PaymentQueryParams = {
-        status: statusFilter || undefined,
         payment_type: paymentTypeFilter || undefined,
         payment_method: paymentMethodFilter || undefined,
         search: searchTerm || undefined
@@ -114,27 +110,10 @@ export function Payments() {
 
   // Reset filters
   const handleResetFilters = () => {
-    setStatusFilter('');
     setPaymentTypeFilter('');
     setPaymentMethodFilter('');
     setSearchTerm('');
     setCurrentPage(1);
-  };
-
-  // Get status badge color
-  const getStatusBadgeClass = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200';
-      case 'refunded':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
   };
 
   // Get payment type badge color
@@ -142,12 +121,10 @@ export function Payments() {
     switch (type) {
       case 'deposit':
         return 'bg-purple-100 text-purple-800 border-purple-200';
-      case 'rental':
+      case 'rental_fee':
         return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'penalty':
+      case 'additional_fee':
         return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'refund':
-        return 'bg-green-100 text-green-800 border-green-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -252,6 +229,28 @@ export function Payments() {
 
       {/* Search and Filters */}
       <Card className="p-6">
+        {/* Info Banner */}
+        <div className="mb-4 bg-gradient-to-r from-blue-50 to-green-50 dark:from-blue-900/20 dark:to-green-900/20 border border-blue-200 dark:border-blue-700 rounded-xl p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <CreditCard className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                Phương thức thanh toán được hỗ trợ:
+              </p>
+              <div className="flex items-center gap-3 mt-2">
+                <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md font-semibold px-3 py-1">
+                  💳 VNPay
+                </Badge>
+                <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md font-semibold px-3 py-1">
+                  💵 Tiền mặt
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="space-y-4">
           <div className="flex gap-4">
             <div className="flex-1">
@@ -286,26 +285,8 @@ export function Payments() {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t"
+              className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t"
             >
-              <div>
-                <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Trạng thái
-                </label>
-                <select
-                  id="status-filter"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">Tất cả</option>
-                  <option value="pending">Đang chờ</option>
-                  <option value="completed">Hoàn thành</option>
-                  <option value="failed">Thất bại</option>
-                  <option value="refunded">Đã hoàn tiền</option>
-                </select>
-              </div>
-
               <div>
                 <label htmlFor="payment-type-filter" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Loại thanh toán
@@ -317,10 +298,9 @@ export function Payments() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Tất cả</option>
-                  <option value="deposit">Đặt cọc</option>
-                  <option value="rental">Thuê xe</option>
-                  <option value="penalty">Phạt</option>
-                  <option value="refund">Hoàn tiền</option>
+                  <option value="deposit">💰 Tiền cọc</option>
+                  <option value="rental_fee">🚗 Phí thuê xe</option>
+                  <option value="additional_fee">⚠️ Phí phát sinh</option>
                 </select>
               </div>
 
@@ -335,14 +315,12 @@ export function Payments() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
                   <option value="">Tất cả</option>
-                  <option value="qr_code">QR Code</option>
-                  <option value="vnpay">VNPay</option>
-                  <option value="cash">Tiền mặt</option>
-                  <option value="bank_transfer">Chuyển khoản</option>
+                  <option value="vnpay">💳 VNPay</option>
+                  <option value="cash">💵 Tiền mặt</option>
                 </select>
               </div>
 
-              <div className="md:col-span-3">
+              <div className="md:col-span-2">
                 <Button
                   onClick={handleResetFilters}
                   variant="outline"
@@ -372,16 +350,13 @@ export function Payments() {
                   Khách hàng
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Số tiền
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Loại
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Phương thức
+                  Số tiền
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Trạng thái
+                  Phương thức
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Ngày tạo
@@ -391,7 +366,7 @@ export function Payments() {
             <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
                       <span className="ml-3 text-gray-500">Đang tải...</span>
@@ -400,7 +375,7 @@ export function Payments() {
                 </tr>
               ) : payments.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
                     Không có dữ liệu thanh toán
                   </td>
                 </tr>
@@ -440,6 +415,29 @@ export function Payments() {
                         </div>
                       </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {payment.paymentType === 'deposit' ? (
+                        <Badge className="bg-gradient-to-r from-purple-500 to-purple-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
+                          💰 Tiền cọc
+                        </Badge>
+                      ) : payment.paymentType === 'rental' || payment.paymentType === 'rental_fee' ? (
+                        <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
+                          🚗 Phí thuê xe
+                        </Badge>
+                      ) : payment.paymentType === 'penalty' || payment.paymentType === 'additional_fee' ? (
+                        <Badge className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
+                          ⚠️ Phí phát sinh
+                        </Badge>
+                      ) : payment.paymentType === 'refund' ? (
+                        <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
+                          ↩️ Hoàn tiền
+                        </Badge>
+                      ) : (
+                        <Badge className={getPaymentTypeBadgeClass(payment.paymentType)}>
+                          {PAYMENT_TYPE_LABELS[payment.paymentType] || payment.paymentType}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-semibold text-gray-900 dark:text-white">
                         {formatCurrency(payment.amount)}
                       </div>
@@ -450,19 +448,19 @@ export function Payments() {
                       )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={getPaymentTypeBadgeClass(payment.paymentType)}>
-                        {PAYMENT_TYPE_LABELS[payment.paymentType] || payment.paymentType}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {PAYMENT_METHOD_LABELS[payment.paymentMethod] || payment.paymentMethod}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <Badge className={getStatusBadgeClass(payment.status)}>
-                        {PAYMENT_STATUS_LABELS[payment.status] || payment.status}
-                      </Badge>
+                      {payment.paymentMethod === 'vnpay' ? (
+                        <Badge className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[110px]">
+                          💳 VNPay
+                        </Badge>
+                      ) : payment.paymentMethod === 'cash' ? (
+                        <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[110px]">
+                          💵 Tiền mặt
+                        </Badge>
+                      ) : (
+                        <span className="text-sm text-gray-500 dark:text-gray-500 italic">
+                          {PAYMENT_METHOD_LABELS[payment.paymentMethod] || payment.paymentMethod}
+                        </span>
+                      )}
                     </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
                         {formatDate(payment.createdAt)}
