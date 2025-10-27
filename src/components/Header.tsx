@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Menu, Sun, Moon, Search, Bell, User, ChevronDown, LogOut, Settings } from 'lucide-react';
+import { Menu, Sun, Moon, Bell, User, ChevronDown, LogOut, Settings } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { Button } from '../components/ui/button';
 import { Switch } from '../components/ui/switch';
-import { Input } from '../components/ui/input';
 import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
@@ -19,7 +18,6 @@ export function Header({ onMenuClick, isMobile }: HeaderProps) {
   const navigate = useNavigate();
   const isDark = theme === 'dark';
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
 
   const handleLogout = () => {
     logout();
@@ -35,8 +33,8 @@ export function Header({ onMenuClick, isMobile }: HeaderProps) {
   return (
     <header className="bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-neutral-200 dark:border-gray-700 px-4 lg:px-6 py-4 sticky top-0 z-40">
       <div className="flex items-center justify-between">
-        {/* Left section - Menu button and Search */}
-        <div className="flex items-center space-x-4 flex-1">
+        {/* Left section - Menu button */}
+        <div className="flex items-center space-x-4">
           {isMobile && (
             <Button
               variant="ghost"
@@ -47,32 +45,10 @@ export function Header({ onMenuClick, isMobile }: HeaderProps) {
               <Menu className="h-5 w-5" />
             </Button>
           )}
-          
-          {/* Search bar - now on the left */}
-          <div className="hidden md:flex items-center flex-1 max-w-md">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-              <Input
-                type="text"
-                placeholder="Tìm kiếm xe, khách hàng..."
-                value={searchValue}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchValue(e.target.value)}
-                className="pl-10 bg-neutral-50 dark:bg-gray-800 border-0 focus-visible:ring-1 focus-visible:ring-green-500"
-              />
-            </div>
-          </div>
         </div>
 
         {/* Right section */}
         <div className="flex items-center space-x-3">
-          {/* Search button for mobile */}
-          <Button
-            variant="ghost" 
-            size="icon"
-            className="md:hidden hover:bg-neutral-100 dark:hover:bg-gray-800"
-          >
-            <Search className="h-5 w-5 text-gray-700 dark:text-white" />
-          </Button>
 
           {/* Theme toggle */}
           <div className="flex items-center space-x-2 bg-neutral-100 dark:bg-gray-800 rounded-xl p-2">
@@ -158,20 +134,6 @@ export function Header({ onMenuClick, isMobile }: HeaderProps) {
               )}
             </AnimatePresence>
           </div>
-        </div>
-      </div>
-
-      {/* Mobile search bar */}
-      <div className="md:hidden mt-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-400" />
-          <Input
-            type="text"
-            placeholder="Tìm kiếm xe, khách hàng..."
-            value={searchValue}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchValue(e.target.value)}
-            className="pl-10 bg-neutral-50 dark:bg-gray-800 border-0 focus-visible:ring-1 focus-visible:ring-green-500"
-          />
         </div>
       </div>
     </header>

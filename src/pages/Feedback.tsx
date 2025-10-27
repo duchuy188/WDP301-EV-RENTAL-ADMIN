@@ -163,12 +163,13 @@ export function FeedbackPage() {
       key: 'title',
       header: 'Nội dung',
       sortable: true,
+      width: '180px',
       render: (_value: any, row: any) => (
-        <div className="max-w-md py-1">
-          <p className="font-semibold text-gray-900 dark:text-white truncate mb-1">
+        <div className="py-1 max-w-[180px]">
+          <p className="font-semibold text-gray-900 dark:text-white truncate mb-1 text-xs">
             {row.type === 'complaint' ? row.title : 'Đánh giá dịch vụ'}
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
             {row.type === 'complaint' ? row.description : row.comment}
           </p>
         </div>
@@ -295,7 +296,7 @@ export function FeedbackPage() {
       ),
     },
     {
-      key: '_id',
+      key: 'actions',
       header: 'Hành động',
       width: '100px',
       render: (_value: any, row: any) => (

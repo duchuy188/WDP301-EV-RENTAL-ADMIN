@@ -22,12 +22,14 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [draftVehicles, setDraftVehicles] = useState<VehicleUI[]>([]);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<{
     success: number;
     failed: number;
     errors?: Array<{ licensePlate: string; error: string }>;
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const importResultRef = useRef<HTMLDivElement>(null);
 
   // Filter xe chưa có biển số khi modal mở
   useEffect(() => {
@@ -43,6 +45,14 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
       console.log('Xe chưa có biển số:', vehiclesWithoutPlates.length, vehiclesWithoutPlates);
     }
   }, [isOpen, vehicles]);
+
+  // Reset state khi modal đóng
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedFile(null);
+      setImportResult(null);
+    }
+  }, [isOpen]);
 
   const handleExportDraftVehicles = async () => {
     try {
@@ -118,13 +128,11 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
     }
   };
 
-  const handleImportLicensePlates = async (file: File) => {
+  // Handle file selection - chỉ validate và lưu file
+  const handleFileSelect = async (file: File) => {
     if (!file) return;
     
     try {
-      setLoading(true);
-      setImportResult(null);
-      
       // Validate file type
       if (!file.name.endsWith('.xlsx') && !file.name.endsWith('.xls') && !file.name.endsWith('.csv')) {
         showToast.warning('Vui lòng chọn file Excel (.xlsx, .xls hoặc .csv)');
@@ -137,13 +145,115 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         return;
       }
       
-      console.log('Importing file:', file.name, 'size:', file.size, 'type:', file.type);
+      console.log('File selected:', file.name, 'size:', file.size, 'type:', file.type);
       
-      const toastId = showToast.loading('Đang import biển số...');
+      // Validate file content - check if license plates are sufficient
+      const toastId = showToast.loading('Đang kiểm tra file...');
       
-      const response = await vehicleService.importLicensePlates(file);
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const data: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        console.log('Excel data:', data);
+        
+        if (data.length < 2) {
+          showToast.dismiss(toastId);
+          showToast.error('File Excel không có dữ liệu. Vui lòng điền biển số vào file.');
+          return;
+        }
+        
+        // Find column indices (handle different possible formats)
+        const headers = data[0] as string[];
+        const licensePlateColIndex = headers.findIndex((h: string) => 
+          h && (
+            h.toLowerCase().includes('biển số') || 
+            h.toLowerCase().includes('license') || 
+            h.toLowerCase().includes('license_plate') ||
+            h.toLowerCase() === 'biển số xe'
+          )
+        );
+        
+        console.log('Headers:', headers);
+        console.log('License plate column index:', licensePlateColIndex);
+        
+        if (licensePlateColIndex === -1) {
+          showToast.dismiss(toastId);
+          showToast.error('Không tìm thấy cột "Biển số xe" trong file Excel. Vui lòng kiểm tra lại định dạng file.');
+          return;
+        }
+        
+        // Count rows with license plates filled
+        const dataRows = data.slice(1); // Skip header
+        const totalRows = dataRows.filter(row => row && row.length > 0).length;
+        const rowsWithLicensePlates = dataRows.filter(row => {
+          const licensePlate = row[licensePlateColIndex];
+          return licensePlate && 
+                 typeof licensePlate === 'string' && 
+                 licensePlate.trim() !== '' &&
+                 licensePlate.trim() !== 'N/A';
+        }).length;
+        
+        console.log(`Total rows: ${totalRows}, Rows with license plates: ${rowsWithLicensePlates}`);
+        
+        // Validate if license plates are sufficient
+        if (rowsWithLicensePlates === 0) {
+          showToast.dismiss(toastId);
+          showToast.error(`Không có biển số nào được điền trong file Excel. Vui lòng điền biển số vào cột "Biển số xe" (ví dụ: 51A-123.45)`);
+          return;
+        }
+        
+        if (rowsWithLicensePlates < totalRows) {
+          const missingCount = totalRows - rowsWithLicensePlates;
+          showToast.dismiss(toastId);
+          showToast.error(
+            `File Excel thiếu ${missingCount} biển số! Có ${totalRows} xe nhưng chỉ điền ${rowsWithLicensePlates} biển số. Vui lòng điền đầy đủ biển số cho tất cả các xe.`
+          );
+          return;
+        }
+        
+        console.log('✅ Validation passed, all rows have license plates');
+        showToast.dismiss(toastId);
+        
+        // Lưu file đã validate thành công
+        setSelectedFile(file);
+        showToast.success(`Đã chọn file "${file.name}" với ${rowsWithLicensePlates} biển số. Nhấn "Nộp" để import.`);
+        
+      } catch (validationError) {
+        console.error('Validation error:', validationError);
+        showToast.dismiss(toastId);
+        showToast.error('Không thể đọc file Excel. Vui lòng kiểm tra lại định dạng file.');
+        return;
+      }
+    } catch (error: any) {
+      console.error('Error selecting file:', error);
+      showToast.error('Có lỗi xảy ra khi kiểm tra file');
+    }
+  };
+
+  // Handle submit import - thực sự import file đã chọn
+  const handleSubmitImport = async () => {
+    if (!selectedFile) {
+      showToast.warning('Vui lòng chọn file Excel trước');
+      return;
+    }
+    
+    let toastId: any = null;
+    
+    try {
+      setLoading(true);
+      setImportResult(null);
+      
+      console.log('Importing file:', selectedFile.name, 'size:', selectedFile.size, 'type:', selectedFile.type);
+      
+      toastId = showToast.loading('Đang import biển số...');
+      
+      const response = await vehicleService.importLicensePlates(selectedFile);
       
       showToast.dismiss(toastId);
+      toastId = null;
       
       console.log('Import response full:', response);
       console.log('Import response.data:', response.data);
@@ -178,6 +288,20 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         errors: failedItems
       });
       
+      // Clear file đã chọn sau khi import
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+      
+      // Scroll xuống phần kết quả sau một chút delay
+      setTimeout(() => {
+        importResultRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'nearest' 
+        });
+      }, 100);
+      
       if (totalImported > 0) {
         showToast.success(`Import thành công ${totalImported} biển số!`);
         onSuccess(); // Refresh vehicle list
@@ -187,6 +311,12 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         showToast.info('Không có dữ liệu nào được import. Vui lòng kiểm tra file Excel.');
       }
     } catch (error: any) {
+      // Dismiss loading toast if it exists
+      if (toastId) {
+        showToast.dismiss(toastId);
+        toastId = null;
+      }
+      
       console.error('Error importing license plates:', error);
       console.error('Error details:', {
         status: error.response?.status,
@@ -206,23 +336,42 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         success: 0,
         failed: 1,
         errors: [{ 
-          licensePlate: 'System Error', 
-          error: `${errorMessage} (Status: ${error.response?.status || 'Unknown'})` 
+          licensePlate: 'Lỗi hệ thống', 
+          error: `${errorMessage}` 
         }]
       });
       
-      showToast.error(`Lỗi import: ${errorMessage}`);
-    } finally {
-      setLoading(false);
-      // Reset file input
+      // Clear file đã chọn khi có lỗi
+      setSelectedFile(null);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      
+      // Scroll xuống phần kết quả lỗi
+      setTimeout(() => {
+        importResultRef.current?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'nearest' 
+        });
+      }, 100);
+      
+      showToast.error(`Lỗi import: ${errorMessage}`);
+    } finally {
+      // Make sure to dismiss toast in finally block as well
+      if (toastId) {
+        showToast.dismiss(toastId);
+      }
+      
+      setLoading(false);
     }
   };
 
   const handleClose = () => {
+    setSelectedFile(null);
     setImportResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     onClose();
   };
 
@@ -409,7 +558,7 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
                 accept=".xlsx,.xls,.csv"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) handleImportLicensePlates(file);
+                  if (file) handleFileSelect(file);
                 }}
                 className="hidden"
                 aria-label="Chọn file Excel biển số"
@@ -421,28 +570,78 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
                 variant="outline"
                 className="w-full border-2 border-blue-200 text-blue-700 hover:bg-blue-50 py-3 rounded-lg font-medium transition-all duration-200"
               >
-                {loading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-600 border-t-transparent mr-2"></div>
-                    Đang import...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-5 w-5 mr-2" />
-                    Chọn file Excel
-                  </>
-                )}
+                <Upload className="h-5 w-5 mr-2" />
+                Chọn file Excel
               </Button>
+
+              {/* Hiển thị file đã chọn */}
+              {selectedFile && (
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3 flex-1">
+                      <div className="p-2 bg-blue-100 rounded-lg">
+                        <FileSpreadsheet className="h-5 w-5 text-blue-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-blue-900 truncate">
+                          {selectedFile.name}
+                        </p>
+                        <p className="text-xs text-blue-700 mt-1">
+                          {(selectedFile.size / 1024).toFixed(2)} KB
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFile(null);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                      }}
+                      className="h-8 w-8 p-0 text-blue-600 hover:text-blue-800 hover:bg-blue-100"
+                      title="Xóa file"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* Button Nộp */}
+              {selectedFile && (
+                <Button
+                  onClick={handleSubmitImport}
+                  disabled={loading}
+                  className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                      Đang import...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-5 w-5 mr-2" />
+                      Nộp và Import Biển Số
+                    </>
+                  )}
+                </Button>
+              )}
               </CardContent>
             </Card>
 
             {/* Import Result */}
             {importResult && (
-              <Card className={`border-2 ${
-                importResult.success > 0 
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' 
-                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
-              }`}>
+              <Card 
+                ref={importResultRef}
+                className={`border-2 ${
+                  importResult.success > 0 
+                    ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700' 
+                    : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
+                }`}
+              >
                 <CardContent className="p-6">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className={`flex items-center justify-center w-12 h-12 rounded-full ${
