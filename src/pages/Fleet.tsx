@@ -65,6 +65,16 @@ export function Fleet() {
     loadStatistics();
   }, []);
 
+  // Debug vehicles state
+  useEffect(() => {
+    if (import.meta.env.DEV) {
+      console.log('Fleet: Vehicles state updated:', {
+        count: vehicles.length,
+        vehicles: vehicles.slice(0, 3).map(v => ({ id: v.id, name: v.name, color: v.color }))
+      });
+    }
+  }, [vehicles]);
+
   // Reload vehicles when filters change
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -77,13 +87,18 @@ export function Fleet() {
   const loadVehicles = async () => {
     try {
       setLoading(true);
+      
+      // Don't send color filter to API - use client-side filtering instead
+      // API may not understand Vietnamese color names correctly, so we fetch all
+      // vehicles and filter by color on the client side for better accuracy
+      
       const response = await vehicleService.getVehiclesForAdmin({
         page: 1,
         limit: 100,
         search: searchTerm,
         status: statusFilter || undefined,
         type: typeFilter || undefined,
-        color: colorFilter || undefined,
+        // color: undefined, // Always fetch all colors, filter on client-side
         batteryLevelMin: batteryFilter?.min,
         batteryLevelMax: batteryFilter?.max
       });
@@ -93,9 +108,63 @@ export function Fleet() {
         console.log('Fleet: Response data type:', typeof response.data);
         console.log('Fleet: Response data length:', response.data?.length);
         console.log('Fleet: First vehicle:', response.data?.[0]);
+        console.log('Fleet: Current filters:', { statusFilter, typeFilter, colorFilter, searchTerm });
+        console.log('Fleet: API params sent:', {
+          page: 1,
+          limit: 100,
+          search: searchTerm,
+          status: statusFilter || undefined,
+          type: typeFilter || undefined,
+          color: 'not sent - using client-side filtering',
+          batteryLevelMin: batteryFilter?.min,
+          batteryLevelMax: batteryFilter?.max
+        });
+        
+        // Debug vehicle colors
+        if (response.data && response.data.length > 0) {
+          console.log('Fleet: Vehicle colors found:', response.data.map(v => ({ 
+            id: v.id, 
+            name: v.name, 
+            color: v.color,
+            licensePlate: v.licensePlate 
+          })));
+        }
       }
       
-      const vehiclesData = response.data || [];
+      let vehiclesData = response.data || [];
+      
+      // Client-side color filtering as fallback
+      if (colorFilter && vehiclesData.length > 0) {
+        const colorMap: Record<string, string[]> = {
+          'red': ['Đỏ', 'đỏ', 'red', 'Red'],
+          'blue': ['Xanh dương', 'xanh dương', 'xanh d', 'blue', 'Blue'],
+          'green': ['Xanh lá', 'xanh lá', 'xanh l', 'green', 'Green'],
+          'yellow': ['Vàng', 'vàng', 'yellow', 'Yellow'],
+          'black': ['Đen', 'đen', 'black', 'Black'],
+          'white': ['Trắng', 'trắng', 'white', 'White'],
+          'orange': ['Cam', 'cam', 'orange', 'Orange'],
+          'purple': ['Tím', 'tím', 'purple', 'Purple'],
+          'pink': ['Hồng', 'hồng', 'pink', 'Pink'],
+          'gray': ['Xám', 'xám', 'gray', 'grey', 'Gray', 'Grey']
+        };
+        
+        const expectedColors = colorMap[colorFilter] || [colorFilter];
+        vehiclesData = vehiclesData.filter(vehicle => {
+          const vehicleColor = vehicle.color?.toLowerCase() || '';
+          return expectedColors.some(expectedColor => 
+            vehicleColor.includes(expectedColor.toLowerCase())
+          );
+        });
+        
+        console.log('Fleet: Client-side color filtering applied:', {
+          colorFilter,
+          expectedColors,
+          filteredCount: vehiclesData.length,
+          originalCount: response.data?.length || 0
+        });
+      }
+      
+      console.log('Fleet: Setting vehicles state with', vehiclesData.length, 'vehicles');
       setVehicles(vehiclesData);
       
       // Check if this is mock data (in development)
@@ -731,7 +800,7 @@ export function Fleet() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Status Filter */}
                 <div>
                   <label className="flex items-center text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
@@ -867,49 +936,51 @@ export function Fleet() {
                     <div className="w-1 h-4 bg-purple-600 rounded-full mr-2"></div>
                     Màu sắc
                   </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <input
                         type="radio"
                         name="color"
                         checked={colorFilter === null}
                         onChange={() => setColorFilter(null)}
-                        className="text-blue-600"
+                        className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                         Tất cả màu
                       </span>
                     </label>
-                    {[
-                      { key: 'red', label: 'Đỏ', bgClass: 'bg-red-500' },
-                      { key: 'blue', label: 'Xanh dương', bgClass: 'bg-blue-500' },
-                      { key: 'green', label: 'Xanh lá', bgClass: 'bg-green-500' },
-                      { key: 'yellow', label: 'Vàng', bgClass: 'bg-yellow-500' },
-                      { key: 'black', label: 'Đen', bgClass: 'bg-gray-900' },
-                      { key: 'white', label: 'Trắng', bgClass: 'bg-white border border-gray-300' },
-                      { key: 'orange', label: 'Cam', bgClass: 'bg-orange-500' },
-                      { key: 'purple', label: 'Tím', bgClass: 'bg-purple-500' },
-                      { key: 'pink', label: 'Hồng', bgClass: 'bg-pink-500' },
-                      { key: 'gray', label: 'Xám', bgClass: 'bg-gray-500' }
-                    ].map((color) => (
-                      <label key={color.key} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="color"
-                          checked={colorFilter === color.key}
-                          onChange={() => setColorFilter(color.key)}
-                          className="text-blue-600"
-                        />
-                        <div className="flex items-center space-x-2">
-                          <div 
-                            className={`w-3 h-3 rounded-full border border-gray-300 ${color.bgClass}`}
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: 'red', label: 'Đỏ', bgClass: 'bg-red-500' },
+                        { key: 'blue', label: 'Xanh dương', bgClass: 'bg-blue-500' },
+                        { key: 'green', label: 'Xanh lá', bgClass: 'bg-green-500' },
+                        { key: 'yellow', label: 'Vàng', bgClass: 'bg-yellow-500' },
+                        { key: 'black', label: 'Đen', bgClass: 'bg-gray-900' },
+                        { key: 'white', label: 'Trắng', bgClass: 'bg-white border border-gray-300' },
+                        { key: 'orange', label: 'Cam', bgClass: 'bg-orange-500' },
+                        { key: 'purple', label: 'Tím', bgClass: 'bg-purple-500' },
+                        { key: 'pink', label: 'Hồng', bgClass: 'bg-pink-500' },
+                        { key: 'gray', label: 'Xám', bgClass: 'bg-gray-500' }
+                      ].map((color) => (
+                        <label key={color.key} className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                          <input
+                            type="radio"
+                            name="color"
+                            checked={colorFilter === color.key}
+                            onChange={() => setColorFilter(color.key)}
+                            className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">
-                            {color.label}
-                          </span>
-                        </div>
-                      </label>
-                    ))}
+                          <div className="flex items-center space-x-2 flex-1">
+                            <div 
+                              className={`w-3 h-3 rounded-full border border-gray-300 ${color.bgClass}`}
+                            />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                              {color.label}
+                            </span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 </div>
 

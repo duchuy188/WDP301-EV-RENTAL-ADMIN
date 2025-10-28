@@ -8,8 +8,7 @@ import {
   AlertTriangle,
   CheckCircle,
   TrendingUp,
-  Image as ImageIcon,
-  FileText
+  Image as ImageIcon
 } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
@@ -143,28 +142,35 @@ export function MaintenancePage() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2 flex items-center gap-3">
-                <div className="p-2.5 bg-gradient-to-r from-primary-600 to-primary-700 rounded-xl">
-                  <Wrench className="w-7 h-7 text-white" />
-                </div>
-                Quản lý bảo trì
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400">
-                Quản lý báo cáo bảo trì xe trong hệ thống
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={handleRefresh}
-                disabled={loading}
-                className="hover:bg-primary-50 dark:hover:bg-primary-900/20"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Làm mới
-              </Button>
+          <div className="relative bg-gradient-to-br from-green-600 via-emerald-600 to-teal-700 dark:from-green-700 dark:via-emerald-700 dark:to-teal-800 rounded-2xl py-5 px-8 shadow-xl border-0 overflow-hidden">
+            {/* Decorative background pattern */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent pointer-events-none" />
+            <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute -left-20 -bottom-20 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
+            
+            <div className="flex items-center justify-between relative z-10">
+              <div>
+                <h1 className="text-3xl font-bold text-white mb-0.5 drop-shadow-lg flex items-center gap-3">
+                  <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
+                    <Wrench className="w-7 h-7 text-white" />
+                  </div>
+                  Quản lý bảo trì
+                </h1>
+                <p className="text-green-50 dark:text-green-100">
+                  Quản lý báo cáo bảo trì xe trong hệ thống
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleRefresh}
+                  disabled={loading}
+                  className="flex items-center space-x-2 bg-white/90 hover:bg-white border-white/50 hover:border-white text-green-700 hover:text-green-800 shadow-lg"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                  Làm mới
+                </Button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -318,6 +324,9 @@ export function MaintenancePage() {
                   <table className="w-full">
                     <thead className="bg-gray-50 dark:bg-gray-700/50">
                       <tr>
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                          STT
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                           Mã báo cáo
                         </th>
@@ -342,11 +351,21 @@ export function MaintenancePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {reports.map((report) => (
+                      {reports.map((report, index) => {
+                        // Calculate sequential number based on pagination
+                        const stt = ((pagination.page - 1) * pagination.limit) + index + 1;
+                        return (
                         <tr
                           key={report._id}
                           className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
                         >
+                          <td className="px-6 py-4 whitespace-nowrap text-sm">
+                            <div className="flex items-center justify-center">
+                              <span className="font-semibold text-gray-700 dark:text-gray-300">
+                                {stt}
+                              </span>
+                            </div>
+                          </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
                             <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded inline-block">
                               {report.code}
@@ -407,11 +426,12 @@ export function MaintenancePage() {
                               className="hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300"
                             >
                               <Eye className="w-4 h-4 mr-1.5" />
-                              Chi tiết
+                            
                             </Button>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
