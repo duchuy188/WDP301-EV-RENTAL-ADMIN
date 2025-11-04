@@ -12,7 +12,9 @@ import {
   DollarSign,
   Target,
   Zap,
-  Activity
+  Activity,
+  MousePointerClick,
+  Clock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -21,12 +23,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import AIService from './service/aiService';
 import { AIDashboardData, AnalysisPeriod } from './service/type/aiTypes';
 import { showToast } from '../lib/toast';
+import { StationAIDetailModal } from './StationAIDetailModal';
 
 export function AIDashboard() {
   const [data, setData] = useState<AIDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<AnalysisPeriod>('30d');
   const [aiHealthy, setAiHealthy] = useState(false);
+  const [selectedStation, setSelectedStation] = useState<{ id: string; name: string } | null>(null);
 
   // Check AI health
   const checkAIHealth = async () => {
@@ -229,51 +233,53 @@ export function AIDashboard() {
             </Card>
           </motion.div>
 
-          {/* Vehicle Recommendations */}
+          {/* Top Priority Stations - Summary */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card>
+            <Card className="border-l-4 border-l-orange-500">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-blue-600" />
-                  Gợi ý phân bổ xe (AI)
+                  <Zap className="w-5 h-5 text-orange-600" />
+                  Top Trạm Ưu Tiên Cao
+                  <Badge variant="outline" className="text-xs ml-auto">
+                    Top 3 cần hành động
+                  </Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {(data.vehicleRecommendations?.topPriorities || []).slice(0, 5).map((rec, index) => (
+                <div className="space-y-2">
+                  {(data.vehicleRecommendations?.topPriorities || []).slice(0, 3).map((rec, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      onClick={() => setSelectedStation({ id: rec.stationId, name: rec.stationName })}
+                      className="flex items-center gap-3 p-3 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-lg hover:shadow-md transition-all cursor-pointer border border-orange-200 dark:border-orange-800 group"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-gray-900 dark:text-white">
-                            {rec.stationName}
-                          </p>
-                          <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'warning' : 'default'} className="text-xs">
-                            {rec.priority === 'high' ? 'Ưu tiên cao' : rec.priority === 'medium' ? 'Ưu tiên TB' : 'Ưu tiên thấp'}
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-gray-400">
-                          <span>Hiện có: {rec.currentVehicles}</span>
-                          <span>Dự báo: {rec.predictedDemand}</span>
-                          <span className="font-semibold text-blue-600 dark:text-blue-400">
-                            Cần thêm: {rec.vehiclesNeeded}
-                          </span>
-                        </div>
+                      <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-orange-500 to-red-500 text-white rounded-full font-bold text-lg shadow-lg flex-shrink-0">
+                        {index + 1}
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">ROI</p>
-                        <p className="text-lg font-bold text-green-600 dark:text-green-400">
-                          {rec.estimatedROI}%
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 dark:text-white truncate group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">
+                          {rec.stationName}
                         </p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Cần thêm <span className="font-bold text-orange-600">{rec.vehiclesNeeded}</span> xe • ROI: <span className="font-bold text-green-600">{rec.estimatedROI}%</span>
+                        </p>
+                      </div>
+                      <div>
+                        <Badge variant={rec.priority === 'high' ? 'destructive' : 'warning'} className="text-xs">
+                          {rec.priority === 'high' ? 'Khẩn' : 'Cao'}
+                        </Badge>
                       </div>
                     </div>
                   ))}
+                </div>
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                    💡 <strong>Xem chi tiết tất cả trạm</strong> và phân tích đầy đủ ở phần <strong>"AI Detailed Analytics"</strong> bên dưới
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -397,48 +403,79 @@ export function AIDashboard() {
             </motion.div>
           </div>
 
-          {/* Demand Forecast Chart Preview */}
+          {/* Demand Forecast Summary */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Card>
+            <Card className="border-l-4 border-l-blue-500">
               <CardHeader>
-                <CardTitle>Dự báo nhu cầu theo giờ</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-blue-600" />
+                  Dự báo nhu cầu hôm nay
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-6 md:grid-cols-12 gap-2">
-                  {(data.demandForecast?.hourlyTrend || []).map((trend, index) => {
+                {/* Peak Hours Summary */}
+                <div className="grid grid-cols-3 gap-4 mb-4">
+                  {(() => {
                     const hourlyTrends = data.demandForecast?.hourlyTrend || [];
-                    const maxForecast = hourlyTrends.length > 0 ? Math.max(...hourlyTrends.map(t => t.forecast)) : 1;
-                    const heightPercent = Math.round((trend.forecast / maxForecast) * 100);
-                    const color = trend.demand === 'high' ? 'bg-red-500' : trend.demand === 'medium' ? 'bg-yellow-500' : 'bg-green-500';
-                    const heightClass = `h-[${heightPercent}%]`;
+                    const peakHours = hourlyTrends
+                      .filter(t => t.demand === 'high')
+                      .sort((a, b) => b.forecast - a.forecast)
+                      .slice(0, 3);
                     
-                    return (
-                      <div key={index} className="flex flex-col items-center gap-1">
-                        <div className="relative w-full h-32 flex items-end justify-center">
-                          <div
-                            className={`w-full ${color} rounded-t transition-all hover:opacity-80 ${heightClass}`}
-                            title={`${trend.hour}h: ${trend.forecast} bookings - ${trend.demand}`}
-                          >
-                            <div className="absolute inset-0 flex items-center justify-center">
-                              <span className="text-xs font-bold text-white">{trend.forecast}</span>
-                            </div>
-                          </div>
+                    return peakHours.map((trend, index) => (
+                      <div key={index} className="bg-gradient-to-br from-red-50 to-orange-50 dark:from-red-900/20 dark:to-orange-900/20 p-4 rounded-xl border border-red-200 dark:border-red-800">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs text-red-600 dark:text-red-400 font-semibold">Giờ cao điểm #{index + 1}</span>
+                          <Badge variant="destructive" className="text-xs">High</Badge>
                         </div>
-                        <span className="text-xs text-gray-600 dark:text-gray-400 font-medium">
-                          {trend.hour}h
-                        </span>
+                        <p className="text-3xl font-bold text-red-700 dark:text-red-400">{trend.hour}h</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {trend.forecast} bookings
+                        </p>
                       </div>
-                    );
-                  })}
+                    ));
+                  })()}
+                </div>
+
+                {/* Quick Stats */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Tổng dự báo hôm nay</p>
+                    <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
+                      {(data.demandForecast?.hourlyTrend || []).reduce((sum, t) => sum + t.forecast, 0)}
+                    </p>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                    <p className="text-xs text-green-600 dark:text-green-400 mb-1">Độ tin cậy</p>
+                    <p className="text-2xl font-bold text-green-700 dark:text-green-300">
+                      {data.overview?.confidence || 0}%
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
+                    📊 <strong>Xem biểu đồ chi tiết</strong> theo giờ và theo tuần ở phần <strong>"AI Detailed Analytics"</strong> bên dưới
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         </>
+      )}
+
+      {/* Station AI Detail Modal */}
+      {selectedStation && (
+        <StationAIDetailModal
+          isOpen={!!selectedStation}
+          onClose={() => setSelectedStation(null)}
+          stationId={selectedStation.id}
+          stationName={selectedStation.name}
+        />
       )}
     </div>
   );

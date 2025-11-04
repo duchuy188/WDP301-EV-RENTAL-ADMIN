@@ -86,7 +86,7 @@ export interface StationRevenueData {
 
 export interface RevenueByStationData {
   stations: StationRevenueData[];
-  totalRevenue: number;
+  totalRevenue?: number; // Optional: will be calculated from stations if not provided by API
   period: 'today' | 'week' | 'month' | 'year';
   dateRange: {
     start: string;
@@ -255,7 +255,7 @@ export interface StaffPerformanceItem {
 export interface StaffPerformanceSummary {
   total_staff: number;
   avg_performance_score: number;
-  top_performer: Partial<StaffPerformanceItem>;
+  top_performer: Partial<StaffPerformanceItem> | null;
   date_range: {
     start: string;
     end: string;
@@ -348,5 +348,91 @@ export const STAFF_PERIOD_LABELS: Record<string, string> = {
   '30d': '30 ngày',
   '90d': '90 ngày',
   '1y': '1 năm'
+};
+
+// Peak Analysis - Giờ cao điểm và Ngày cao điểm
+export interface PeakHourData {
+  hour: number;
+  time_range: string;
+  bookings: number;
+  revenue: number;
+  avg_booking_value: number;
+  trend?: 'high' | 'low';
+}
+
+export interface PeakHoursSummary {
+  total_bookings: number;
+  total_revenue: number;
+  busiest_hour: number;
+  quietest_hour: number;
+  peak_bookings: number;
+  low_bookings: number;
+  avg_bookings_per_hour: number;
+}
+
+export interface PeakHoursAnalysis {
+  data: PeakHourData[];
+  top_3: PeakHourData[];
+  bottom_3: PeakHourData[];
+  summary: PeakHoursSummary;
+}
+
+export interface PeakDayData {
+  day: number;
+  day_name: string;
+  bookings: number;
+  revenue: number;
+  avg_booking_value: number;
+  trend?: 'high' | 'low';
+}
+
+export interface PeakDaysSummary {
+  total_bookings: number;
+  total_revenue: number;
+  busiest_day: string;
+  quietest_day: string;
+  peak_bookings: number;
+  low_bookings: number;
+  avg_bookings_per_day: number;
+}
+
+export interface PeakDaysAnalysis {
+  data: PeakDayData[];
+  top_3: PeakDayData[];
+  bottom_3: PeakDayData[];
+  summary: PeakDaysSummary;
+}
+
+export interface PeakAnalysisData {
+  period: string;
+  station_id?: string;
+  peak_hours: PeakHoursAnalysis;
+  peak_days: PeakDaysAnalysis;
+}
+
+export interface PeakAnalysisResponse {
+  success: boolean;
+  data: PeakAnalysisData;
+}
+
+export interface PeakAnalysisParams {
+  type?: 'hours' | 'days' | 'both'; // Loại thống kê: giờ, ngày, hoặc cả hai
+  period?: '7d' | '30d' | '90d' | '1y';
+  station_id?: string; // ID trạm cụ thể hoặc bỏ trống để lấy tất cả
+}
+
+// Period labels for peak analysis
+export const PEAK_ANALYSIS_PERIOD_LABELS: Record<string, string> = {
+  '7d': '7 ngày qua',
+  '30d': '30 ngày qua',
+  '90d': '90 ngày qua',
+  '1y': '1 năm qua'
+};
+
+// Type labels for peak analysis
+export const PEAK_ANALYSIS_TYPE_LABELS: Record<string, string> = {
+  'both': 'Giờ & Ngày',
+  'hours': 'Chỉ Giờ',
+  'days': 'Chỉ Ngày'
 };
 

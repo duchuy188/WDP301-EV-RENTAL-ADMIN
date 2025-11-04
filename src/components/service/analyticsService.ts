@@ -19,7 +19,10 @@ import {
   StaffPerformanceData,
   StaffPerformanceDetailResponse,
   StaffPerformanceDetailParams,
-  StaffPerformanceDetailData
+  StaffPerformanceDetailData,
+  PeakAnalysisResponse,
+  PeakAnalysisParams,
+  PeakAnalysisData
 } from './type/analyticsTypes';
 
 /**
@@ -185,7 +188,7 @@ class AnalyticsService {
         };
       }
 
-      const { stations, totalRevenue, period, dateRange } = response.data.data;
+      const { stations, totalRevenue: apiTotalRevenue, period, dateRange } = response.data.data;
       
       // Normalize stations for UI
       const normalizedStations = stations.map((station, index) => {
@@ -207,7 +210,11 @@ class AnalyticsService {
         }
       });
 
+      // Calculate totalRevenue if not provided by API
+      const totalRevenue = apiTotalRevenue ?? normalizedStations.reduce((sum, station) => sum + station.revenue, 0);
+
       console.log('Normalized station revenues:', normalizedStations);
+      console.log('Total revenue (calculated):', totalRevenue);
 
       return {
         stations: normalizedStations,
@@ -407,6 +414,76 @@ class AnalyticsService {
       };
     } catch (error) {
       console.error('Error fetching customer analytics:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Lấy thống kê giờ cao điểm và ngày cao điểm
+   * GET /api/analytics/peak-analysis
+   */
+  async getPeakAnalysis(params?: PeakAnalysisParams): Promise<PeakAnalysisData> {
+    try {
+      console.log('Fetching peak analysis with params:', params);
+      
+      const response = await axiosInstance.get<PeakAnalysisResponse>(
+        `${this.baseUrl}/peak-analysis`,
+        {
+          params: {
+            type: params?.type || 'both',
+            period: params?.period || '30d',
+            station_id: params?.station_id
+          }
+        }
+      );
+
+      console.log('Raw Peak Analysis API Response:', response.data);
+      
+      if (!response.data.success || !response.data.data) {
+        console.warn('Invalid response structure:', response.data);
+        return {
+          period: params?.period || '30d',
+          peak_hours: {
+            data: [],
+            top_3: [],
+            bottom_3: [],
+            summary: {
+              total_bookings: 0,
+              total_revenue: 0,
+              busiest_hour: 0,
+              quietest_hour: 0,
+              peak_bookings: 0,
+              low_bookings: 0,
+              avg_bookings_per_hour: 0
+            }
+          },
+          peak_days: {
+            data: [],
+            top_3: [],
+            bottom_3: [],
+            summary: {
+              total_bookings: 0,
+              total_revenue: 0,
+              busiest_day: '',
+              quietest_day: '',
+              peak_bookings: 0,
+              low_bookings: 0,
+              avg_bookings_per_day: 0
+            }
+          }
+        };
+      }
+
+      console.log('Peak analysis loaded:', response.data.data);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Error fetching peak analysis:', error);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      
       throw error;
     }
   }
