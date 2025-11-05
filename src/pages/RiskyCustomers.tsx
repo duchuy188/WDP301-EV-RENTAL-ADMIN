@@ -330,11 +330,11 @@ export default function RiskyCustomers() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewDetail(customer._id)}
-                              className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+                              className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
                               title="Xem chi tiết khách hàng rủi ro"
                               aria-label="Xem chi tiết khách hàng rủi ro"
                             >
-                              <Eye className="h-4 w-4" />
+                              <Eye className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
                             </Button>
                           </div>
                         </td>

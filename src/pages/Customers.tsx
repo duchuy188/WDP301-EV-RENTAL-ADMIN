@@ -300,11 +300,11 @@ export function Customers() {
               e.stopPropagation(); // Ngăn event bubble lên row
               handleViewUser(row);
             }}
-            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+            className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
             title="Xem chi tiết khách hàng"
             aria-label="Xem chi tiết khách hàng"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
           </Button>
           <Button
             variant="ghost"
@@ -314,10 +314,10 @@ export function Customers() {
               toggleStatus(row);
             }}
             disabled={togglingId === row._id}
-            className={`h-8 w-8 p-0 border transition-all ${
+            className={`group h-9 w-9 p-0 border-2 shadow-sm transition-all duration-200 ${
               row.status === 'active' 
-                ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border-red-200 dark:border-red-800' 
-                : 'hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400 border-green-200 dark:border-green-800'
+                ? 'bg-gradient-to-br from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-red-600 hover:text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-400 border-red-300 hover:border-red-500 hover:shadow-md hover:scale-110' 
+                : 'bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 text-green-600 hover:text-green-700 dark:from-green-900/30 dark:to-emerald-900/30 dark:text-green-400 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-110'
             }`}
             title={row.status === 'active' ? 'Chặn tài khoản' : 'Kích hoạt tài khoản'}
             aria-label={row.status === 'active' ? 'Chặn tài khoản' : 'Kích hoạt tài khoản'}
@@ -325,9 +325,9 @@ export function Customers() {
             {togglingId === row._id ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : row.status === 'active' ? (
-              <Lock className="h-4 w-4" />
+              <Lock className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
             ) : (
-              <Unlock className="h-4 w-4" />
+              <Unlock className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
             )}
           </Button>
         </div>

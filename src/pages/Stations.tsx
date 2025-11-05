@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MapPin, 
@@ -10,8 +10,11 @@ import {
   Globe,
   Car,
   X,
-  Trash2
+  Trash2,
+  Loader2,
+  RotateCcw
 } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 import { DataTable } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -21,7 +24,9 @@ import { ProfessionalPagination } from '../components/ui/professional-pagination
 import { CreateStationModal } from '../components/CreateStationModal';
 import { EditStationModal } from '../components/EditStationModal';
 import { StationDetailModal } from '../components/StationDetailModal';
+import { ConfirmationDialog } from '../components/ui/confirmation-dialog';
 import { stationService } from '../components/service/stationService';
+import { showToast } from '../lib/toast';
 import type { Station, StationStatistics } from '../components/service/type/stationTypes';
 
 export function Stations() {
@@ -29,6 +34,7 @@ export function Stations() {
   const [statistics, setStatistics] = useState<StationStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 1500); // Debounce search với 1500ms
   const [filterActive, setFilterActive] = useState<boolean | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -37,6 +43,9 @@ export function Stations() {
   const [selectedStationId, setSelectedStationId] = useState<string | null>(null);
   const [syncingStations, setSyncingStations] = useState<Set<string>>(new Set());
   const [stationsWithErrors, setStationsWithErrors] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [stationToDelete, setStationToDelete] = useState<Station | null>(null);
+  const [deleting, setDeleting] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -61,61 +70,49 @@ export function Stations() {
     };
   };
 
-  // Load data
+  // Fetch global statistics một lần khi mount
   useEffect(() => {
-    loadStations();
-    // Statistics will be calculated automatically when stations data changes
+    const fetchGlobalStats = async () => {
+      try {
+        const response = await stationService.getStations({
+          page: 1,
+          limit: 999, // Get all stations
+        });
+        
+        // Calculate global statistics
+        const globalStats = calculateStationStatistics(response.stations);
+        setStatistics(globalStats);
+      
+        console.log('📊 Global Station Statistics:', globalStats);
+      } catch (error) {
+        console.error('❌ Error fetching global station stats:', error);
+      }
+    };
+    
+    fetchGlobalStats();
   }, []);
 
-  // Update statistics when stations data changes
+  // Load data when debounced search or filter changes
   useEffect(() => {
-    if (stations && stations.length > 0) {
-      // Recalculate statistics from stations data
-      const mockStats = calculateStationStatistics(stations);
-      setStatistics(mockStats);
-      
-      console.log('📊 Phân tích trạm:');
-      
-      const fullCapacityStations = stations.filter(station => 
-        station.current_vehicles >= station.max_capacity
-      );
-      
-      const stationsWithIssues = stations.filter(station => {
-        const issues = checkStationSyncIssues(station);
-        return issues.length > 0;
-      });
-      
-      if (fullCapacityStations.length > 0) {
-        console.log(`⚠️ ${fullCapacityStations.length} trạm đã đạt sức chứa tối đa (sync bị tắt):`);
-        fullCapacityStations.forEach(station => {
-          console.log(`   🏢 ${station.name}: ${station.current_vehicles}/${station.max_capacity}`);
-        });
-        console.log(`💡 Khuyến nghị: Di chuyển xe ra khỏi các trạm này hoặc tăng sức chứa tối đa để có thể đồng bộ.`);
-      }
-      
-      if (stationsWithIssues.length > 0) {
-        console.log(`⚠️ Tìm thấy ${stationsWithIssues.length} trạm có vấn đề tiềm ẩn:`);
-        stationsWithIssues.forEach(station => {
-          const issues = checkStationSyncIssues(station);
-          console.log(`   🏢 ${station.name}:`);
-          issues.forEach(issue => console.log(`      - ${issue}`));
-        });
-      } else if (fullCapacityStations.length === 0) {
-        console.log('✅ Tất cả trạm đều ổn định và có thể sync');
-      }
-    }
-  }, [stations]);
+    loadStations();
+  }, [debouncedSearchTerm, filterActive]);
 
   const loadStations = async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       const response = await stationService.getStations({
         page: 1,
-        limit: 100,
-        search: searchTerm,
+        limit: 999,
+        search: debouncedSearchTerm,
         status: filterActive ? 'active' : filterActive === false ? 'inactive' : undefined
       });
       setStations(response.stations);
+      
+      // Nếu không có filter, cập nhật global statistics
+      if (!debouncedSearchTerm && filterActive === null) {
+        const globalStats = calculateStationStatistics(response.stations);
+        setStatistics(globalStats);
+      }
     } catch (error) {
       console.error('Error loading stations:', error);
     } finally {
@@ -123,24 +120,31 @@ export function Stations() {
     }
   };
 
-  const handleCreateSuccess = () => {
+  // Memoized handlers
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setSearchTerm('');
+    setFilterActive(null);
+  }, []);
+
+  const handleCreateSuccess = useCallback(() => {
+    // Reset filters để load lại toàn bộ
+    setSearchTerm('');
+    setFilterActive(null);
     loadStations(); // Reload stations list - statistics will auto-update
-  };
+  }, []);
 
-  const handleEditSuccess = () => {
+  const handleEditSuccess = useCallback(() => {
     loadStations(); // Reload stations list - statistics will auto-update
-  };
+  }, []);
 
-
-  const handleViewStation = (station: Station) => {
+  const handleViewStation = useCallback((station: Station) => {
     setSelectedStationId(station._id);
     setShowDetailModal(true);
-  };
-
-  const handleEditStation = (station: Station) => {
-    setSelectedStation(station);
-    setShowEditModal(true);
-  };
+  }, []);
 
 
   const handleSyncStation = async (station: Station) => {
@@ -285,18 +289,38 @@ export function Stations() {
     }
   };
 
-  const handleDeleteStation = async (station: Station) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa trạm "${station.name}"?`)) {
-      try {
-        await stationService.deleteStation(station._id);
-        console.log('Station deleted successfully');
-        loadStations(); // Reload stations list - statistics will auto-update
-      } catch (error) {
+  const handleDeleteStation = useCallback((station: Station) => {
+    setStationToDelete(station);
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!stationToDelete) return;
+    
+    try {
+      setDeleting(true);
+      await stationService.deleteStation(stationToDelete._id);
+      
+      // 1. Close confirmation dialog
+      setShowDeleteConfirm(false);
+      
+      // 2. Show success toast với tên trạm
+      showToast.success(`Xóa trạm "${stationToDelete.name}" thành công`);
+      
+      // 3. Reload stations list - statistics will auto-update
+      loadStations();
+      
+      // 4. Reset state
+      setStationToDelete(null);
+      
+    } catch (error: any) {
         console.error('Error deleting station:', error);
-        // You can add toast notification here
+      showToast.error(error.response?.data?.message || 'Không thể xóa trạm');
+      // Modal KHÔNG đóng khi lỗi
+    } finally {
+      setDeleting(false);
       }
-    }
-  };
+  }, [stationToDelete, loadStations]);
 
   // Calculate statistics from current stations data (without API call)
   const updateStatisticsFromStations = () => {
@@ -360,18 +384,8 @@ export function Stations() {
   };
 
 
-  // Filter stations based on search and active status
-  const filteredStations = (stations || []).filter(station => {
-    const matchesSearch = !searchTerm || 
-      station.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      station.address.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesFilter = filterActive === null || 
-      (filterActive === true && station.status === 'active') ||
-      (filterActive === false && station.status === 'inactive');
-    
-    return matchesSearch && matchesFilter;
-  });
+  // Use stations from API (already filtered)
+  const filteredStations = stations || [];
 
   // Pagination calculation
   const totalPages = Math.ceil(filteredStations.length / itemsPerPage);
@@ -381,7 +395,7 @@ export function Stations() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterActive]);
+  }, [debouncedSearchTerm, filterActive]);
 
   const stationColumns = [
     {
@@ -487,11 +501,11 @@ export function Stations() {
               e.stopPropagation();
               handleViewStation(row);
             }}
-            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+            className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
             title="Xem chi tiết trạm"
             aria-label="Xem chi tiết trạm"
           >
-            <Building2 className="h-4 w-4" />
+            <Building2 className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
           </Button>
           <Button 
             variant="ghost"
@@ -504,12 +518,12 @@ export function Stations() {
               syncingStations.has(row._id) || 
               row.current_vehicles >= row.max_capacity
             }
-            className={`h-8 w-8 p-0 border transition-all ${
+            className={`group h-9 w-9 p-0 border-2 shadow-sm transition-all duration-200 ${
               stationsWithErrors.has(row._id) 
-                ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border-red-200 dark:border-red-800' 
+                ? 'bg-gradient-to-br from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-red-600 hover:text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-400 border-red-300 hover:border-red-500 hover:shadow-md hover:scale-110' 
                 : row.current_vehicles >= row.max_capacity
-                ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                : 'hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-900/20 dark:hover:text-purple-400 border-purple-200 dark:border-purple-800'
+                ? 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                : 'bg-gradient-to-br from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-600 hover:text-purple-700 dark:from-purple-900/30 dark:to-pink-900/30 dark:text-purple-400 border-purple-300 hover:border-purple-500 hover:shadow-md hover:scale-110'
             }`}
             title={
               row.current_vehicles >= row.max_capacity
@@ -520,7 +534,7 @@ export function Stations() {
             }
             aria-label="Đồng bộ xe"
           >
-            <RefreshCw className={`h-4 w-4 ${syncingStations.has(row._id) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${syncingStations.has(row._id) ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-200'}`} />
           </Button>
           <Button 
             variant="ghost"
@@ -529,11 +543,11 @@ export function Stations() {
               e.stopPropagation();
               handleDeleteStation(row);
             }}
-            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border border-red-200 dark:border-red-800"
+            className="group h-9 w-9 p-0 bg-gradient-to-br from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-red-600 hover:text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-400 border-2 border-red-300 hover:border-red-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
             title="Xóa trạm"
             aria-label="Xóa trạm"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
           </Button>
         </div>
       )
@@ -700,43 +714,106 @@ export function Stations() {
       >
         <Card>
           <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col gap-4">
+              {/* Search with Clear Button & Debounce Loading */}
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <Input
                     placeholder="Tìm kiếm theo tên hoặc địa chỉ trạm..."
                     value={searchTerm}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                    className="pl-10 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                    className="pl-10 pr-10 h-11 border-gray-300 focus:border-blue-500 focus:ring-blue-500"
                   />
+                  {searchTerm && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      title="Xóa tìm kiếm"
+                      aria-label="Xóa tìm kiếm"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                  {loading && debouncedSearchTerm !== searchTerm && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                 </div>
+                  )}
               </div>
-              <div className="flex gap-2">
+              </div>
+              
+              {/* Filter Status Buttons - Professional */}
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Lọc trạng thái:
+                </span>
+                <div className="flex gap-2 flex-1">
                 <Button
                   variant={filterActive === null ? "default" : "outline"}
                   size="sm"
                   onClick={() => setFilterActive(null)}
-                  className={filterActive === null ? "bg-gray-800 text-white hover:bg-gray-900" : "border-gray-300 hover:border-gray-400"}
+                    className={`h-9 px-4 transition-all ${
+                      filterActive === null 
+                        ? "bg-gradient-to-r from-gray-700 to-gray-800 text-white shadow-md hover:shadow-lg" 
+                        : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                    }`}
                 >
                   Tất cả
+                    {filterActive === null && statistics && (
+                      <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold">
+                        {statistics.totalStations}
+                      </span>
+                    )}
                 </Button>
                 <Button
                   variant={filterActive === true ? "default" : "outline"}
                   size="sm"
                   onClick={() => setFilterActive(true)}
-                  className={filterActive === true ? "bg-green-600 text-white hover:bg-green-700" : "border-gray-300 hover:border-gray-400"}
+                    className={`h-9 px-4 transition-all ${
+                      filterActive === true 
+                        ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md hover:shadow-lg" 
+                        : "border-gray-300 hover:border-gray-400 hover:bg-green-50"
+                    }`}
                 >
                   Hoạt động
+                    {filterActive === true && statistics && (
+                      <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold">
+                        {statistics.activeStations}
+                      </span>
+                    )}
                 </Button>
                 <Button
                   variant={filterActive === false ? "default" : "outline"}
                   size="sm"
                   onClick={() => setFilterActive(false)}
-                  className={filterActive === false ? "bg-amber-500 text-white hover:bg-amber-600" : "border-gray-300 hover:border-gray-400"}
+                    className={`h-9 px-4 transition-all ${
+                      filterActive === false 
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:shadow-lg" 
+                        : "border-gray-300 hover:border-gray-400 hover:bg-amber-50"
+                    }`}
                 >
                   Tạm dừng
+                    {filterActive === false && statistics && (
+                      <span className="ml-2 px-2 py-0.5 bg-white/20 rounded-full text-xs font-semibold">
+                        {statistics.inactiveStations}
+                      </span>
+                    )}
                 </Button>
+                  
+                  {/* Reset Filters - chỉ hiện khi có filter active */}
+                  {(searchTerm || filterActive !== null) && (
+                    <Button 
+                      onClick={handleResetFilters} 
+                      variant="outline"
+                      size="sm"
+                      className="h-9 px-4 flex items-center space-x-2 ml-auto"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      <span>Đặt lại</span>
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
@@ -759,11 +836,11 @@ export function Stations() {
             </div>
             <div className="flex items-center gap-2">
               <Button 
-                className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white"
+                className="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                 onClick={() => setShowCreateModal(true)}
               >
-                <Plus className="h-4 w-4" />
-                <span>Thêm trạm</span>
+                <Plus className="h-5 w-5" />
+                <span className="font-semibold">Thêm trạm</span>
               </Button>
             </div>
           </div>
@@ -828,6 +905,22 @@ export function Stations() {
           setShowEditModal(true);
           setShowDetailModal(false);
         }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setStationToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa trạm"
+        message={`Bạn có chắc chắn muốn xóa trạm "${stationToDelete?.name}"? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa trạm"
+        cancelText="Hủy"
+        variant="danger"
+        loading={deleting}
       />
 
     </div>

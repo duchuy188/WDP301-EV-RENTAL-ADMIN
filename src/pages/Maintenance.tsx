@@ -423,10 +423,11 @@ export function MaintenancePage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleViewDetail(report)}
-                              className="hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300"
+                              className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
+                              title="Xem chi tiết"
+                              aria-label="Xem chi tiết"
                             >
-                              <Eye className="w-4 h-4 mr-1.5" />
-                            
+                              <Eye className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
                             </Button>
                           </td>
                         </tr>

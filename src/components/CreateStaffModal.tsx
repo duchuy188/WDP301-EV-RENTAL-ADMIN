@@ -81,7 +81,7 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
       showToast.success(`Tạo tài khoản ${form.fullname} thành công`);
       
       // 3. Refresh data
-      onSuccess();
+        onSuccess();
 
     } catch (err: any) {
       console.error('Error creating staff:', err);
@@ -166,7 +166,7 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
         showToast.success(`Tạo tài khoản ${form.fullname} thành công`);
         
         // 3. Refresh data
-        onSuccess();
+          onSuccess();
       } else {
         console.log('❌ Staff not found, creation likely failed.');
         setError('Không tìm thấy tài khoản. Vui lòng thử lại.');
@@ -268,8 +268,8 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
               {/* Content */}
               <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
                 {/* Form view */}
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-6">
+                  <form onSubmit={handleSubmit} className="space-y-6">
+                    <div className="space-y-6">
                       {/* Full Name Field */}
                       <div className="group">
                         <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center space-x-2">

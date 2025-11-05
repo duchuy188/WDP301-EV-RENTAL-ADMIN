@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Car, 
@@ -17,8 +17,10 @@ import {
   Filter,
   X,
   Eye,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { VehicleCardGrid } from '../components/VehicleCardGrid';
 import { Badge } from '../components/ui/badge';
@@ -31,9 +33,11 @@ import { LicensePlateModal } from '../components/LicensePlateModal';
 import { BulkPricingModal } from '../components/BulkPricingModal';
 import { VehicleAssignmentModal } from '../components/VehicleAssignmentModal';
 import { VehicleDetailModal } from '../components/VehicleDetailModal';
+import { ConfirmationDialog } from '../components/ui/confirmation-dialog';
 import { vehicleService } from '../components/service/vehicleService';
 import { formatVehicleStatus, getVehicleStatusColor } from '../components/service/utils/apiUtils';
 import { BatteryIndicator } from '../components/ui/battery-indicator';
+import { showToast } from '../lib/toast';
 import type { VehicleUI, VehicleStatistics, VehicleStatus, VehicleType } from '../components/service/type/vehicleTypes';
 
 export function Fleet() {
@@ -41,6 +45,7 @@ export function Fleet() {
   const [statistics, setStatistics] = useState<VehicleStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 1500); // Debounce search với 1500ms
   const [statusFilter, setStatusFilter] = useState<VehicleStatus | null>(null);
   const [typeFilter, setTypeFilter] = useState<VehicleType | null>(null);
   const [colorFilter, setColorFilter] = useState<string | null>(null);
@@ -58,6 +63,9 @@ export function Fleet() {
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleUI | null>(null);
   const [isUsingMockData, setIsUsingMockData] = useState(false);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [vehicleToDelete, setVehicleToDelete] = useState<VehicleUI | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Load data
   useEffect(() => {
@@ -75,14 +83,10 @@ export function Fleet() {
     }
   }, [vehicles]);
 
-  // Reload vehicles when filters change
+  // Reload vehicles when debounced search or filters change
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      loadVehicles();
-    }, 300); // Debounce search
-
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm, statusFilter, typeFilter, colorFilter, batteryFilter]);
+    loadVehicles();
+  }, [debouncedSearchTerm, statusFilter, typeFilter, colorFilter, batteryFilter]);
 
   const loadVehicles = async () => {
     try {
@@ -95,7 +99,7 @@ export function Fleet() {
       const response = await vehicleService.getVehiclesForAdmin({
         page: 1,
         limit: 100,
-        search: searchTerm,
+        search: debouncedSearchTerm,
         status: statusFilter || undefined,
         type: typeFilter || undefined,
         // color: undefined, // Always fetch all colors, filter on client-side
@@ -112,7 +116,7 @@ export function Fleet() {
         console.log('Fleet: API params sent:', {
           page: 1,
           limit: 100,
-          search: searchTerm,
+          search: debouncedSearchTerm,
           status: statusFilter || undefined,
           type: typeFilter || undefined,
           color: 'not sent - using client-side filtering',
@@ -243,18 +247,39 @@ export function Fleet() {
     setEditModalOpen(true);
   };
 
-  const handleDeleteVehicle = async (vehicle: VehicleUI) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa xe ${vehicle.licensePlate}?`)) {
-      try {
-        await vehicleService.deleteVehicle(vehicle.id);
-        loadVehicles();
-        loadStatistics();
-      } catch (error) {
-        console.error('Error deleting vehicle:', error);
-        alert('Có lỗi xảy ra khi xóa xe');
-      }
+  const handleDeleteVehicle = useCallback((vehicle: VehicleUI) => {
+    setVehicleToDelete(vehicle);
+    setShowDeleteConfirm(true);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!vehicleToDelete) return;
+    
+    try {
+      setDeleting(true);
+      await vehicleService.deleteVehicle(vehicleToDelete.id);
+      
+      // 1. Close confirmation dialog
+      setShowDeleteConfirm(false);
+      
+      // 2. Show success toast với biển số xe
+      showToast.success(`Xóa xe "${vehicleToDelete.licensePlate}" thành công`);
+      
+      // 3. Reload data
+      loadVehicles();
+      loadStatistics();
+      
+      // 4. Reset state
+      setVehicleToDelete(null);
+      
+    } catch (error: any) {
+      console.error('Error deleting vehicle:', error);
+      showToast.error(error.response?.data?.message || 'Không thể xóa xe');
+      // Modal KHÔNG đóng khi lỗi
+    } finally {
+      setDeleting(false);
     }
-  };
+  }, [vehicleToDelete]);
 
   const handleVehicleUpdated = () => {
     loadVehicles();
@@ -271,6 +296,10 @@ export function Fleet() {
     setSelectedVehicle(vehicle);
     setViewDetailModalOpen(true);
   };
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, []);
 
   const handleBulkAction = (action: string, vehicles: VehicleUI[]) => {
     console.log('Bulk action:', action, 'on vehicles:', vehicles);
@@ -297,10 +326,10 @@ export function Fleet() {
   // Filter and sort vehicles
   const filteredVehicles = (vehicles || [])
     .filter(vehicle => {
-      const matchesSearch = !searchTerm || 
-        vehicle.licensePlate?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        vehicle.model?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        vehicle.brand?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = !debouncedSearchTerm || 
+        vehicle.licensePlate?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        vehicle.model?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        vehicle.brand?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
       
       const matchesStatus = !statusFilter || vehicle.status === statusFilter;
       const matchesType = !typeFilter || vehicle.type === typeFilter;
@@ -486,11 +515,11 @@ export function Fleet() {
               e.stopPropagation();
               handleViewVehicle(row);
             }}
-            className="h-8 w-8 p-0 hover:bg-blue-50 hover:text-blue-600 dark:hover:bg-blue-900/20 dark:hover:text-blue-400 border border-blue-200 dark:border-blue-800"
+            className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
             title="Xem chi tiết xe"
             aria-label="Xem chi tiết xe"
           >
-            <Eye className="h-4 w-4" />
+            <Eye className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
           </Button>
           <Button 
             variant="ghost"
@@ -499,11 +528,11 @@ export function Fleet() {
               e.stopPropagation();
               handleEditVehicle(row);
             }}
-            className="h-8 w-8 p-0 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-900/20 dark:hover:text-green-400 border border-green-200 dark:border-green-800"
+            className="group h-9 w-9 p-0 bg-gradient-to-br from-green-50 to-emerald-50 hover:from-green-100 hover:to-emerald-100 text-green-600 hover:text-green-700 dark:from-green-900/30 dark:to-emerald-900/30 dark:text-green-400 border-2 border-green-300 hover:border-green-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
             title="Chỉnh sửa xe"
             aria-label="Chỉnh sửa xe"
           >
-            <Edit className="h-4 w-4" />
+            <Edit className="h-4 w-4 group-hover:rotate-12 transition-transform duration-200" />
           </Button>
           <Button 
             variant="ghost"
@@ -512,11 +541,11 @@ export function Fleet() {
               e.stopPropagation();
               handleDeleteVehicle(row);
             }}
-            className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/20 dark:hover:text-red-400 border border-red-200 dark:border-red-800"
+            className="group h-9 w-9 p-0 bg-gradient-to-br from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-red-600 hover:text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-400 border-2 border-red-300 hover:border-red-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
             title="Xóa xe"
             aria-label="Xóa xe"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
           </Button>
         </div>
       )
@@ -710,15 +739,30 @@ export function Fleet() {
           <CardContent className="p-6">
             {/* Search and Filter Toggle */}
             <div className="flex flex-col sm:flex-row gap-4">
-              {/* Search */}
+              {/* Search với Clear Button & Debounce Loading */}
               <div className="flex-1 relative">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 pointer-events-none" />
                 <Input
-                  placeholder="Tìm kiếm xe theo tên, biển số, thương hiệu..."
+                  placeholder="Tìm kiếm xe theo model, biển số, thương hiệu..."
                   value={searchTerm}
                   onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                  className="pl-12 h-12 border-2 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 text-base"
+                  className="pl-12 pr-12 h-12 border-2 border-gray-300 dark:border-gray-600 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 dark:focus:ring-blue-800 text-base"
                 />
+                {searchTerm && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    title="Xóa tìm kiếm"
+                    aria-label="Xóa tìm kiếm"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                )}
+                {loading && debouncedSearchTerm !== searchTerm && (
+                  <div className="absolute right-4 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  </div>
+                )}
               </div>
 
               {/* Filter Toggle Button */}
@@ -762,8 +806,8 @@ export function Fleet() {
               transition={{ duration: 0.3, ease: 'easeInOut' }}
               className="overflow-hidden"
             >
-              <Card className="shadow-lg border-2 border-blue-200 dark:border-blue-800">
-                <CardContent className="p-6 max-h-[450px] overflow-y-auto custom-scrollbar">
+                <Card className="shadow-lg border-2 border-blue-200 dark:border-blue-800">
+                <CardContent className="p-6">
                 {/* Filter Header */}
                 <div className="flex items-center justify-between mb-6 pb-4 border-b-2 border-blue-200 dark:border-blue-800">
                   <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center">
@@ -773,7 +817,7 @@ export function Fleet() {
                     Bộ lọc nâng cao
                   </h3>
                   <div className="flex items-center space-x-2">
-                    {(statusFilter || typeFilter || colorFilter || searchTerm) && (
+                    {(statusFilter || typeFilter || colorFilter || debouncedSearchTerm) && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -800,6 +844,7 @@ export function Fleet() {
                   </div>
                 </div>
                 
+                {/* 4 cột trên 1 hàng - Trạng thái, Loại xe, Màu sắc, Sắp xếp */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* Status Filter */}
                 <div>
@@ -930,39 +975,39 @@ export function Fleet() {
                   </div>
                 </div>
 
-                {/* Color Filter */}
+                {/* Color Filter với scroll riêng */}
                 <div>
                   <label className="flex items-center text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
                     <div className="w-1 h-4 bg-purple-600 rounded-full mr-2"></div>
                     Màu sắc
                   </label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    <label className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                      <input
-                        type="radio"
-                        name="color"
-                        checked={colorFilter === null}
-                        onChange={() => setColorFilter(null)}
-                        className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
-                      />
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                        Tất cả màu
-                      </span>
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
+                  <div className="max-h-[250px] overflow-y-auto custom-scrollbar pr-2">
+                    <div className="space-y-2.5">
+                      <label className="flex items-center space-x-3 cursor-pointer group p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <input
+                          type="radio"
+                          name="color"
+                          checked={colorFilter === null}
+                          onChange={() => setColorFilter(null)}
+                          className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
+                          Tất cả
+                        </span>
+                      </label>
                       {[
                         { key: 'red', label: 'Đỏ', bgClass: 'bg-red-500' },
                         { key: 'blue', label: 'Xanh dương', bgClass: 'bg-blue-500' },
                         { key: 'green', label: 'Xanh lá', bgClass: 'bg-green-500' },
                         { key: 'yellow', label: 'Vàng', bgClass: 'bg-yellow-500' },
                         { key: 'black', label: 'Đen', bgClass: 'bg-gray-900' },
-                        { key: 'white', label: 'Trắng', bgClass: 'bg-white border border-gray-300' },
+                        { key: 'white', label: 'Trắng', bgClass: 'bg-white border border-gray-400' },
                         { key: 'orange', label: 'Cam', bgClass: 'bg-orange-500' },
                         { key: 'purple', label: 'Tím', bgClass: 'bg-purple-500' },
                         { key: 'pink', label: 'Hồng', bgClass: 'bg-pink-500' },
                         { key: 'gray', label: 'Xám', bgClass: 'bg-gray-500' }
                       ].map((color) => (
-                        <label key={color.key} className="flex items-center space-x-2 cursor-pointer p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                        <label key={color.key} className="flex items-center space-x-3 cursor-pointer group p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                           <input
                             type="radio"
                             name="color"
@@ -972,9 +1017,9 @@ export function Fleet() {
                           />
                           <div className="flex items-center space-x-2 flex-1">
                             <div 
-                              className={`w-3 h-3 rounded-full border border-gray-300 ${color.bgClass}`}
+                              className={`w-4 h-4 rounded-full flex-shrink-0 ${color.bgClass}`}
                             />
-                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white truncate">
                               {color.label}
                             </span>
                           </div>
@@ -986,63 +1031,65 @@ export function Fleet() {
 
                 {/* Sort Options */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="flex items-center text-sm font-bold text-gray-800 dark:text-gray-200 mb-3">
+                    <div className="w-1 h-4 bg-orange-600 rounded-full mr-2"></div>
                     Sắp xếp
                   </label>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-2 cursor-pointer">
+                  <div className="space-y-2.5">
+                    <label className="flex items-center space-x-3 cursor-pointer group p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <input
                         type="radio"
                         name="sort"
                         checked={sortBy === 'name'}
                         onChange={() => setSortBy('name')}
-                        className="text-blue-600"
+                        className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
                         Tên xe
                       </span>
                     </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
+                    <label className="flex items-center space-x-3 cursor-pointer group p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <input
                         type="radio"
                         name="sort"
                         checked={sortBy === 'battery'}
                         onChange={() => setSortBy('battery')}
-                        className="text-blue-600"
+                        className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
                         Mức pin
                       </span>
                     </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
+                    <label className="flex items-center space-x-3 cursor-pointer group p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <input
                         type="radio"
                         name="sort"
                         checked={sortBy === 'price'}
                         onChange={() => setSortBy('price')}
-                        className="text-blue-600"
+                        className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
                         Giá thuê
                       </span>
                     </label>
-                    <label className="flex items-center space-x-2 cursor-pointer">
+                    <label className="flex items-center space-x-3 cursor-pointer group p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                       <input
                         type="radio"
                         name="sort"
                         checked={sortBy === 'year'}
                         onChange={() => setSortBy('year')}
-                        className="text-blue-600"
+                        className="w-4 h-4 text-blue-600 focus:ring-2 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white">
                         Năm sản xuất
                       </span>
                     </label>
                   </div>
                 </div>
+                </div>
 
                 {/* Filter Actions */}
-                <div className="col-span-full flex items-center justify-end gap-3 mt-4 pt-4 border-t-2 border-blue-200 dark:border-blue-800">
+                <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t-2 border-blue-200 dark:border-blue-800">
                   <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     {filteredVehicles.length} xe tìm thấy
                   </Badge>
@@ -1061,7 +1108,6 @@ export function Fleet() {
                     </Button>
                   )}
                 </div>
-              </div>
                 </CardContent>
               </Card>
             </motion.div>
@@ -1091,7 +1137,7 @@ export function Fleet() {
                     📊 Dữ liệu demo
                   </Badge>
                 )}
-                {(statusFilter || typeFilter || colorFilter || searchTerm) && (
+                {(statusFilter || typeFilter || colorFilter || debouncedSearchTerm) && (
                   <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     🔍 Đang lọc
                   </Badge>
@@ -1118,41 +1164,41 @@ export function Fleet() {
                   Card
                 </Button>
 
-                {/* Action Buttons */}
+                {/* Action Buttons - Professional Design */}
                 <div className="h-7 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold dark:border-blue-800 dark:text-blue-400"
+                  className="group h-9 px-4 border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-700 hover:border-blue-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-blue-700 dark:from-blue-900/20 dark:to-cyan-900/20 dark:text-blue-400"
                   onClick={() => setLicensePlateModalOpen(true)}
                 >
-                  <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                  <FileSpreadsheet className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
                   Biển số
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold dark:border-amber-800 dark:text-amber-400"
+                  className="group h-9 px-4 border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 hover:border-amber-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-amber-700 dark:from-amber-900/20 dark:to-yellow-900/20 dark:text-amber-400"
                   onClick={() => setBulkPricingModalOpen(true)}
                 >
-                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  <DollarSign className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                   Giá
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400 font-semibold dark:border-purple-800 dark:text-purple-400"
+                  className="group h-9 px-4 border-2 border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 hover:border-purple-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-purple-700 dark:from-purple-900/20 dark:to-pink-900/20 dark:text-purple-400"
                   onClick={() => setAssignmentModalOpen(true)}
                 >
-                  <Users className="h-4 w-4 mr-1.5" />
+                  <Users className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                   Phân bổ
                 </Button>
                 <Button 
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md"
+                  className="group h-9 px-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-0"
                   onClick={() => setBulkModalOpen(true)}
                 >
-                  <Plus className="h-4 w-4 mr-1.5" />
+                  <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-200" />
                   Tạo xe
                 </Button>
               </div>
@@ -1182,7 +1228,7 @@ export function Fleet() {
                     📊 Dữ liệu demo
                   </Badge>
                 )}
-                {(statusFilter || typeFilter || colorFilter || searchTerm) && (
+                {(statusFilter || typeFilter || colorFilter || debouncedSearchTerm) && (
                   <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     🔍 Đang lọc
                   </Badge>
@@ -1209,41 +1255,41 @@ export function Fleet() {
                   Card
                 </Button>
 
-                {/* Action Buttons */}
+                {/* Action Buttons - Professional Design */}
                 <div className="h-7 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold dark:border-blue-800 dark:text-blue-400"
+                  className="group h-9 px-4 border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-700 hover:border-blue-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-blue-700 dark:from-blue-900/20 dark:to-cyan-900/20 dark:text-blue-400"
                   onClick={() => setLicensePlateModalOpen(true)}
                 >
-                  <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                  <FileSpreadsheet className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
                   Biển số
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold dark:border-amber-800 dark:text-amber-400"
+                  className="group h-9 px-4 border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 hover:border-amber-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-amber-700 dark:from-amber-900/20 dark:to-yellow-900/20 dark:text-amber-400"
                   onClick={() => setBulkPricingModalOpen(true)}
                 >
-                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  <DollarSign className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                   Giá
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400 font-semibold dark:border-purple-800 dark:text-purple-400"
+                  className="group h-9 px-4 border-2 border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 hover:border-purple-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-purple-700 dark:from-purple-900/20 dark:to-pink-900/20 dark:text-purple-400"
                   onClick={() => setAssignmentModalOpen(true)}
                 >
-                  <Users className="h-4 w-4 mr-1.5" />
+                  <Users className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                   Phân bổ
                 </Button>
                 <Button 
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md"
+                  className="group h-9 px-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-0"
                   onClick={() => setBulkModalOpen(true)}
                 >
-                  <Plus className="h-4 w-4 mr-1.5" />
+                  <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-200" />
                   Tạo xe
                 </Button>
               </div>
@@ -1276,7 +1322,7 @@ export function Fleet() {
                     📊 Dữ liệu demo
                   </Badge>
                 )}
-                {(statusFilter || typeFilter || colorFilter || searchTerm) && (
+                {(statusFilter || typeFilter || colorFilter || debouncedSearchTerm) && (
                   <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
                     🔍 Đang lọc
                   </Badge>
@@ -1304,41 +1350,41 @@ export function Fleet() {
                   Card
                 </Button>
 
-                {/* Action Buttons */}
+                {/* Action Buttons - Professional Design */}
                 <div className="h-7 w-px bg-gray-300 dark:bg-gray-600 mx-2"></div>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-blue-200 text-blue-700 hover:bg-blue-50 hover:border-blue-400 font-semibold dark:border-blue-800 dark:text-blue-400"
+                  className="group h-9 px-4 border-2 border-blue-300 bg-gradient-to-r from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-700 hover:border-blue-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-blue-700 dark:from-blue-900/20 dark:to-cyan-900/20 dark:text-blue-400"
                   onClick={() => setLicensePlateModalOpen(true)}
                 >
-                  <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+                  <FileSpreadsheet className="h-4 w-4 mr-2 group-hover:rotate-12 transition-transform duration-200" />
                   Biển số
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-amber-200 text-amber-700 hover:bg-amber-50 hover:border-amber-400 font-semibold dark:border-amber-800 dark:text-amber-400"
+                  className="group h-9 px-4 border-2 border-amber-300 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 text-amber-700 hover:border-amber-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-amber-700 dark:from-amber-900/20 dark:to-yellow-900/20 dark:text-amber-400"
                   onClick={() => setBulkPricingModalOpen(true)}
                 >
-                  <DollarSign className="h-4 w-4 mr-1.5" />
+                  <DollarSign className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                   Giá
                 </Button>
                 <Button 
                   variant="outline" 
                   size="sm"
-                  className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-400 font-semibold dark:border-purple-800 dark:text-purple-400"
+                  className="group h-9 px-4 border-2 border-purple-300 bg-gradient-to-r from-purple-50 to-pink-50 hover:from-purple-100 hover:to-pink-100 text-purple-700 hover:border-purple-500 font-semibold shadow-sm hover:shadow-md transition-all duration-200 hover:scale-105 dark:border-purple-700 dark:from-purple-900/20 dark:to-pink-900/20 dark:text-purple-400"
                   onClick={() => setAssignmentModalOpen(true)}
                 >
-                  <Users className="h-4 w-4 mr-1.5" />
+                  <Users className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform duration-200" />
                   Phân bổ
                 </Button>
                 <Button 
                   size="sm"
-                  className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md"
+                  className="group h-9 px-5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-bold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 border-0"
                   onClick={() => setBulkModalOpen(true)}
                 >
-                  <Plus className="h-4 w-4 mr-1.5" />
+                  <Plus className="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-200" />
                   Tạo xe
                 </Button>
               </div>
@@ -1409,6 +1455,22 @@ export function Fleet() {
           setSelectedVehicle(vehicle);
           setEditModalOpen(true);
         }}
+      />
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setVehicleToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Xác nhận xóa xe"
+        message={`Bạn có chắc chắn muốn xóa xe "${vehicleToDelete?.licensePlate}"? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa xe"
+        cancelText="Hủy"
+        variant="danger"
+        loading={deleting}
       />
     </div>
   );
