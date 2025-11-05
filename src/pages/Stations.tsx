@@ -8,12 +8,12 @@ import {
   BarChart3,
   Building2,
   Globe,
-  Car,
   X,
   Trash2,
   Loader2,
   RotateCcw
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { useDebounce } from '../hooks/useDebounce';
 import { DataTable } from '../components/DataTable';
 import { Badge } from '../components/ui/badge';
@@ -473,7 +473,7 @@ export function Stations() {
         
         return (
           <div className="flex items-center space-x-2">
-            <Car className={`h-4 w-4 ${
+            <FaMotorcycle className={`h-4 w-4 ${
               isAtCapacity ? 'text-red-600' : 
               isNearCapacity ? 'text-yellow-600' : 
               'text-green-600'
@@ -634,7 +634,7 @@ export function Stations() {
                 Trạm có xe
               </CardTitle>
               <div className="p-2.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
-                <Car className="h-5 w-5 text-white" />
+                <FaMotorcycle className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent className="relative">

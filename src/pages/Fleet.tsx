@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Car, 
   MapPin, 
   Plus, 
   Search, 
@@ -20,6 +19,7 @@ import {
   RefreshCw,
   Loader2
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { useDebounce } from '../hooks/useDebounce';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { VehicleCardGrid } from '../components/VehicleCardGrid';
@@ -416,7 +416,7 @@ export function Fleet() {
               />
             ) : (
               <div className="w-16 h-16 flex items-center justify-center bg-blue-100 rounded-lg border-2 border-gray-200">
-                <Car className="h-8 w-8 text-blue-600" />
+                <FaMotorcycle className="h-8 w-8 text-blue-600" />
               </div>
             )}
           </div>
@@ -628,7 +628,7 @@ export function Fleet() {
                 Tổng số xe
               </CardTitle>
               <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
-                <Car className="h-5 w-5 text-white" />
+                <FaMotorcycle className="h-5 w-5 text-white" />
               </div>
             </CardHeader>
             <CardContent className="relative">

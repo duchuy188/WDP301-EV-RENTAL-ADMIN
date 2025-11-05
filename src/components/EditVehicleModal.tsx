@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Save, AlertCircle, Car, Zap, DollarSign, MapPin, RefreshCw, Edit } from 'lucide-react';
+import { X, Save, AlertCircle, Zap, DollarSign, MapPin, RefreshCw, Edit } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -252,7 +253,7 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
               <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
                 <CardTitle className="flex items-center space-x-2 text-base">
                   <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                    <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <FaMotorcycle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
                   <span>Thông tin cơ bản</span>
                 </CardTitle>

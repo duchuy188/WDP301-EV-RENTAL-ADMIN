@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, MapPin, Car, AlertCircle, CheckCircle, Plus, Minus } from 'lucide-react';
+import { X, MapPin, AlertCircle, CheckCircle, Plus, Minus } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -651,7 +652,7 @@ export function VehicleAssignmentModal({ isOpen, onClose, onSuccess }: VehicleAs
                       <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700 mb-0 mt-0 pb-1 pt-1">
                         <CardTitle className="flex items-center space-x-2 text-base">
                           <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                            <Car className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <FaMotorcycle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                           </div>
                           <span>Phâm bổ xe cho trạm</span>
                         </CardTitle>
@@ -988,7 +989,7 @@ export function VehicleAssignmentModal({ isOpen, onClose, onSuccess }: VehicleAs
                       <CardContent className="p-6 space-y-4">
                         <div className="bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg p-4">
                       <div className="flex items-center space-x-2">
-                            <Car className="h-5 w-5 text-green-600 dark:text-green-400" />
+                            <FaMotorcycle className="h-5 w-5 text-green-600 dark:text-green-400" />
                             <span className="font-medium text-green-800 dark:text-green-300">
                           Đã phân bổ thành công {assignResult?.totalAssigned || 0} xe
                         </span>
@@ -1008,7 +1009,7 @@ export function VehicleAssignmentModal({ isOpen, onClose, onSuccess }: VehicleAs
                                 <div key={v._id || v.id || index} className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
                               <div className="flex items-center space-x-3">
                                     <div className="p-1 bg-blue-100 dark:bg-blue-900/30 rounded">
-                                      <Car className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                      <FaMotorcycle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                 </div>
                                 <div>
                                       <p className="font-medium text-gray-900 dark:text-white">
@@ -1239,7 +1240,7 @@ export function VehicleAssignmentModal({ isOpen, onClose, onSuccess }: VehicleAs
                                 >
                                   <div className="flex items-center space-x-3">
                                     <div className="p-2 bg-gray-100 dark:bg-gray-600 rounded-lg">
-                                      <Car className="h-4 w-4 text-gray-600 dark:text-gray-300" />
+                                      <FaMotorcycle className="h-4 w-4 text-gray-600 dark:text-gray-300" />
                                     </div>
                                     <div>
                                       <p className="font-medium text-gray-900 dark:text-white">

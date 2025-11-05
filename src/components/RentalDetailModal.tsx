@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
-  Car,
   User,
   Calendar,
   Clock,
@@ -16,6 +15,7 @@ import {
   FileText,
   Package
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Rental, RentalStatus } from './service/type/rentalTypes';
@@ -129,7 +129,7 @@ export function RentalDetailModal({ rental: initialRental, isOpen, onClose }: Re
                 <div className="relative flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="p-3 bg-white/20 backdrop-blur-sm rounded-2xl shadow-lg border border-white/30">
-                      <Car className="h-7 w-7 text-white" />
+                      <FaMotorcycle className="h-7 w-7 text-white" />
                     </div>
                     <div>
                       <h2 className="text-2xl md:text-3xl font-bold text-white">Chi tiết cho thuê</h2>
@@ -276,7 +276,7 @@ export function RentalDetailModal({ rental: initialRental, isOpen, onClose }: Re
                           {isPopulated(rental.vehicle_id) && (
                             <div className="bg-purple-50 dark:bg-purple-900/20 rounded-xl p-4 border border-purple-200 dark:border-purple-800">
                               <div className="flex items-center gap-2 mb-3">
-                                <Car className="w-4 h-4 text-purple-600" />
+                                <FaMotorcycle className="w-4 h-4 text-purple-600" />
                                 <h4 className="font-bold text-sm text-purple-900 dark:text-purple-100">Xe</h4>
                               </div>
                               <div className="space-y-2 text-sm">

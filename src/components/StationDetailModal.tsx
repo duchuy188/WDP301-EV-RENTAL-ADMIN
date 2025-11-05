@@ -7,7 +7,6 @@ import {
   Users, 
   Phone, 
   Mail, 
-  Car, 
   Battery,
   DollarSign,
   Calendar,
@@ -28,6 +27,7 @@ import {
   Edit,
   Plus
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -206,7 +206,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
       case 'reserved':
         return <Calendar className="h-4 w-4" />;
       case 'rented':
-        return <Car className="h-4 w-4" />;
+        return <FaMotorcycle className="h-4 w-4" />;
       case 'maintenance':
         return <AlertTriangle className="h-4 w-4" />;
       default:
@@ -574,7 +574,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                           : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
                     >
-                      <Car className="h-4 w-4" />
+                      <FaMotorcycle className="h-4 w-4" />
                       <span>Phương tiện</span>
                       <span className={`ml-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                         activeTab === 'vehicles'
@@ -629,7 +629,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                         <CardContent className="p-5 text-center">
                           <div className="flex items-center justify-center mb-2">
                             <div className="p-2 bg-blue-500 rounded-full">
-                              <Car className="h-5 w-5 text-white" />
+                              <FaMotorcycle className="h-5 w-5 text-white" />
                             </div>
                           </div>
                           <div className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-1">
@@ -853,7 +853,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                         <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Đã đặt</div>
                       </div>
                       <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl border border-indigo-200 dark:border-indigo-800 hover:shadow-md transition-shadow">
-                        <Car className="h-5 w-5 mx-auto mb-2 text-indigo-600" />
+                        <FaMotorcycle className="h-5 w-5 mx-auto mb-2 text-indigo-600" />
                         <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                           {(station.vehicles || []).filter(v => v.status === 'rented').length}
                         </div>
@@ -873,7 +873,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="flex items-center space-x-2">
-                            <Car className="h-5 w-5 text-green-600" />
+                            <FaMotorcycle className="h-5 w-5 text-green-600" />
                             <span>Danh sách xe tại trạm ({(station.vehicles || []).length})</span>
                           </CardTitle>
                           
@@ -930,7 +930,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                           <div className="text-center py-16">
                             <div className="relative inline-block">
                               <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 rounded-full blur-xl opacity-50"></div>
-                              <Car className="relative h-20 w-20 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                              <FaMotorcycle className="relative h-20 w-20 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Chưa có phương tiện</h3>
                             <p className="text-gray-500 dark:text-gray-400 mb-6">Trạm này chưa có xe nào được phân bổ</p>
@@ -955,7 +955,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                         />
                                       ) : (
                                         <div className="w-full h-full flex items-center justify-center">
-                                          <Car className="h-8 w-8 text-gray-400" />
+                                          <FaMotorcycle className="h-8 w-8 text-gray-400" />
                                         </div>
                                       )}
                                     </div>

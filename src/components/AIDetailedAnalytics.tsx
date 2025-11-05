@@ -8,7 +8,6 @@ import {
   RefreshCw,
   Target,
   Zap,
-  Car,
   AlertCircle,
   CheckCircle,
   BarChart3,
@@ -19,6 +18,7 @@ import {
   Brain,
   Info
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -178,7 +178,7 @@ export function AIDetailedAnalytics() {
               : 'text-gray-600 dark:text-gray-400 hover:text-blue-500'
           }`}
         >
-          <Car className="w-4 h-4 inline mr-2" />
+          <FaMotorcycle className="w-4 h-4 inline mr-2" />
           Tất cả trạm cần xe
         </button>
         <button

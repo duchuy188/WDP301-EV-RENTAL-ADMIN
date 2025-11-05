@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Car,
   Calendar,
   Battery,
   Clock,
@@ -15,6 +14,7 @@ import {
   Search,
   X
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -337,7 +337,7 @@ export function MyRentalsPage() {
           ) : rentals.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
-                <Car className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
+                <FaMotorcycle className="w-16 h-16 text-gray-300 dark:text-gray-600 mb-4" />
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                   Chưa có lịch sử thuê xe
                 </h3>
@@ -375,7 +375,7 @@ export function MyRentalsPage() {
                                 rental.status === 'pending_payment' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
                                 'bg-green-100 dark:bg-green-900/30'
                               }`}>
-                                <Car className={`w-5 h-5 ${
+                                <FaMotorcycle className={`w-5 h-5 ${
                                   rental.status === 'active' ? 'text-blue-600 dark:text-blue-400' :
                                   rental.status === 'pending_payment' ? 'text-yellow-600 dark:text-yellow-400' :
                                   'text-green-600 dark:text-green-400'

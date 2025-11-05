@@ -125,6 +125,8 @@ export function Payments() {
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'additional_fee':
         return 'bg-orange-100 text-orange-800 border-orange-200';
+      case 'holding_fee':
+        return 'bg-teal-100 text-teal-800 border-teal-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -301,6 +303,7 @@ export function Payments() {
                   <option value="deposit">💰 Tiền cọc</option>
                   <option value="rental_fee">🚗 Phí thuê xe</option>
                   <option value="additional_fee">⚠️ Phí phát sinh</option>
+                  <option value="holding_fee">🏍️ Phí giữ xe</option>
                 </select>
               </div>
 
@@ -426,6 +429,10 @@ export function Payments() {
                       ) : payment.paymentType === 'penalty' || payment.paymentType === 'additional_fee' ? (
                         <Badge className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
                           ⚠️ Phí phát sinh
+                        </Badge>
+                      ) : payment.paymentType === 'holding_fee' ? (
+                        <Badge className="bg-gradient-to-r from-teal-500 to-teal-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
+                          🏍️ Phí giữ xe
                         </Badge>
                       ) : payment.paymentType === 'refund' ? (
                         <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">

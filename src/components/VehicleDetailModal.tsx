@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Car, Zap, DollarSign, MapPin, Eye, ChevronLeft, ChevronRight, ZoomIn, Hash, Palette, Factory, CalendarDays, Route, CreditCard, Percent, Building2, Power, Wrench, User, Clock, Gauge } from 'lucide-react';
+import { X, Zap, DollarSign, MapPin, Eye, ChevronLeft, ChevronRight, ZoomIn, Hash, Palette, Factory, CalendarDays, Route, CreditCard, Percent, Building2, Power, Wrench, User, Clock, Gauge } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -211,7 +212,7 @@ export function VehicleDetailModal({ isOpen, onClose, vehicle, onEdit }: Vehicle
                         <div className="h-72 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center">
                           <div className="text-center">
                             <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full mb-3">
-                              <Car className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+                              <FaMotorcycle className="h-10 w-10 text-blue-600 dark:text-blue-400" />
                             </div>
                             <p className="text-gray-600 dark:text-gray-400 font-medium text-sm">Chưa có hình ảnh</p>
                           </div>
@@ -309,7 +310,7 @@ export function VehicleDetailModal({ isOpen, onClose, vehicle, onEdit }: Vehicle
                         <InfoItem icon={<Hash className="h-4 w-4" />} label="Tên xe" value={vehicle.name} color="blue" />
                         <InfoItem icon={<Hash className="h-4 w-4" />} label="Biển số" value={vehicle.licensePlate} color="green" />
                         <InfoItem icon={<Factory className="h-4 w-4" />} label="Hãng" value={vehicle.brand} color="purple" />
-                        <InfoItem icon={<Car className="h-4 w-4" />} label="Model" value={vehicle.model} color="indigo" />
+                        <InfoItem icon={<FaMotorcycle className="h-4 w-4" />} label="Model" value={vehicle.model} color="indigo" />
                         <InfoItem icon={<CalendarDays className="h-4 w-4" />} label="Năm SX" value={vehicle.year.toString()} color="orange" />
                         <InfoItem 
                           icon={<Palette className="h-4 w-4" />} 
@@ -348,7 +349,7 @@ export function VehicleDetailModal({ isOpen, onClose, vehicle, onEdit }: Vehicle
                           color="blue" 
                         />
                         <InfoItem 
-                          icon={<Car className="h-4 w-4" />} 
+                          icon={<FaMotorcycle className="h-4 w-4" />} 
                           label="Loại xe" 
                           value={vehicle.type === 'scooter' ? '🛵 Xe máy điện' : '🏍️ Mô tô điện'} 
                           color="indigo" 
@@ -478,7 +479,7 @@ export function VehicleDetailModal({ isOpen, onClose, vehicle, onEdit }: Vehicle
                       onClick={handleEdit}
                       className="px-8 py-3 h-12 min-w-[160px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
                     >
-                      <Car className="h-5 w-5 mr-2" />
+                      <FaMotorcycle className="h-5 w-5 mr-2" />
                       Chỉnh sửa xe
                     </Button>
                   )}

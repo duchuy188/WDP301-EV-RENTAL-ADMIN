@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Car, Users, DollarSign, TrendingUp, AlertCircle, CheckCircle, 
+  Users, DollarSign, TrendingUp, AlertCircle, CheckCircle, 
   Clock, Battery, Zap, RefreshCw, BarChart3, ArrowUpRight, ArrowDownRight, UserCheck 
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { 
   LineChart, Line, AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend 
@@ -461,7 +462,7 @@ const kpiCards = [
   {
     title: 'Tổng số xe',
       value: stats.totalVehicles,
-    icon: Car,
+    icon: FaMotorcycle,
     color: 'text-primary-600',
     bgColor: 'bg-primary-100',
     darkBgColor: 'dark:bg-primary-900/20',
@@ -814,7 +815,7 @@ const kpiCards = [
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Car className="h-5 w-5 text-primary-600" />
+                  <FaMotorcycle className="h-5 w-5 text-primary-600" />
                   <span>Phân bố trạng thái xe</span>
                 </div>
                 {!loading && vehicleStatusData.length > 0 && (
@@ -1125,7 +1126,7 @@ const kpiCards = [
                     {stats.availableVehicles > 0 && (
                       <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-l-4 border-purple-400">
                         <p className="text-sm font-semibold text-purple-800 dark:text-purple-200 flex items-center">
-                          <Car className="h-4 w-4 mr-2" />
+                          <FaMotorcycle className="h-4 w-4 mr-2" />
                           Xe sẵn sàng
                         </p>
                         <p className="text-xs text-purple-600 dark:text-purple-300 mt-1">

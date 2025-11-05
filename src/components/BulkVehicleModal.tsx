@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
   Plus, 
-  Car, 
   DollarSign, 
   FileText, 
   Sparkles,
@@ -13,6 +12,7 @@ import {
   Upload,
   Image as ImageIcon
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -285,7 +285,7 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                     <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
                       <CardTitle className="flex items-center space-x-2 text-base">
                         <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-                          <Car className="h-5 w-5 text-green-600 dark:text-green-400" />
+                          <FaMotorcycle className="h-5 w-5 text-green-600 dark:text-green-400" />
                         </div>
                         <span>Thông tin xe</span>
                       </CardTitle>

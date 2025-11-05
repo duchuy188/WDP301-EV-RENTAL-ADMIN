@@ -165,7 +165,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                   <Card className="border-l-4 border-l-blue-500">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                        <Car className="w-4 h-4" />
+                        <FaMotorcycle className="w-4 h-4" />
                         Xe hiện tại
                       </CardTitle>
                     </CardHeader>
@@ -273,7 +273,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                   <CardContent className="pt-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                       <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-xl">
-                        <Car className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+                        <FaMotorcycle className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Xe cần thêm</p>
                         <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
                           {data.recommendations.vehiclesNeeded}

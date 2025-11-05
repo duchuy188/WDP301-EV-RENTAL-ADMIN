@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { 
   Home, 
-  Car, 
   Users, 
   UserCog, 
   BarChart3, 
@@ -19,6 +18,7 @@ import {
   MessageSquare,
   Wrench
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { cn } from '../lib/utils';
 import AuthService from './service/authService';
 
@@ -32,12 +32,12 @@ const menuItems = [
   { name: 'Dashboard', icon: Home, path: '/' },
   {
     name: 'Quản lý Xe và Trạm',
-    icon: Car,
+    icon: FaMotorcycle,
     path: '/fleet',
     hasSubmenu: true,
     submenu: [
       { name: 'Trạm xe', icon: BadgeCheck, path: '/fleet/stations' },
-      { name: 'Đội xe', icon: Car, path: '/fleet' },
+      { name: 'Đội xe', icon: FaMotorcycle, path: '/fleet' },
     ],
   },
   { 

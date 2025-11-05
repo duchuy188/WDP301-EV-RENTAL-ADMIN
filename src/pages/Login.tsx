@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Car, Mail, Lock, Zap, Users, Shield, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Zap, Users, Shield, CheckCircle, Eye, EyeOff } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { useAuth } from '../hooks/useAuth';
@@ -54,11 +55,11 @@ export function Login() {
             className="relative mb-8"
           >
             <div className="relative">
-              <Car className="h-32 w-32 mb-4 drop-shadow-2xl animate-glow" />
+              <FaMotorcycle className="h-32 w-32 mb-4 drop-shadow-2xl animate-glow" />
               <Zap className="absolute -top-2 -right-2 h-8 w-8 text-yellow-300 animate-pulse" />
             </div>
             
-            {/* Floating icons around car */}
+            {/* Floating icons around motorcycle */}
             <motion.div
               animate={{ y: [-10, 10, -10] }}
               transition={{ duration: 3, repeat: Infinity }}
@@ -136,7 +137,7 @@ export function Login() {
           {/* Logo for mobile */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4">
-              <Car className="h-8 w-8 text-white" />
+              <FaMotorcycle className="h-8 w-8 text-white" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">EV Rental</h1>
           </div>
@@ -150,7 +151,7 @@ export function Login() {
             {/* Header */}
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl mb-6 shadow-glow-green">
-                <Car className="h-8 w-8 text-white" />
+                <FaMotorcycle className="h-8 w-8 text-white" />
               </div>
               
               <motion.h2 
