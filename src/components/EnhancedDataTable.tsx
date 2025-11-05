@@ -10,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ProfessionalPagination } from './ui/professional-pagination';
+import { showToast } from '../lib/toast';
 
 export interface EnhancedColumn {
   key: string;
@@ -169,35 +170,51 @@ export function EnhancedDataTable({
   }, [selectedRows]);
 
   const handleExport = useCallback(() => {
-    if (!data) return;
+    if (!data || data.length === 0) {
+      showToast.warning('Không có dữ liệu để export');
+      return;
+    }
     
-    const csvContent = [
-      displayColumns.map(col => col.header).join(','),
-      ...processedData.map(row => 
-        displayColumns.map(col => {
-          const value = row[col.key];
-          // Handle different value types and escape properly
-          if (value === null || value === undefined) return '';
-          const stringValue = String(value);
-          // Remove any React elements or complex objects, just get text content
-          const cleanValue = stringValue.replace(/<[^>]*>/g, '').replace(/\[object Object\]/g, '');
-          // Escape quotes and wrap in quotes if contains comma, newline, or quote
-          return cleanValue.includes(',') || cleanValue.includes('\n') || cleanValue.includes('"')
-            ? `"${cleanValue.replace(/"/g, '""')}"` 
-            : cleanValue;
-        }).join(',')
-      )
-    ].join('\n');
+    try {
+      const csvContent = [
+        displayColumns.map(col => col.header).join(','),
+        ...processedData.map(row => 
+          displayColumns.map(col => {
+            const value = row[col.key];
+            // Handle different value types and escape properly
+            if (value === null || value === undefined) return '';
+            const stringValue = String(value);
+            // Remove any React elements or complex objects, just get text content
+            const cleanValue = stringValue.replace(/<[^>]*>/g, '').replace(/\[object Object\]/g, '');
+            // Escape quotes and wrap in quotes if contains comma, newline, or quote
+            return cleanValue.includes(',') || cleanValue.includes('\n') || cleanValue.includes('"')
+              ? `"${cleanValue.replace(/"/g, '""')}"` 
+              : cleanValue;
+          }).join(',')
+        )
+      ].join('\n');
 
-    // Add UTF-8 BOM for Excel to properly display Vietnamese characters
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title || 'data'}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+      // Add UTF-8 BOM for Excel to properly display Vietnamese characters
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 10);
+      a.download = `${title || 'data'}_${timestamp}.csv`;
+      
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      // Show success toast
+      showToast.success(`Export ${processedData.length} bản ghi thành công`);
+      
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      showToast.error('Không thể export dữ liệu. Vui lòng thử lại');
+    }
   }, [data, processedData, displayColumns, title]);
 
   // Update selection callback

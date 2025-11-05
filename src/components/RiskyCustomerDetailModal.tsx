@@ -23,6 +23,7 @@ import {
 import { formatDate } from '../utils/dateUtils';
 import { showToast } from '../lib/toast';
 import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
+import { ConfirmationDialog } from './ui/confirmation-dialog';
 
 interface RiskyCustomerDetailModalProps {
   isOpen: boolean;
@@ -93,6 +94,8 @@ export function RiskyCustomerDetailModal({
   
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<RiskyCustomerDetailResponse | null>(null);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     if (isOpen && customerId) {
@@ -118,18 +121,29 @@ export function RiskyCustomerDetailModal({
   const handleResetRiskScore = async () => {
     if (!customerId) return;
     
-    if (!confirm('Bạn có chắc muốn reset điểm rủi ro về 0? Tất cả vi phạm sẽ được đánh dấu là đã giải quyết.')) {
-      return;
-    }
-
     try {
+      setResetting(true);
       await UserService.resetRiskScore(customerId);
-      showToast.success('Đã reset điểm rủi ro thành công');
-      fetchDetail();
+      
+      // 1. Close confirmation dialog
+      setShowConfirm(false);
+      
+      // 2. Close detail modal
+      onClose();
+      
+      // 3. Show success toast với tên khách hàng
+      const customerName = data?.user.fullname || 'khách hàng';
+      showToast.success(`Reset điểm rủi ro ${customerName} thành công`);
+      
+      // 4. Refresh parent table
       onUpdate?.();
+      
     } catch (error: any) {
       console.error('Error resetting risk score:', error);
       showToast.error(error.response?.data?.message || 'Không thể reset điểm rủi ro');
+      // Modal KHÔNG đóng khi lỗi
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -269,7 +283,7 @@ export function RiskyCustomerDetailModal({
                         )}
                       </div>
                       <Button
-                        onClick={handleResetRiskScore}
+                        onClick={() => setShowConfirm(true)}
                         className="w-full mt-4 bg-green-600 hover:bg-green-700"
                       >
                         <RotateCcw className="h-4 w-4 mr-2" />
@@ -392,6 +406,19 @@ export function RiskyCustomerDetailModal({
           </div>
         </>
       )}
+      
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={handleResetRiskScore}
+        title="Xác nhận Reset Điểm Rủi ro"
+        message="Bạn có chắc muốn reset điểm rủi ro về 0? Tất cả vi phạm sẽ được đánh dấu là đã giải quyết."
+        confirmText="Reset Điểm"
+        cancelText="Hủy"
+        variant="warning"
+        loading={resetting}
+      />
     </AnimatePresence>
   );
 }

@@ -1,11 +1,11 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, UserPlus, User, Mail, Phone, AlertCircle, CheckCircle2, Eye, EyeOff, Copy, Shield, Sparkles, Building2 } from 'lucide-react';
+import { X, UserPlus, User, Mail, Phone, AlertCircle, Shield, Sparkles, Building2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
 import { UserService } from './service/userService';
-import { CreateStaffPayload, CreateStaffResponse } from './service/type/userTypes';
+import { CreateStaffPayload } from './service/type/userTypes';
 import { showToast } from '../lib/toast';
 import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
@@ -26,15 +26,21 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
   });
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [createdStaff, setCreatedStaff] = useState<CreateStaffResponse | null>(null);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleChange = (key: keyof CreateStaffPayload, value: string) => {
     setForm(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Handle phone number input - chỉ cho phép nhập số
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    // Chỉ cho phép số và dấu + ở đầu
+    const phoneRegex = /^[\+]?[0-9]*$/;
+    if (phoneRegex.test(value)) {
+      setForm(prev => ({ ...prev, phone: value }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,30 +69,19 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
     try {
       setCreating(true);
       setError(null);
-      setSuccess(false);
       setRetryAttempt(0);
       setIsRetrying(false);
 
-      // Show warning about slow server after 10 seconds
-      const slowServerWarning = setTimeout(() => {
-        if (creating && !success) {
-          console.log('⚠️ Server đang xử lý chậm, có thể mất thêm thời gian...');
-        }
-      }, 10000);
-
-      const result = await UserService.createStaff(form);
+      await UserService.createStaff(form);
       
-      // Clear the warning timeout
-      clearTimeout(slowServerWarning);
+      // 1. Close modal immediately
+      handleClose();
       
-      setCreatedStaff(result);
-      setSuccess(true);
+      // 2. Show success toast
+      showToast.success(`Tạo tài khoản ${form.fullname} thành công`);
       
-      // Auto close after 3 seconds
-      timeoutRef.current = setTimeout(() => {
-        onSuccess();
-        handleClose();
-      }, 3000);
+      // 3. Refresh data
+      onSuccess();
 
     } catch (err: any) {
       console.error('Error creating staff:', err);
@@ -105,7 +100,7 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
       } else if (errorMessage.startsWith('VALIDATION_ERROR:')) {
         const validationMsg = errorMessage.replace('VALIDATION_ERROR: ', '');
         setError(`Lỗi validation: ${validationMsg}. Đang kiểm tra kết quả...`);
-        showToast.warning('Lỗi validation - Đang kiểm tra...');
+        // Modal KHÔNG đóng - để user sửa lỗi
         
         // Check if staff was created despite validation error
         setTimeout(async () => {
@@ -114,7 +109,7 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
         
       } else if (errorMessage === 'TIMEOUT_ERROR') {
         setError('Server phản hồi chậm. Đang kiểm tra xem tài khoản đã được tạo chưa...');
-        showToast.warning('Timeout - Đang kiểm tra kết quả...');
+        // Modal KHÔNG đóng - đang kiểm tra
         
         setTimeout(async () => {
           await checkIfStaffExists();
@@ -122,7 +117,7 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
         
       } else if (errorMessage === 'NETWORK_ERROR') {
         setError('Lỗi kết nối mạng. Đang kiểm tra xem tài khoản đã được tạo chưa...');
-        showToast.error('Lỗi mạng - Đang kiểm tra kết quả...');
+        // Modal KHÔNG đóng - đang kiểm tra
         
         setTimeout(async () => {
           await checkIfStaffExists();
@@ -133,7 +128,8 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
         const cleanMsg = errorMessage.startsWith('API_ERROR: ') ? 
           errorMessage.replace('API_ERROR: ', '') : errorMessage;
         setError(`Lỗi: ${cleanMsg}. Đang kiểm tra kết quả...`);
-        showToast.error(`Lỗi: ${cleanMsg}`);
+        showToast.error(cleanMsg);
+        // Modal KHÔNG đóng - để user xem lỗi
         
         // Even for other errors, check if creation was successful
         setTimeout(async () => {
@@ -162,50 +158,31 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
       
       if (staffExists) {
         console.log('✅ Staff found! Creation was actually successful.');
-        setError('');
-        setSuccess(true);
-        showToast.success('🎉 Tài khoản đã được tạo thành công!');
         
-        // Find the created staff to show details
-        const createdUser = searchResult.users.find(user => 
-          user.email.toLowerCase() === form.email.toLowerCase()
-        );
+        // 1. Close modal immediately
+        handleClose();
         
-        if (createdUser) {
-          // Create a mock response structure for display
-          setCreatedStaff({
-            message: 'Tài khoản đã được tạo thành công',
-            user: createdUser,
-            temporaryPassword: 'Đã được gửi qua email' // We don't have the actual password
-          });
-        }
+        // 2. Show success toast
+        showToast.success(`Tạo tài khoản ${form.fullname} thành công`);
         
-        // Auto close and refresh after showing success
-        setTimeout(() => {
-          onSuccess();
-          handleClose();
-        }, 3000);
+        // 3. Refresh data
+        onSuccess();
       } else {
         console.log('❌ Staff not found, creation likely failed.');
         setError('Không tìm thấy tài khoản. Vui lòng thử lại.');
-        showToast.info('Không tìm thấy tài khoản - Đang làm mới danh sách...');
-        onSuccess(); // Refresh the list anyway
+        showToast.error('Không thể tạo tài khoản');
+        // Modal KHÔNG đóng - để user thử lại
       }
     } catch (verifyError) {
       console.error('Error verifying staff creation:', verifyError);
       setError('Không thể kiểm tra kết quả. Vui lòng kiểm tra danh sách nhân viên.');
-      showToast.info('Đang làm mới danh sách nhân viên...');
-      onSuccess(); // Refresh the list anyway
+      showToast.error('Không thể kiểm tra kết quả');
+      // Modal KHÔNG đóng - để user thử lại
     }
   };
 
   const handleClose = useCallback(() => {
     if (!creating) {
-      // Clear any pending timeouts
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
       // Reset form and state
       setForm({
         fullname: '',
@@ -214,23 +191,12 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
         role: 'Station Staff'
       });
       setError(null);
-      setSuccess(false);
-      setShowPassword(false);
-      setCreatedStaff(null);
       setRetryAttempt(0);
       setIsRetrying(false);
       onClose();
     }
   }, [creating, onClose]);
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      // Could add a toast notification here
-    } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
-    }
-  };
 
   return (
     <AnimatePresence mode="wait">
@@ -301,158 +267,9 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
 
               {/* Content */}
               <div className="p-6 overflow-y-auto max-h-[calc(95vh-200px)]">
-                {success && createdStaff ? (
-                  // Success view with created staff info
+                {/* Form view */}
+                <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-6">
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center space-x-3 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl"
-                    >
-                      <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center">
-                        <CheckCircle2 className="w-6 h-6 text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-semibold text-green-800 dark:text-green-200">
-                          Tạo tài khoản thành công!
-                        </h3>
-                        <p className="text-sm text-green-600 dark:text-green-400">
-                          Nhân viên đã được thêm vào hệ thống
-                        </p>
-                      </div>
-                    </motion.div>
-
-                    {/* Staff Info Card */}
-                    <div className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                      <div className="flex items-center space-x-3 mb-4">
-                        <div className="h-10 w-10 rounded-full bg-green-500 flex items-center justify-center">
-                          <User className="w-5 h-5 text-white" />
-                        </div>
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                          Thông tin tài khoản đã tạo
-                        </h4>
-                      </div>
-                      
-                      <div className="space-y-4">
-                        <div className="group p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-colors">
-                          <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                              <User className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Họ và tên</p>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
-                                {createdStaff.user.fullname}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="group p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-colors">
-                          <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                              <Mail className="h-4 w-4 text-green-600 dark:text-green-400" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Email</p>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
-                                {createdStaff.user.email}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="group p-4 rounded-lg bg-white/50 dark:bg-gray-800/50 hover:bg-white/80 dark:hover:bg-gray-800/80 transition-colors">
-                          <div className="flex items-center space-x-3">
-                            <div className="h-8 w-8 rounded-lg bg-teal-100 dark:bg-teal-900/30 flex items-center justify-center">
-                              <Phone className="h-4 w-4 text-teal-600 dark:text-teal-400" />
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide">Số điện thoại</p>
-                              <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
-                                {createdStaff.user.phone}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Password Section */}
-                    <div className="p-6 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="h-10 w-10 rounded-full bg-yellow-500 flex items-center justify-center">
-                            <Shield className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                              Mật khẩu tạm thời
-                            </h4>
-                            <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                              Chia sẻ mật khẩu này với nhân viên
-                            </p>
-                          </div>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => copyToClipboard(createdStaff.temporaryPassword)}
-                          className="h-8 w-8 p-0 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
-                        >
-                          <Copy className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
-                        </Button>
-                      </div>
-                      
-                      <div className="flex items-center space-x-3">
-                        <Input
-                          type={showPassword ? 'text' : 'password'}
-                          value={createdStaff.temporaryPassword}
-                          readOnly
-                          className="font-mono text-sm bg-white dark:bg-gray-700 border-yellow-300 dark:border-yellow-600 focus:border-yellow-500"
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="px-4 border-yellow-300 dark:border-yellow-600 hover:bg-yellow-50 dark:hover:bg-yellow-900/20"
-                        >
-                          {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                        </Button>
-                      </div>
-                      
-                      <div className="mt-4 p-3 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
-                        <p className="text-sm text-yellow-800 dark:text-yellow-200 flex items-start space-x-2">
-                          <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400 mt-0.5 flex-shrink-0" />
-                          <span>
-                            <strong>Lưu ý quan trọng:</strong> Nhân viên cần đổi mật khẩu này khi đăng nhập lần đầu tiên để đảm bảo bảo mật.
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex space-x-4 pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={handleClose}
-                        className="flex-1 px-6 py-3 transition-all duration-200 hover:scale-105"
-                      >
-                        Đóng
-                      </Button>
-                      <Button
-                        onClick={() => copyToClipboard(createdStaff.temporaryPassword)}
-                        className="flex-1 px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white transition-all duration-200 hover:scale-105"
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Sao chép mật khẩu
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  // Form view
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    <div className="space-y-6">
                       {/* Full Name Field */}
                       <div className="group">
                         <label className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center space-x-2">
@@ -511,40 +328,16 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
                           <Input
                             type="tel"
                             value={form.phone}
-                            onChange={(e) => handleChange('phone', e.target.value)}
+                            onChange={handlePhoneChange}
                             placeholder="Nhập số điện thoại (0xxxxxxxxx)"
                             className="pl-12 h-12 border-gray-300 dark:border-gray-600 focus:border-green-500 focus:ring-green-500 transition-all duration-200"
                             required
+                            maxLength={11}
+                            inputMode="numeric"
                           />
                         </div>
                       </div>
                     </div>
-
-                    {/* Progress Message */}
-                    {creating && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border border-green-200 dark:border-green-800 rounded-xl"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <div className="h-8 w-8 rounded-full bg-green-500 flex items-center justify-center">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                          </div>
-                          <div>
-                            <p className="text-sm font-medium text-green-800 dark:text-green-200">
-                              {isRetrying 
-                                ? `Đang thử lại... (lần ${retryAttempt}/2)` 
-                                : 'Đang tạo tài khoản, vui lòng đợi...'
-                              }
-                            </p>
-                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                              ⏱️ Quá trình này có thể mất 1-2 phút do server xử lý chậm
-                            </p>
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
 
                     {/* Error Message */}
                     {error && (
@@ -609,7 +402,6 @@ export function CreateStaffModal({ isOpen, onClose, onSuccess }: CreateStaffModa
                       </Button>
                     </div>
                   </form>
-                )}
               </div>
             </div>
           </motion.div>

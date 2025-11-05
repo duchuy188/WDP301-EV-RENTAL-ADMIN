@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { UserCog, MapPin, Star, Activity, Loader2, User as UserIcon, UserPlus, Filter, X, RefreshCw, Search } from 'lucide-react';
+import { UserCog, MapPin, Star, Activity, Loader2, User as UserIcon, UserPlus, Filter, X, RefreshCw, Search, RotateCcw } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -32,24 +33,69 @@ export function Staff() {
   const [selectedStationId, setSelectedStationId] = useState<string>('');
   const [loadingStations, setLoadingStations] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 1500); // Debounce search với 600ms
+  
+  // Global statistics (không đổi theo filter/search)
+  const [globalStats, setGlobalStats] = useState({
+    total: 0,
+    active: 0,
+    suspended: 0,
+    assigned: 0,
+  });
 
-  // Fetch stations for filter
+  // Helper function to fetch global stats
+  const fetchGlobalStats = useCallback(async () => {
+    try {
+      // Parallel fetch để tối ưu performance
+      const [totalResponse, activeResponse, suspendedResponse] = await Promise.all([
+        UserService.getUsersByRole('Station Staff', { page: 1, limit: 1 }),
+        UserService.getUsersByRole('Station Staff', { page: 1, limit: 1, status: 'active' }),
+        UserService.getUsersByRole('Station Staff', { page: 1, limit: 1, status: 'suspended' }),
+      ]);
+      
+      // Fetch all staff để đếm assigned (có stationId)
+      const allStaffResponse = await UserService.getUsersByRole('Station Staff', { page: 1, limit: 999 });
+      const assignedCount = allStaffResponse.users.filter((s: User) => s.stationId).length;
+      
+      const stats = {
+        total: totalResponse.pagination.total,
+        active: activeResponse.pagination.total,
+        suspended: suspendedResponse.pagination.total,
+        assigned: assignedCount,
+      };
+      
+      setGlobalStats(stats);
+      console.log('📊 Global Staff Statistics:', stats);
+      
+      return stats;
+    } catch (err) {
+      console.error('❌ Error fetching global staff stats:', err);
+    }
+  }, []);
+
+  // Fetch stations and global stats on mount
   useEffect(() => {
-    const fetchStations = async () => {
+    const fetchInitialData = async () => {
       try {
         setLoadingStations(true);
-        const response = await stationService.getStations({ page: 1, limit: 999 });
-        console.log('🏢 Loaded stations for filter:', response.stations?.length || 0);
-        setStations(response.stations || []);
+        
+        // Parallel fetch stations and global stats
+        const [stationsResponse] = await Promise.all([
+          stationService.getStations({ page: 1, limit: 999 }),
+          fetchGlobalStats(),
+        ]);
+        
+        console.log('🏢 Loaded stations for filter:', stationsResponse.stations?.length || 0);
+        setStations(stationsResponse.stations || []);
       } catch (err: any) {
-        console.error('Error fetching stations:', err);
+        console.error('Error fetching initial data:', err);
       } finally {
         setLoadingStations(false);
       }
     };
 
-    fetchStations();
-  }, []);
+    fetchInitialData();
+  }, [fetchGlobalStats]);
 
   // Fetch staff data from API
   useEffect(() => {
@@ -98,8 +144,8 @@ export function Staff() {
           }));
           
           // Apply search filter
-          if (searchQuery.trim()) {
-            const query = searchQuery.toLowerCase().trim();
+          if (debouncedSearchQuery.trim()) {
+            const query = debouncedSearchQuery.toLowerCase().trim();
             staffData = staffData.filter((s: User) => 
               s.fullname?.toLowerCase().includes(query) ||
               s.email?.toLowerCase().includes(query) ||
@@ -122,7 +168,7 @@ export function Staff() {
             page: pagination.page,
             limit: pagination.limit,
             sort: 'createdAt',
-            search: searchQuery.trim() || undefined
+            search: debouncedSearchQuery.trim() || undefined
           });
           setStaff(response.users);
           setPagination(response.pagination);
@@ -131,14 +177,14 @@ export function Staff() {
         console.error('Error fetching staff:', err);
         const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách nhân viên';
         setError(errorMessage);
-        showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
+        showToast.error(errorMessage);
       } finally {
         setLoading(false);
       }
     };
 
     fetchStaff();
-  }, [pagination.page, pagination.limit, selectedStationId, refreshTrigger]);
+  }, [pagination.page, pagination.limit, selectedStationId, refreshTrigger, debouncedSearchQuery]);
 
   const columns: EnhancedColumn[] = [
     {
@@ -228,11 +274,11 @@ export function Staff() {
     }
   ];
 
-  // Calculate statistics based on current view (filtered or all)
-  const totalStaff = selectedStationId ? staff.length : pagination.total;
-  const activeStaff = staff.filter(s => s.status === 'active').length;
-  const suspendedStaff = staff.filter(s => s.status === 'suspended').length;
-  const assignedStaff = staff.filter(s => s.stationId !== null && s.stationId !== undefined).length;
+  // Use global statistics (không thay đổi theo filter/search)
+  const totalStaff = globalStats.total;
+  const activeStaff = globalStats.active;
+  const suspendedStaff = globalStats.suspended;
+  const assignedStaff = globalStats.assigned;
 
   // Pagination handlers
   const handlePageChange = (newPage: number) => {
@@ -249,22 +295,23 @@ export function Staff() {
     setSelectedStationId('');
     setPagination(prev => ({ ...prev, page: 1 }));
     
-    // The useEffect will automatically refetch when selectedStationId changes
-    showToast.success('Nhân viên mới đã được tạo thành công!');
+    // Refresh global stats
+    fetchGlobalStats();
+    
+    // Toast đã được show từ CreateStaffModal rồi, không cần show thêm
   };
 
-  // Handle search
-  const handleSearch = () => {
+  // Memoized handlers
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
     setPagination(prev => ({ ...prev, page: 1 }));
-    setRefreshTrigger(prev => prev + 1);
-  };
+  }, []);
 
-  // Handle clear all filters
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedStationId('');
     setPagination(prev => ({ ...prev, page: 1 }));
-  };
+  }, []);
 
   return (
     <div className="space-y-6 p-6">
@@ -393,17 +440,31 @@ export function Staff() {
         <Card>
           <CardContent className="p-6">
             <div className="flex flex-col lg:flex-row gap-4 items-stretch lg:items-center">
-              {/* Search Bar */}
+              {/* Search Bar with Clear Button & Debounce Loading */}
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                 <Input
                   type="text"
                   placeholder="Tìm kiếm theo tên, email, số điện thoại..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                  className="pl-10 h-11"
+                  className="pl-10 pr-10 h-11"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    title="Xóa tìm kiếm"
+                    aria-label="Xóa tìm kiếm"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+                {loading && debouncedSearchQuery !== searchQuery && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  </div>
+                )}
               </div>
 
               {/* Filter by Station */}
@@ -432,14 +493,7 @@ export function Staff() {
                   </select>
                 </div>
 
-                <Button 
-                  onClick={handleSearch} 
-                  className="h-11 px-6 bg-blue-600 hover:bg-blue-700 whitespace-nowrap"
-                >
-                  <Search className="h-4 w-4 mr-2" />
-                  Tìm kiếm
-                </Button>
-
+                {/* Reset Filters - Smart button chỉ hiện khi có filter */}
                 {(selectedStationId || searchQuery) && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -449,31 +503,16 @@ export function Staff() {
                     <Button
                       variant="outline"
                       onClick={handleClearFilters}
-                      className="h-11 px-4 flex items-center gap-2 border-gray-300 dark:border-gray-600 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-300 dark:hover:border-red-700 hover:text-red-600 dark:hover:text-red-400 transition-all whitespace-nowrap"
-                      title="Xóa bộ lọc"
+                      className="h-11 px-4 flex items-center gap-2"
+                      title="Đặt lại bộ lọc"
                     >
-                      <X className="h-4 w-4" />
-                      <span className="hidden xl:inline">Xóa bộ lọc</span>
+                      <RotateCcw className="h-4 w-4" />
+                      <span className="hidden xl:inline">Đặt lại</span>
                     </Button>
                   </motion.div>
                 )}
               </div>
             </div>
-
-            {/* Result Badge */}
-            {(selectedStationId || searchQuery) && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 w-fit"
-              >
-                <Filter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
-                  Tìm thấy <strong>{staff.length}</strong> nhân viên
-                  {selectedStationId && <span className="ml-1">tại {stations.find(s => s._id === selectedStationId)?.name}</span>}
-                </span>
-              </motion.div>
-            )}
           </CardContent>
         </Card>
       </motion.div>

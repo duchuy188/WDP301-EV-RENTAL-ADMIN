@@ -1,15 +1,18 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { User, CreditCard, Loader2, Search, Eye, Lock, Unlock, RefreshCw } from 'lucide-react';
+import { User, CreditCard, Loader2, Search, Eye, Lock, Unlock, RefreshCw, X, RotateCcw } from 'lucide-react';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { ProfessionalPagination } from '../components/ui/professional-pagination';
+import { TableSkeleton } from '../components/ui/table-skeleton';
+import { EmptyState } from '../components/ui/empty-state';
 import { UserService } from '../components/service/userService';
 import { User as UserType, UsersParams } from '../components/service/type/userTypes';
 import { UserDetailModal } from '../components/UserDetailModal';
 import { showToast } from '../lib/toast';
+import { useDebounce } from '../hooks/useDebounce';
 
 export function Customers() {
   const [users, setUsers] = useState<UserType[]>([]);
@@ -27,9 +30,48 @@ export function Customers() {
     role: 'EV Renter', // Chỉ hiển thị EV Renter
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 1500); // Debounce search với 1500ms
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  
+  // Global statistics (không đổi theo filter/search)
+  const [globalStats, setGlobalStats] = useState({
+    total: 0,
+    active: 0,
+    suspended: 0
+  });
+
+  // Helper function to fetch global stats (reusable)
+  const fetchGlobalStats = useCallback(async () => {
+    try {
+      // Parallel fetch để tối ưu performance
+      const [totalResponse, activeResponse, suspendedResponse] = await Promise.all([
+        UserService.getUsers({ role: 'EV Renter', page: 1, limit: 1 }),
+        UserService.getUsers({ role: 'EV Renter', status: 'active', page: 1, limit: 1 }),
+        UserService.getUsers({ role: 'EV Renter', status: 'suspended', page: 1, limit: 1 }),
+      ]);
+      
+      const stats = {
+        total: totalResponse.pagination.total,
+        active: activeResponse.pagination.total,
+        suspended: suspendedResponse.pagination.total,
+      };
+      
+      setGlobalStats(stats);
+      console.log('📊 Global Statistics:', stats);
+      
+      return stats;
+    } catch (err) {
+      console.error('❌ Error fetching global stats:', err);
+      throw err;
+    }
+  }, []);
+
+  // Fetch global statistics một lần khi component mount
+  useEffect(() => {
+    fetchGlobalStats();
+  }, [fetchGlobalStats]);
 
   // Fetch users on component mount and when filters change
   useEffect(() => {
@@ -41,46 +83,24 @@ export function Customers() {
         // Log filters being used
         console.log('🔍 Fetching users with filters:', {
           ...filters,
-          search: searchQuery || undefined,
+          search: debouncedSearchQuery || undefined,
         });
         
         const response = await UserService.getUsers({
           ...filters,
-          search: searchQuery || undefined,
-        });
-        
-        // Log the complete API response
-        console.log('📊 API Response:', response);
-        console.log('👥 Users data:', response.users);
-        console.log('📄 Pagination info:', response.pagination);
-        
-        // Log individual user details
-        response.users.forEach((user, index) => {
-          console.log(`👤 User ${index + 1}:`, {
-            id: user._id,
-            name: user.fullname,
-            email: user.email,
-            phone: user.phone,
-            role: user.role,
-            status: user.status,
-            kycStatus: user.kycStatus,
-            createdAt: user.createdAt,
-            updatedAt: user.updatedAt
-          });
+          search: debouncedSearchQuery || undefined,
         });
         
         setUsers(response.users);
         setPagination(response.pagination);
         
-        // Log final state
-        console.log('✅ Users state updated:', response.users.length, 'users');
-        console.log('📊 Total users available:', response.pagination.total);
-        console.log('📄 Current page:', response.pagination.page, 'of', response.pagination.pages);
+        // Simplified logging for production
+        console.log('📊 Fetched:', response.users.length, 'users | Page:', response.pagination.page, '/', response.pagination.pages);
         
       } catch (err: any) {
         const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách khách hàng';
         setError(errorMessage);
-        showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
+        showToast.error(errorMessage);
         console.error('❌ Error fetching users:', err);
         console.error('❌ Error details:', {
           message: err.message,
@@ -93,15 +113,24 @@ export function Customers() {
     };
 
     fetchUsers();
-  }, [filters, searchQuery]);
+  }, [filters, debouncedSearchQuery]);
 
-  // Handle search
-  const handleSearch = () => {
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
     setFilters(prev => ({ ...prev, page: 1 }));
-  };
+  }, []);
 
-  // Handle filter changes
-  const handleFilterChange = (key: keyof UsersParams, value: any) => {
+  const handleResetFilters = useCallback(() => {
+    setSearchQuery('');
+    setFilters({
+      page: 1,
+      limit: 10,
+      role: 'EV Renter',
+    });
+  }, []);
+
+  const handleFilterChange = useCallback((key: keyof UsersParams, value: any) => {
     setFilters(prev => {
       // Chỉ reset về page 1 khi thay đổi filter khác, không phải khi đổi page
       if (key === 'page') {
@@ -109,60 +138,78 @@ export function Customers() {
       }
       return { ...prev, [key]: value, page: 1 };
     });
-  };
+  }, []);
 
-  // Handle modal
-  const handleViewUser = (user: UserType) => {
+  const handleRetry = useCallback(() => {
+    setFilters(prev => ({ ...prev }));
+  }, []);
+
+  const handleViewUser = useCallback((user: UserType) => {
     setSelectedUser(user);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleCloseModal = () => {
+  const handleCloseModal = useCallback(() => {
     setIsModalOpen(false);
     setSelectedUser(null);
-  };
+  }, []);
 
-  const handleUpdated = async () => {
+  const handleUpdated = useCallback(async () => {
     // re-fetch current page with current filters
     try {
       setLoading(true);
-      const response = await UserService.getUsers({
-        ...filters,
-        search: searchQuery || undefined,
-      });
+      
+      // Parallel fetch để tối ưu performance
+      const [response] = await Promise.all([
+        UserService.getUsers({
+          ...filters,
+          search: searchQuery || undefined,
+        }),
+        fetchGlobalStats(), // Reuse helper function
+      ]);
+      
       setUsers(response.users);
       setPagination(response.pagination);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Không thể tải dữ liệu';
       setError(errorMessage);
-      showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
+      showToast.error(errorMessage);
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters, searchQuery, fetchGlobalStats]);
 
-  const toggleStatus = async (user: UserType) => {
+  const toggleStatus = useCallback(async (user: UserType) => {
     try {
       setTogglingId(user._id);
       const nextStatus = user.status === 'active' ? 'suspended' : 'active';
       await UserService.updateUserStatus(user._id, nextStatus);
+      
       // Optimistic update
       setUsers(prev => prev.map(u => (u._id === user._id ? { ...u, status: nextStatus } : u)));
       
+      // Update global stats optimistically
+      setGlobalStats(prev => ({
+        ...prev,
+        active: nextStatus === 'active' ? prev.active + 1 : prev.active - 1,
+        suspended: nextStatus === 'suspended' ? prev.suspended + 1 : prev.suspended - 1,
+      }));
+      
       // Show success message
-      const statusText = nextStatus === 'active' ? 'đã được kích hoạt' : 'đã bị chặn';
-      showToast.success(`Tài khoản ${user.fullname} ${statusText} thành công!`);
+      const statusText = nextStatus === 'active' ? 'kích hoạt' : 'chặn';
+      showToast.success(`${statusText === 'kích hoạt' ? 'Kích hoạt' : 'Chặn'} tài khoản ${user.fullname} thành công`);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Không thể cập nhật trạng thái';
-      showToast.error(`Lỗi cập nhật trạng thái: ${errorMessage}`);
+      showToast.error(errorMessage);
       console.error('Error updating user status:', err);
     } finally {
       setTogglingId(null);
     }
-  };
+  }, []);
 
 
-  const columns: EnhancedColumn[] = [
+  // Memoize columns để tránh re-create mỗi lần render
+  const columns: EnhancedColumn[] = useMemo(() => [
     {
       key: 'stt',
       header: 'STT',
@@ -286,12 +333,12 @@ export function Customers() {
         </div>
       )
     }
-  ];
+  ], [filters.page, filters.limit, togglingId, handleViewUser, toggleStatus]);
 
-  // Calculate statistics from API data
-  const totalCustomers = pagination.total;
-  const activeCustomers = users.filter(u => u.status === 'active').length;
-  const suspendedCustomers = users.filter(u => u.status === 'suspended').length;
+  // Use global statistics (không thay đổi theo filter/search)
+  const totalCustomers = globalStats.total;
+  const activeCustomers = globalStats.active;
+  const suspendedCustomers = globalStats.suspended;
 
   return (
     <div className="space-y-6 p-6">
@@ -398,35 +445,33 @@ export function Customers() {
         className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700"
       >
         <div className="flex flex-col md:flex-row gap-4">
-          {/* Search */}
+          {/* Search with Clear Button */}
           <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <Input
                 type="text"
                 placeholder="Tìm kiếm theo tên, email, số điện thoại..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="pl-10"
+                className="pl-10 pr-10"
               />
+              {searchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title="Xóa tìm kiếm"
+                  aria-label="Xóa tìm kiếm"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              {loading && debouncedSearchQuery !== searchQuery && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                </div>
+              )}
             </div>
-          </div>
-
-          {/* Role Filter - Hidden since we only show EV Renter */}
-          <div className="md:w-48 hidden">
-            <select
-              value={filters.role || ''}
-              onChange={(e) => handleFilterChange('role', e.target.value || undefined)}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              title="Lọc theo vai trò"
-              aria-label="Lọc theo vai trò"
-            >
-              <option value="">Tất cả vai trò</option>
-              <option value="Admin">Admin</option>
-              <option value="Station Staff">Station Staff</option>
-              <option value="EV Renter">EV Renter</option>
-            </select>
           </div>
 
           {/* Status Filter */}
@@ -444,38 +489,84 @@ export function Customers() {
             </select>
           </div>
 
-          {/* Search Button */}
-          <Button onClick={handleSearch} className="px-6">
-            <Search className="h-4 w-4 mr-2" />
-            Tìm kiếm
-          </Button>
+          {/* Reset Filters Button */}
+          {(searchQuery || filters.status) && (
+            <Button 
+              onClick={handleResetFilters} 
+              variant="outline"
+              className="px-4 flex items-center space-x-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>Đặt lại</span>
+            </Button>
+          )}
         </div>
       </motion.div>
 
       {/* Customer Table */}
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-          <span className="ml-2 text-gray-600 dark:text-gray-400">Đang tải dữ liệu...</span>
-        </div>
+        <TableSkeleton rows={10} columns={6} />
       ) : error ? (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
-          <div className="flex items-center">
-            <div className="text-red-600 dark:text-red-400">
-              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-red-200 dark:border-red-800"
+        >
+          <div className="p-8">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-4">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-gradient-to-r from-red-400 to-pink-400 rounded-full blur-xl opacity-20 animate-pulse" />
+                  <div className="relative bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 rounded-full p-6">
+                    <svg className="h-12 w-12 text-red-500 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                 Lỗi tải dữ liệu
               </h3>
-              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 max-w-md">
                 {error}
               </p>
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={handleRetry}
+                  variant="default"
+                  className="flex items-center space-x-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Thử lại</span>
+                </Button>
+                <Button
+                  onClick={handleResetFilters}
+                  variant="outline"
+                  className="flex items-center space-x-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  <span>Đặt lại bộ lọc</span>
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
+        </motion.div>
+      ) : users.length === 0 ? (
+        <EmptyState
+          type={searchQuery || filters.status ? 'search' : 'empty'}
+          title={searchQuery || filters.status ? 'Không tìm thấy khách hàng' : 'Chưa có khách hàng'}
+          description={
+            searchQuery || filters.status 
+              ? 'Không tìm thấy khách hàng phù hợp với tiêu chí tìm kiếm. Hãy thử điều chỉnh bộ lọc hoặc từ khóa.'
+              : 'Danh sách khách hàng sẽ xuất hiện ở đây khi có người đăng ký.'
+          }
+          action={
+            (searchQuery || filters.status) ? {
+              label: 'Đặt lại bộ lọc',
+              onClick: handleResetFilters
+            } : undefined
+          }
+        />
       ) : (
         <>
           <EnhancedDataTable

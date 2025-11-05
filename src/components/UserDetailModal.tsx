@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, Mail, Phone, MapPin, Calendar, Shield, Clock, Edit3, Save, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, User, Mail, Phone, MapPin, Calendar, Shield, Clock, Edit3, Save, AlertCircle } from 'lucide-react';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
 import { User as UserType, UpdateUserPayload } from './service/type/userTypes';
@@ -23,7 +23,6 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
   
   const normalizeStationId = (station: any): string | undefined => {
     if (!station) return undefined;
@@ -68,25 +67,26 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
     try {
       setSaving(true);
       setError(null);
-      setSuccess(false);
       
       const payload: UpdateUserPayload = { ...form };
       await UserService.updateUser(user._id, payload);
       
-      setSuccess(true);
+      // 1. Close modal immediately
+      setIsEditing(false);
+      onClose();
+      
+      // 2. Show success toast
+      showToast.success(`Cập nhật thông tin ${user.fullname} thành công`);
+      
+      // 3. Refresh data
       onUpdated?.();
       
-      // Auto close after success
-      setTimeout(() => {
-        setIsEditing(false);
-        onClose();
-        setSuccess(false);
-      }, 1500);
     } catch (err: any) {
       console.error('Failed to update user', err);
       const errorMessage = err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật thông tin';
       setError(errorMessage);
-      showToast.error(`Lỗi cập nhật thông tin: ${errorMessage}`);
+      showToast.error(errorMessage);
+      // Modal KHÔNG đóng khi lỗi - để user sửa lại
     } finally {
       setSaving(false);
     }
@@ -269,18 +269,7 @@ export function UserDetailModal({ user, isOpen, onClose, onUpdated }: UserDetail
                 </div>
               </div>
 
-              {/* Success/Error Messages */}
-              {success && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mx-6 mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center space-x-2"
-                >
-                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
-                  <span className="text-sm text-green-800 dark:text-green-200">Cập nhật thông tin thành công!</span>
-                </motion.div>
-              )}
-
+              {/* Error Message */}
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}

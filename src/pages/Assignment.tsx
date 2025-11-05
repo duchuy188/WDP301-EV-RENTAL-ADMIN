@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Users, 
@@ -10,8 +10,11 @@ import {
   AlertCircle,
   CheckCircle,
   RefreshCw,
-  Settings
+  Settings,
+  X,
+  Loader2
 } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 import { showToast } from '../lib/toast';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Card, CardContent } from '../components/ui/card';
@@ -41,10 +44,53 @@ export default function Assignment() {
     limit: 10,
   });
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 1500); // Debounce search với 1500ms
   const [selectedStaff, setSelectedStaff] = useState<UnassignedStaff | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isManagementModalOpen, setIsManagementModalOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Global statistics (không đổi theo filter/search)
+  const [globalStats, setGlobalStats] = useState({
+    total: 0,
+    unassigned: 0,
+    assigned: 0,
+  });
+
+  // Helper function to fetch global stats
+  const fetchGlobalStats = useCallback(async () => {
+    try {
+      // Fetch total staff (unassigned + assigned)
+      const { UserService } = await import('../components/service/userService');
+      const allStaffResponse = await UserService.getUsersByRole('Station Staff', { 
+        page: 1, 
+        limit: 999 
+      });
+      
+      // Count assigned (có stationId)
+      const assignedCount = allStaffResponse.users.filter((s: any) => s.stationId).length;
+      const totalCount = allStaffResponse.pagination.total;
+      const unassignedCount = totalCount - assignedCount;
+      
+      const stats = {
+        total: totalCount,
+        unassigned: unassignedCount,
+        assigned: assignedCount,
+      };
+      
+      setGlobalStats(stats);
+      console.log('📊 Global Assignment Statistics:', stats);
+      
+      return stats;
+    } catch (err) {
+      console.error('❌ Error fetching global assignment stats:', err);
+    }
+  }, []);
+
+  // Fetch global statistics on mount
+  useEffect(() => {
+    fetchGlobalStats();
+  }, [fetchGlobalStats]);
 
   // Fetch unassigned staff
   const fetchStaff = async () => {
@@ -54,7 +100,7 @@ export default function Assignment() {
       
       const response = await AssignmentService.getUnassignedStaff({
         ...filters,
-        search: searchQuery || undefined,
+        search: debouncedSearchQuery || undefined,
       });
       
       setStaff(response.staff);
@@ -62,7 +108,7 @@ export default function Assignment() {
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách nhân viên';
       setError(errorMessage);
-      showToast.error(`Lỗi tải dữ liệu: ${errorMessage}`);
+      showToast.error(errorMessage);
       console.error('Error fetching staff:', err);
     } finally {
       setLoading(false);
@@ -108,38 +154,35 @@ export default function Assignment() {
   // Fetch data on component mount and when filters change
   useEffect(() => {
     fetchStaff();
-  }, [filters, searchQuery]);
+  }, [filters, debouncedSearchQuery]);
 
-  // Handle search
-  const handleSearch = (query: string) => {
-    setSearchQuery(query);
+  // Memoized handlers
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
     setFilters(prev => ({ ...prev, page: 1 }));
-  };
+  }, []);
 
-  // Handle pagination
-  const handlePageChange = (newPage: number) => {
+  const handlePageChange = useCallback((newPage: number) => {
     setFilters(prev => ({ ...prev, page: newPage }));
-  };
+  }, []);
 
-  // Handle assignment success
-  const handleAssignmentSuccess = () => {
+  const handleAssignmentSuccess = useCallback(() => {
     setSuccessMessage('Phân công nhân viên thành công!');
     fetchStaff(); // Refresh unassigned list
     fetchAssignedStaff(); // Refresh assigned list
+    fetchGlobalStats(); // Refresh global stats
     setTimeout(() => setSuccessMessage(null), 3000);
-  };
+  }, [fetchGlobalStats]);
 
-  // Handle opening management modal
-  const handleOpenManagementModal = () => {
+  const handleOpenManagementModal = useCallback(() => {
     fetchAssignedStaff(); // Fetch assigned staff when opening modal
     setIsManagementModalOpen(true);
-  };
+  }, []);
 
-  // Handle assign staff
-  const handleAssignStaff = (staffMember: UnassignedStaff) => {
+  const handleAssignStaff = useCallback((staffMember: UnassignedStaff) => {
     setSelectedStaff(staffMember);
     setIsModalOpen(true);
-  };
+  }, []);
 
   // Table columns
   const columns: EnhancedColumn[] = [
@@ -276,7 +319,7 @@ export default function Assignment() {
         </motion.div>
       )}
 
-      {/* Stats Cards */}
+      {/* Stats Cards - Global Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardContent className="p-6">
@@ -289,7 +332,7 @@ export default function Assignment() {
                   Tổng nhân viên
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {pagination.total}
+                  {globalStats.total}
                 </p>
               </div>
             </div>
@@ -307,7 +350,7 @@ export default function Assignment() {
                   Chưa phân công
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {staff.length}
+                  {globalStats.unassigned}
                 </p>
               </div>
             </div>
@@ -325,7 +368,7 @@ export default function Assignment() {
                   Đã phân công
                 </p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {pagination.total - staff.length}
+                  {globalStats.assigned}
                 </p>
               </div>
             </div>
@@ -337,15 +380,31 @@ export default function Assignment() {
       <Card>
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
+            {/* Search with Clear Button & Debounce Loading */}
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none" />
                 <Input
                   placeholder="Tìm kiếm theo tên, email, số điện thoại..."
                   value={searchQuery}
-                  onChange={(e) => handleSearch(e.target.value)}
-                  className="pl-10"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
                 />
+                {searchQuery && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    title="Xóa tìm kiếm"
+                    aria-label="Xóa tìm kiếm"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+                {loading && debouncedSearchQuery !== searchQuery && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  </div>
+                )}
               </div>
             </div>
             <div className="flex items-center space-x-2">

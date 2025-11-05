@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Search, Loader2, Eye, Filter, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Search, Loader2, Eye, Filter, RefreshCw, X, RotateCcw } from 'lucide-react';
+import { useDebounce } from '../hooks/useDebounce';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -17,6 +18,7 @@ export default function RiskyCustomers() {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, pages: 0 });
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 1500); // Debounce 600ms
   const [minRiskScore, setMinRiskScore] = useState<number | undefined>();
   const [riskLevel, setRiskLevel] = useState<'low' | 'medium' | 'high' | 'critical' | undefined>();
   const [showFilters, setShowFilters] = useState(false);
@@ -27,7 +29,7 @@ export default function RiskyCustomers() {
 
   useEffect(() => {
     fetchRiskyCustomers();
-  }, [pagination.page, pagination.limit, minRiskScore, riskLevel]);
+  }, [pagination.page, pagination.limit, minRiskScore, riskLevel, debouncedSearchQuery]);
 
   const fetchRiskyCustomers = async () => {
     try {
@@ -35,7 +37,7 @@ export default function RiskyCustomers() {
       const params: RiskyCustomersParams = {
         page: pagination.page,
         limit: pagination.limit,
-        search: searchQuery || undefined,
+        search: debouncedSearchQuery || undefined,
         minRiskScore,
         riskLevel,
       };
@@ -52,26 +54,27 @@ export default function RiskyCustomers() {
     }
   };
 
-  const handleSearch = () => {
+  // Memoized handlers
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
     setPagination(prev => ({ ...prev, page: 1 }));
-    fetchRiskyCustomers();
-  };
+  }, []);
 
-  const handleViewDetail = (customerId: string) => {
+  const handleViewDetail = useCallback((customerId: string) => {
     setSelectedCustomerId(customerId);
     setShowDetailModal(true);
-  };
+  }, []);
 
-  const handleResetFilters = () => {
+  const handleResetFilters = useCallback(() => {
     setSearchQuery('');
     setMinRiskScore(undefined);
     setRiskLevel(undefined);
     setPagination(prev => ({ ...prev, page: 1 }));
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     fetchRiskyCustomers();
-  };
+  }, [pagination.page, pagination.limit, debouncedSearchQuery, minRiskScore, riskLevel]);
 
   const getRiskLevelBadge = (level: string) => {
     switch (level) {
@@ -127,21 +130,34 @@ export default function RiskyCustomers() {
       <Card className="p-6">
         <div className="space-y-4">
           <div className="flex gap-4">
+            {/* Search with Clear Button & Debounce Loading */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <Input
                 type="text"
                 placeholder="Tìm kiếm theo tên, email, số điện thoại..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                className="pl-10"
+                className="pl-10 pr-10"
               />
+              {searchQuery && (
+                <button
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  title="Xóa tìm kiếm"
+                  aria-label="Xóa tìm kiếm"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+              {loading && debouncedSearchQuery !== searchQuery && (
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                </div>
+              )}
             </div>
-            <Button onClick={handleSearch} className="px-6 bg-primary-600 hover:bg-primary-700">
-              <Search className="h-4 w-4 mr-2" />
-              Tìm kiếm
-            </Button>
+
+            {/* Filter Toggle */}
             <Button
               onClick={() => setShowFilters(!showFilters)}
               variant="outline"
@@ -150,14 +166,18 @@ export default function RiskyCustomers() {
               <Filter className="h-4 w-4 mr-2" />
               Bộ lọc
             </Button>
-            <Button
-              onClick={fetchRiskyCustomers}
-              variant="outline"
-              disabled={loading}
-            >
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-              Làm mới
-            </Button>
+
+            {/* Reset Filters - chỉ hiện khi có filter active */}
+            {(searchQuery || minRiskScore || riskLevel) && (
+              <Button 
+                onClick={handleResetFilters} 
+                variant="outline"
+                className="px-4 flex items-center space-x-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                <span>Đặt lại</span>
+              </Button>
+            )}
           </div>
 
           {/* Advanced Filters */}
@@ -168,6 +188,7 @@ export default function RiskyCustomers() {
               exit={{ opacity: 0, height: 0 }}
               className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700"
             >
+              {/* Điểm rủi ro tối thiểu */}
               <div>
                 <label htmlFor="minRiskScore" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Điểm rủi ro tối thiểu (0-100)
@@ -199,12 +220,6 @@ export default function RiskyCustomers() {
                   <option value="high">Cao</option>
                   <option value="critical">Nghiêm trọng</option>
                 </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <Button onClick={handleResetFilters} variant="outline" size="sm">
-                  Xóa bộ lọc
-                </Button>
               </div>
             </motion.div>
           )}
