@@ -12,7 +12,8 @@ import {
   Gauge,
   Eye,
   Search,
-  X
+  X,
+  Loader2
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import { Badge } from '../components/ui/badge';
@@ -24,6 +25,7 @@ import RentalService from '../components/service/rentalService';
 import { Rental, GetAdminRentalsParams, RentalStatus } from '../components/service/type/rentalTypes';
 import { showToast } from '../lib/toast';
 import { RentalDetailModal } from '../components/RentalDetailModal';
+import { useDebounce } from '../hooks/useDebounce';
 
 export function MyRentalsPage() {
   const [rentals, setRentals] = useState<Rental[]>([]);
@@ -42,6 +44,7 @@ export function MyRentalsPage() {
   const [selectedRental, setSelectedRental] = useState<Rental | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 1500);
 
   // Fetch rentals (Admin)
   const fetchRentals = async () => {
@@ -114,10 +117,10 @@ export function MyRentalsPage() {
     fetchRentals();
   };
 
-  // Filter rentals by search term
+  // Filter rentals by search term (using debounced value)
   const filteredRentals = rentals.filter((rental) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
+    if (!debouncedSearchTerm) return true;
+    const searchLower = debouncedSearchTerm.toLowerCase();
     const userId = typeof rental.user_id === 'object' ? rental.user_id : null;
     return (
       rental.code?.toLowerCase().includes(searchLower) ||
@@ -232,15 +235,20 @@ export function MyRentalsPage() {
                   onChange={handleSearchChange}
                   className="pl-12 pr-12 h-12 text-base border-gray-300 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all"
                 />
-                {searchTerm && (
-                  <button
-                    onClick={handleClearSearch}
-                    aria-label="Xóa tìm kiếm"
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                )}
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                  {searchTerm && debouncedSearchTerm !== searchTerm && (
+                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  )}
+                  {searchTerm && debouncedSearchTerm === searchTerm && (
+                    <button
+                      onClick={handleClearSearch}
+                      aria-label="Xóa tìm kiếm"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -284,14 +292,14 @@ export function MyRentalsPage() {
           </div>
 
           {/* Search Results Info */}
-          {searchTerm && (
+          {debouncedSearchTerm && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700"
             >
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Tìm thấy <span className="font-bold text-blue-600 dark:text-blue-400">{filteredRentals.length}</span> kết quả cho "{searchTerm}"
+                Tìm thấy <span className="font-bold text-blue-600 dark:text-blue-400">{filteredRentals.length}</span> kết quả cho "{debouncedSearchTerm}"
               </p>
             </motion.div>
           )}

@@ -1,27 +1,40 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   Wrench,
-  Filter,
   RefreshCw,
   Eye,
   AlertTriangle,
   CheckCircle,
   TrendingUp,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Search,
+  X,
+  Loader2,
+  RotateCcw,
+  MapPin,
+  ArrowUpDown
 } from 'lucide-react';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { Card, CardContent } from '../components/ui/card';
+import { Input } from '../components/ui/input';
 import MaintenanceService from '../components/service/maintenanceService';
 import { MaintenanceReport, GetMaintenanceParams, MaintenanceStatus } from '../components/service/type/maintenanceTypes';
 import { showToast } from '../lib/toast';
 import { MaintenanceDetailModal } from '../components/MaintenanceDetailModal';
+import { useDebounce } from '../hooks/useDebounce';
+import { stationService } from '../components/service/stationService';
+import { Station } from '../components/service/type/stationTypes';
 
 export function MaintenancePage() {
   const [reports, setReports] = useState<MaintenanceReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 600);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [loadingStations, setLoadingStations] = useState(false);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -36,6 +49,7 @@ export function MaintenancePage() {
     page: 1,
     limit: 10,
     status: 'all',
+    station_id: undefined,
     sort_by: 'createdAt',
     sort_order: 'desc'
   });
@@ -70,9 +84,60 @@ export function MaintenancePage() {
     }
   };
 
+  // Fetch stations on mount
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        setLoadingStations(true);
+        const response = await stationService.getStations({ page: 1, limit: 999 });
+        setStations(response.stations || []);
+      } catch (err: any) {
+        console.error('Error fetching stations:', err);
+      } finally {
+        setLoadingStations(false);
+      }
+    };
+
+    fetchStations();
+  }, []);
+
   useEffect(() => {
     fetchReports();
   }, [filters]);
+
+  // Client-side search filtering
+  const filteredReports = useMemo(() => {
+    if (!debouncedSearchTerm.trim()) {
+      return reports;
+    }
+
+    const searchLower = debouncedSearchTerm.toLowerCase().trim();
+    return reports.filter((report) => {
+      // Search by code
+      if (report.code?.toLowerCase().includes(searchLower)) return true;
+      
+      // Search by vehicle
+      const vehicle = report.vehicle_id;
+      if (typeof vehicle === 'object' && vehicle) {
+        if (vehicle.name?.toLowerCase().includes(searchLower)) return true;
+        if (vehicle.license_plate?.toLowerCase().includes(searchLower)) return true;
+        if (vehicle.model?.toLowerCase().includes(searchLower)) return true;
+      }
+      
+      // Search by station
+      const station = report.station_id;
+      if (typeof station === 'object' && station) {
+        if (station.name?.toLowerCase().includes(searchLower)) return true;
+        if (station.address?.toLowerCase().includes(searchLower)) return true;
+      }
+      
+      // Search by title/description
+      if (report.title?.toLowerCase().includes(searchLower)) return true;
+      if (report.description?.toLowerCase().includes(searchLower)) return true;
+      
+      return false;
+    });
+  }, [reports, debouncedSearchTerm]);
 
   // Handle filter changes
   const handleStatusChange = (value: string) => {
@@ -82,6 +147,38 @@ export function MaintenancePage() {
       page: 1
     }));
   };
+
+  const handleStationChange = (value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      station_id: value || undefined,
+      page: 1
+    }));
+  };
+
+  const handleSortChange = (value: string) => {
+    const [sortBy, sortOrder] = value.split('_');
+    setFilters(prev => ({
+      ...prev,
+      sort_by: sortBy,
+      sort_order: sortOrder as 'asc' | 'desc',
+      page: 1
+    }));
+  };
+
+  const handleClearSearch = useCallback(() => {
+    setSearchTerm('');
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setSearchTerm('');
+    setFilters(prev => ({
+      ...prev,
+      status: 'all',
+      station_id: undefined,
+      page: 1
+    }));
+  }, []);
 
   const handlePageChange = (page: number) => {
     setFilters(prev => ({ ...prev, page }));
@@ -238,34 +335,119 @@ export function MaintenancePage() {
           </motion.div>
         </motion.div>
 
-        {/* Filters */}
+        {/* Search & Filter Section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6"
+          transition={{ duration: 0.3, delay: 0.5 }}
         >
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bộ lọc</h3>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Trạng thái
-              </label>
-              <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Chọn trạng thái" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="reported">⚠️ Đã báo cáo</SelectItem>
-                  <SelectItem value="fixed">✅ Đã sửa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex flex-col gap-4">
+                {/* Row 1: Search Bar */}
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <Input
+                    type="text"
+                    placeholder="Tìm kiếm theo mã báo cáo, xe, trạm..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 pr-10 h-11"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={handleClearSearch}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      title="Xóa tìm kiếm"
+                      aria-label="Xóa tìm kiếm"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                  {debouncedSearchTerm !== searchTerm && (
+                    <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                      <Loader2 className="h-4 w-4 animate-spin text-green-600" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Row 2: Filters */}
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Filter by Station */}
+                  <div className="relative w-full sm:w-56">
+                    <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+                    <select
+                      value={filters.station_id || ''}
+                      onChange={(e) => handleStationChange(e.target.value)}
+                      disabled={loadingStations}
+                      title="Lọc theo trạm"
+                      aria-label="Lọc theo trạm"
+                      className="w-full h-11 pl-10 pr-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all appearance-none cursor-pointer hover:border-green-400 dark:hover:border-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">
+                        {loadingStations ? 'Đang tải trạm...' : 'Tất cả trạm'}
+                      </option>
+                      {stations.map((station) => (
+                        <option key={station._id} value={station._id}>
+                          {station.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Filter by Status */}
+                  <div className="relative w-full sm:w-48">
+                    <AlertTriangle className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+                    <select
+                      value={filters.status || 'all'}
+                      onChange={(e) => handleStatusChange(e.target.value)}
+                      title="Lọc theo trạng thái"
+                      aria-label="Lọc theo trạng thái"
+                      className="w-full h-11 pl-10 pr-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all appearance-none cursor-pointer hover:border-green-400 dark:hover:border-green-500"
+                    >
+                      <option value="all">Tất cả trạng thái</option>
+                      <option value="reported">⚠️ Đã báo cáo</option>
+                      <option value="fixed">✅ Đã sửa</option>
+                    </select>
+                  </div>
+
+                  {/* Sort */}
+                  <div className="relative w-full sm:w-52">
+                    <ArrowUpDown className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10 pointer-events-none" />
+                    <select
+                      value={`${filters.sort_by}_${filters.sort_order}`}
+                      onChange={(e) => handleSortChange(e.target.value)}
+                      title="Sắp xếp"
+                      aria-label="Sắp xếp"
+                      className="w-full h-11 pl-10 pr-4 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-green-500 transition-all appearance-none cursor-pointer hover:border-green-400 dark:hover:border-green-500"
+                    >
+                      <option value="createdAt_desc">Mới nhất</option>
+                      <option value="createdAt_asc">Cũ nhất</option>
+                    </select>
+                  </div>
+
+                  {/* Reset Filters - Smart button chỉ hiện khi có filter */}
+                  {(filters.status !== 'all' || filters.station_id || searchTerm) && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.8 }}
+                    >
+                      <Button
+                        variant="outline"
+                        onClick={handleClearFilters}
+                        className="h-11 px-4 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        title="Đặt lại bộ lọc"
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                        <span className="hidden sm:inline">Đặt lại</span>
+                      </Button>
+                    </motion.div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </motion.div>
 
         {/* Reports Table */}
@@ -283,7 +465,8 @@ export function MaintenancePage() {
                     Danh sách báo cáo bảo trì
                   </h3>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Hiển thị {reports.length} / {pagination.total} báo cáo
+                    Hiển thị {filteredReports.length} / {pagination.total} báo cáo
+                    {debouncedSearchTerm && ` (lọc: "${debouncedSearchTerm}")`}
                   </p>
                 </div>
               </div>
@@ -307,14 +490,16 @@ export function MaintenancePage() {
                   Thử lại
                 </Button>
               </div>
-            ) : reports.length === 0 ? (
+            ) : filteredReports.length === 0 ? (
               <div className="text-center py-12">
                 <Wrench className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
                 <p className="text-gray-500 dark:text-gray-400 text-lg font-medium">
-                  Không có báo cáo bảo trì nào
+                  {debouncedSearchTerm ? 'Không tìm thấy báo cáo phù hợp' : 'Không có báo cáo bảo trì nào'}
                 </p>
                 <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
-                  Chưa có báo cáo bảo trì trong hệ thống
+                  {debouncedSearchTerm 
+                    ? `Không tìm thấy báo cáo với từ khóa "${debouncedSearchTerm}"` 
+                    : 'Chưa có báo cáo bảo trì trong hệ thống'}
                 </p>
               </div>
             ) : (
@@ -351,7 +536,7 @@ export function MaintenancePage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                      {reports.map((report, index) => {
+                      {filteredReports.map((report, index) => {
                         // Calculate sequential number based on pagination
                         const stt = ((pagination.page - 1) * pagination.limit) + index + 1;
                         return (

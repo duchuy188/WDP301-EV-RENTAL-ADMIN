@@ -58,6 +58,7 @@ export interface GetMaintenanceParams {
   limit?: number;
   status?: MaintenanceStatus | 'all';
   station_id?: string;
+  search?: string;
   sort_by?: string;
   sort_order?: SortOrder;
 }

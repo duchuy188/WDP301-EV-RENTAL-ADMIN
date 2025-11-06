@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MessageSquare, 
@@ -10,7 +10,10 @@ import {
   TrendingUp,
   CheckCircle,
   Clock,
-  RefreshCw
+  RefreshCw,
+  MapPin,
+  ArrowUpDown,
+  RotateCcw
 } from 'lucide-react';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
 import { Badge } from '../components/ui/badge';
@@ -21,10 +24,14 @@ import { Feedback, GetFeedbacksParams, FeedbackType, FeedbackStatus, FeedbackCat
 import { showToast } from '../lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { FeedbackDetailModal } from '../components/FeedbackDetailModal';
+import { stationService } from '../components/service/stationService';
+import { Station } from '../components/service/type/stationTypes';
 
 export function FeedbackPage() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
   const [loading, setLoading] = useState(true);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [loadingStations, setLoadingStations] = useState(false);
   const [pagination, setPagination] = useState({
     total: 0,
     page: 1,
@@ -41,26 +48,26 @@ export function FeedbackPage() {
   const [filters, setFilters] = useState<GetFeedbacksParams>({
     page: 1,
     limit: 10,
+    type: 'complaint' // Set default type to match viewType
   });
+  // Client-side sort (backend doesn't support)
+  const [sortBy, setSortBy] = useState<string>('createdAt');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedFeedback, setSelectedFeedback] = useState<Feedback | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [viewType, setViewType] = useState<'complaint' | 'rating'>('complaint');
+  const [clientRatingFilter, setClientRatingFilter] = useState<number | null>(null); // Client-side filter
 
-  // Fetch feedbacks on component mount and when filters change
-  const fetchFeedbacks = async () => {
+  // Fetch feedbacks - memoized with useCallback
+  const fetchFeedbacks = useCallback(async () => {
     try {
       setLoading(true);
       
-      console.log('🔍 Fetching feedbacks with filters:', filters);
-      
       const response = await FeedbackService.getFeedbacks(filters);
-      
-      console.log('📊 API Response:', response);
       
       setFeedbacks(response.data.feedbacks);
       setPagination(response.data.pagination);
       setStats(response.data.stats);
-      
-      console.log('✅ Feedbacks state updated:', response.data.feedbacks.length, 'feedbacks');
       
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách phản hồi';
@@ -69,66 +76,153 @@ export function FeedbackPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchFeedbacks();
   }, [filters]);
 
-  // Handle filter changes
-  const handleTypeChange = (value: string) => {
-    setFilters(prev => ({ 
-      ...prev, 
-      type: value === 'all' ? undefined : value as FeedbackType,
-      page: 1 
-    }));
-  };
+  // Fetch stations on mount
+  useEffect(() => {
+    const fetchStations = async () => {
+      try {
+        setLoadingStations(true);
+        const response = await stationService.getStations({ page: 1, limit: 999 });
+        setStations(response.stations || []);
+      } catch (err: any) {
+        console.error('Error fetching stations:', err);
+      } finally {
+        setLoadingStations(false);
+      }
+    };
 
-  const handleStatusChange = (value: string) => {
+    fetchStations();
+  }, []);
+
+  // Fetch feedbacks when filters change
+  useEffect(() => {
+    fetchFeedbacks();
+  }, [fetchFeedbacks]);
+
+  // Sync viewType with filters.type
+  useEffect(() => {
+    setFilters(prev => {
+      // Avoid unnecessary update if type already matches
+      if (prev.type === viewType as FeedbackType) {
+        return prev;
+      }
+      
+      return { 
+        ...prev, 
+        type: viewType as FeedbackType,
+        // Reset irrelevant filters when switching tabs
+        category: viewType === 'rating' ? undefined : prev.category,
+        status: viewType === 'rating' ? undefined : prev.status,
+        page: 1 
+      };
+    });
+    
+    // Reset client rating filter when switching to complaint
+    if (viewType === 'complaint') {
+      setClientRatingFilter(null);
+    }
+  }, [viewType]);
+
+  // Memoized handlers
+  const handleStatusChange = useCallback((value: string) => {
     setFilters(prev => ({ 
       ...prev, 
       status: value === 'all' ? undefined : value as FeedbackStatus,
       page: 1 
     }));
-  };
+  }, []);
 
-  const handleCategoryChange = (value: string) => {
+  const handleCategoryChange = useCallback((value: string) => {
     setFilters(prev => ({ 
       ...prev, 
       category: value === 'all' ? undefined : value as FeedbackCategory,
       page: 1 
     }));
-  };
+  }, []);
 
-  const handleViewDetails = (feedback: Feedback) => {
+  const handleRatingChange = useCallback((value: string) => {
+    setClientRatingFilter(value === 'all' ? null : parseInt(value));
+  }, []);
+
+  const handleStationChange = useCallback((value: string) => {
+    setFilters(prev => ({
+      ...prev,
+      station_id: value === 'all' ? undefined : value,
+      page: 1
+    }));
+  }, []);
+
+  const handleSortChange = useCallback((value: string) => {
+    const [newSortBy, newSortOrder] = value.split('_');
+    setSortBy(newSortBy);
+    setSortOrder(newSortOrder as 'asc' | 'desc');
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setFilters(prev => ({
+      page: 1,
+      limit: 10,
+      type: prev.type
+    }));
+    setClientRatingFilter(null);
+    setSortBy('createdAt');
+    setSortOrder('desc');
+  }, []);
+
+  const handleViewDetails = useCallback((feedback: Feedback) => {
     setSelectedFeedback(feedback);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleModalClose = () => {
+  const handleModalClose = useCallback(() => {
     setIsModalOpen(false);
     setSelectedFeedback(null);
-  };
+  }, []);
 
-  const handleUpdate = () => {
+  const handleUpdate = useCallback(() => {
     fetchFeedbacks();
-  };
+  }, [fetchFeedbacks]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setFilters(prev => ({ ...prev, page }));
-  };
+  }, []);
 
-  const handleLimitChange = (limit: number) => {
+  const handleLimitChange = useCallback((limit: number) => {
     setFilters(prev => ({ ...prev, limit, page: 1 }));
-  };
+  }, []);
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     fetchFeedbacks();
     showToast.success('Đã làm mới dữ liệu');
-  };
+  }, [fetchFeedbacks]);
 
-  // Table columns configuration
-  const columns: EnhancedColumn[] = [
+  // Client-side filtering and sorting (memoized for performance)
+  const filteredFeedbacks = useMemo(() => {
+    // Step 1: Filter by rating if needed
+    let result = clientRatingFilter 
+      ? feedbacks.filter(f => f.overall_rating === clientRatingFilter)
+      : feedbacks;
+    
+    // Step 2: Sort by date
+    if (sortBy === 'createdAt') {
+      result = [...result].sort((a, b) => {
+        const dateA = new Date(a.createdAt).getTime();
+        const dateB = new Date(b.createdAt).getTime();
+        return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+      });
+    }
+    
+    return result;
+  }, [feedbacks, clientRatingFilter, sortBy, sortOrder]);
+
+  // Calculate filtered total
+  const displayTotal = clientRatingFilter ? filteredFeedbacks.length : pagination.total;
+
+  // Build columns based on view type with useMemo
+  const columns = useMemo(() => {
+    // Base columns for both types
+    const baseColumns: EnhancedColumn[] = [
     {
       key: '_id',
       header: 'STT',
@@ -229,20 +323,14 @@ export function FeedbackPage() {
         );
       },
     },
-    {
+    ];
+
+    // Rating column (only for rating view)
+    const ratingColumn: EnhancedColumn = {
       key: 'overall_rating',
       header: 'Đánh giá',
       width: '140px',
-      render: (value: any, row: any) => {
-        if (row.type === 'complaint') {
-          return (
-            <div className="flex items-center gap-1.5">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                Không có
-              </span>
-            </div>
-          );
-        }
+      render: (value: any) => {
         const rating = value || 0;
         return (
           <div className="flex items-center gap-2">
@@ -254,67 +342,76 @@ export function FeedbackPage() {
           </div>
         );
       },
-    },
-    {
-      key: 'status',
-      header: 'Trạng thái',
-      width: '150px',
-      render: (value: any, row: any) => {
-        if (row.type === 'rating') {
+    };
+
+    // Status and other columns
+    const endColumns: EnhancedColumn[] = [
+      {
+        key: 'status',
+        header: 'Trạng thái',
+        width: '150px',
+        render: (value: any, row: any) => {
+          if (row.type === 'rating') {
+            return (
+              <Badge variant="success" className="font-medium">
+                <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                Hoàn thành
+              </Badge>
+            );
+          }
           return (
-            <Badge variant="success" className="font-medium">
-              <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
-              Hoàn thành
+            <Badge variant={value === 'resolved' ? 'success' : 'warning'} className="font-medium">
+              {value === 'resolved' ? (
+                <><CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Đã giải quyết</>
+              ) : (
+                <><Clock className="w-3.5 h-3.5 mr-1.5" /> Chờ xử lý</>
+              )}
             </Badge>
           );
-        }
-        return (
-          <Badge variant={value === 'resolved' ? 'success' : 'warning'} className="font-medium">
-            {value === 'resolved' ? (
-              <><CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Đã giải quyết</>
-            ) : (
-              <><Clock className="w-3.5 h-3.5 mr-1.5" /> Chờ xử lý</>
-            )}
-          </Badge>
-        );
+        },
       },
-    },
-    {
-      key: 'createdAt',
-      header: 'Ngày tạo',
-      sortable: true,
-      width: '180px',
-      render: (value: any) => (
-        <div className="text-sm">
-          <div className="font-medium text-gray-900 dark:text-white">
-            {new Date(value).toLocaleDateString('vi-VN')}
+      {
+        key: 'createdAt',
+        header: 'Ngày tạo',
+        sortable: true,
+        width: '180px',
+        render: (value: any) => (
+          <div className="text-sm">
+            <div className="font-medium text-gray-900 dark:text-white">
+              {new Date(value).toLocaleDateString('vi-VN')}
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              {new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            </div>
           </div>
-          <div className="text-xs text-gray-500 dark:text-gray-400">
-            {new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+        ),
+      },
+      {
+        key: 'actions',
+        header: 'Hành động',
+        width: '100px',
+        render: (_value: any, row: any) => (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleViewDetails(row)}
+              className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
+              title="Xem chi tiết"
+              aria-label="Xem chi tiết"
+            >
+              <Eye className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+            </Button>
           </div>
-        </div>
-      ),
-    },
-    {
-      key: 'actions',
-      header: 'Hành động',
-      width: '100px',
-      render: (_value: any, row: any) => (
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => handleViewDetails(row)}
-            className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
-            title="Xem chi tiết"
-            aria-label="Xem chi tiết"
-          >
-            <Eye className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
+        ),
+      },
+    ];
+
+    // Return columns based on view type
+    return viewType === 'rating' 
+      ? [...baseColumns, ratingColumn, ...endColumns]
+      : [...baseColumns, ...endColumns];
+  }, [viewType, pagination]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-6">
@@ -462,56 +559,119 @@ export function FeedbackPage() {
           transition={{ delay: 0.2 }}
           className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6"
         >
-          <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bộ lọc</h3>
+          <div className="flex items-center justify-between gap-2 mb-4">
+            <div className="flex items-center gap-2">
+              <Filter className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bộ lọc</h3>
+            </div>
+            {(filters.station_id || filters.status || filters.category || clientRatingFilter) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleClearFilters}
+                className="h-9 px-3 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-800"
+                title="Đặt lại bộ lọc"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Đặt lại
+              </Button>
+            )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Station Filter */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Loại phản hồi
+                <MapPin className="w-4 h-4 inline mr-1" />
+                Trạm
               </label>
-              <Select value={filters.type || 'all'} onValueChange={handleTypeChange}>
+              <Select value={filters.station_id || 'all'} onValueChange={handleStationChange}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Chọn loại" />
+                  <SelectValue placeholder="Chọn trạm" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="rating">🌟 Đánh giá</SelectItem>
-                  <SelectItem value="complaint">⚠️ Khiếu nại</SelectItem>
+                  <SelectItem value="all">
+                    {loadingStations ? 'Đang tải trạm...' : 'Tất cả trạm'}
+                  </SelectItem>
+                  {stations.map((station) => (
+                    <SelectItem key={station._id} value={station._id}>
+                      {station.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Conditional Filters based on viewType */}
+            {viewType === 'complaint' ? (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Trạng thái
+                  </label>
+                  <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Chọn trạng thái" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="pending">⏳ Chờ xử lý</SelectItem>
+                      <SelectItem value="resolved">✅ Đã giải quyết</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Danh mục
+                  </label>
+                  <Select value={filters.category || 'all'} onValueChange={handleCategoryChange}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Chọn danh mục" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="vehicle">🏍️ Xe</SelectItem>
+                      <SelectItem value="staff">👤 Nhân viên</SelectItem>
+                      <SelectItem value="payment">💳 Thanh toán</SelectItem>
+                      <SelectItem value="service">🛠️ Dịch vụ</SelectItem>
+                      <SelectItem value="other">📋 Khác</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Đánh giá
+                </label>
+                <Select value={clientRatingFilter?.toString() || 'all'} onValueChange={handleRatingChange}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Chọn số sao" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả</SelectItem>
+                    <SelectItem value="5">⭐⭐⭐⭐⭐ 5 sao</SelectItem>
+                    <SelectItem value="4">⭐⭐⭐⭐ 4 sao</SelectItem>
+                    <SelectItem value="3">⭐⭐⭐ 3 sao</SelectItem>
+                    <SelectItem value="2">⭐⭐ 2 sao</SelectItem>
+                    <SelectItem value="1">⭐ 1 sao</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Sort */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Trạng thái
+                <ArrowUpDown className="w-4 h-4 inline mr-1" />
+                Sắp xếp
               </label>
-              <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
+              <Select value={`${sortBy}_${sortOrder}`} onValueChange={handleSortChange}>
                 <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Chọn trạng thái" />
+                  <SelectValue placeholder="Sắp xếp" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="pending">⏳ Chờ xử lý</SelectItem>
-                  <SelectItem value="resolved">✅ Đã giải quyết</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Danh mục (Khiếu nại)
-              </label>
-              <Select value={filters.category || 'all'} onValueChange={handleCategoryChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Chọn danh mục" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Tất cả</SelectItem>
-                  <SelectItem value="vehicle">🚗 Xe</SelectItem>
-                  <SelectItem value="staff">👤 Nhân viên</SelectItem>
-                  <SelectItem value="payment">💳 Thanh toán</SelectItem>
-                  <SelectItem value="service">🛠️ Dịch vụ</SelectItem>
-                  <SelectItem value="other">📋 Khác</SelectItem>
+                  <SelectItem value="createdAt_desc">Mới nhất</SelectItem>
+                  <SelectItem value="createdAt_asc">Cũ nhất</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -524,18 +684,58 @@ export function FeedbackPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
         >
+          {/* Table Header */}
+          <div className="bg-white dark:bg-gray-800 rounded-t-lg shadow-md px-6 py-5 border-b-2 border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                Danh sách phản hồi <span className="text-blue-600 dark:text-blue-400">({displayTotal})</span>
+              </h3>
+              {(filters.status || filters.category || clientRatingFilter) && (
+                <Badge className="text-xs bg-blue-100 text-blue-700 border-2 border-blue-300 font-semibold px-3 py-1">
+                  🔍 Đang lọc
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* View Type Buttons */}
+              <Button
+                size="sm"
+                variant={viewType === 'complaint' ? 'default' : 'outline'}
+                className={viewType === 'complaint' 
+                  ? "bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md" 
+                  : "border-2 border-gray-300 hover:bg-gray-50 font-medium"}
+                onClick={() => setViewType('complaint')}
+              >
+                <AlertCircle className="h-4 w-4 mr-1.5" />
+                Khiếu nại
+              </Button>
+              <Button
+                size="sm"
+                variant={viewType === 'rating' ? 'default' : 'outline'}
+                className={viewType === 'rating' 
+                  ? "bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md" 
+                  : "border-2 border-gray-300 hover:bg-gray-50 font-medium"}
+                onClick={() => setViewType('rating')}
+              >
+                <ThumbsUp className="h-4 w-4 mr-1.5" />
+                Đánh giá
+              </Button>
+            </div>
+          </div>
+
           <EnhancedDataTable
-            data={feedbacks}
+            data={filteredFeedbacks}
             columns={columns}
             loading={loading}
             searchable={false}
             exportable={false}
-            emptyMessage="Không có phản hồi nào"
+            emptyMessage={viewType === 'complaint' ? 'Không có khiếu nại nào' : 'Không có đánh giá nào'}
             showInfo={false}
           />
           
-          {/* Professional Pagination */}
-          {pagination.pages > 1 && (
+          {/* Professional Pagination - Hide when using client-side rating filter */}
+          {!clientRatingFilter && pagination.pages > 1 && (
             <ProfessionalPagination
               currentPage={pagination.page}
               totalPages={pagination.pages}

@@ -20,16 +20,25 @@ class FeedbackService {
    */
   async getFeedbacks(params?: GetFeedbacksParams): Promise<GetFeedbacksResponse> {
     try {
-      console.log('📝 FeedbackService: Fetching feedbacks with params:', params);
+      // Clean up params - remove undefined values
+      const cleanParams: Record<string, any> = {};
+      if (params) {
+        if (params.page) cleanParams.page = params.page;
+        if (params.limit) cleanParams.limit = params.limit;
+        if (params.type) cleanParams.type = params.type;
+        if (params.status) cleanParams.status = params.status;
+        if (params.category) cleanParams.category = params.category;
+        if (params.station_id) cleanParams.station_id = params.station_id;
+        // Note: Backend doesn't support sort_by/sort_order, using client-side sorting
+      }
       
       const response = await axiosInstance.get<GetFeedbacksResponse>('/api/feedback', {
-        params,
+        params: cleanParams,
       });
       
-      console.log('✅ FeedbackService: Feedbacks fetched successfully:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('❌ FeedbackService: Error fetching feedbacks:', error);
+      console.error('❌ Error fetching feedbacks:', error);
       throw error;
     }
   }

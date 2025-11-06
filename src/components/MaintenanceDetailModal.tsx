@@ -77,9 +77,15 @@ export function MaintenanceDetailModal({
       setIsDeleting(true);
       await MaintenanceService.deleteMaintenance(report._id);
       
-      showToast.success('Đã xóa báo cáo thành công');
-      onUpdate();
+      // Close modal first, then show toast
       onClose();
+      
+      // Small delay to ensure modal closes before showing toast
+      setTimeout(() => {
+        showToast.success('Đã xóa báo cáo thành công');
+      }, 100);
+      
+      onUpdate();
     } catch (error: any) {
       showToast.error(error.message || 'Không thể xóa báo cáo');
     } finally {
@@ -100,7 +106,15 @@ export function MaintenanceDetailModal({
       
       setReport(response.data);
       setShowUpdateForm(false);
-      showToast.success('Đã cập nhật báo cáo thành công');
+      
+      // Close modal first, then show toast
+      onClose();
+      
+      // Small delay to ensure modal closes before showing toast
+      setTimeout(() => {
+        showToast.success('Đã cập nhật báo cáo thành công');
+      }, 100);
+      
       onUpdate();
     } catch (error: any) {
       showToast.error(error.message || 'Không thể cập nhật báo cáo');

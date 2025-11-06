@@ -8,7 +8,9 @@ import {
   CreditCard,
   CheckCircle,
   Clock,
-  RefreshCw
+  RefreshCw,
+  X,
+  Loader2
 } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
@@ -25,12 +27,14 @@ import {
 } from '../components/service/type/paymentTypes';
 import { formatCurrency, formatDate } from '../utils/dateUtils';
 import { showToast } from '../lib/toast';
+import { useDebounce } from '../hooks/useDebounce';
 
 export function Payments() {
   const [payments, setPayments] = useState<PaymentUI[]>([]);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 1500);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalPayments, setTotalPayments] = useState(0);
@@ -49,7 +53,7 @@ export function Payments() {
       const params: PaymentQueryParams = {
         page: currentPage,
         limit: itemsPerPage,
-        search: searchTerm || undefined,
+        search: debouncedSearchTerm || undefined,
         payment_type: paymentTypeFilter || undefined,
         payment_method: paymentMethodFilter || undefined,
         sort: 'createdAt',
@@ -74,12 +78,18 @@ export function Payments() {
 
   useEffect(() => {
     fetchPayments();
-  }, [currentPage, paymentTypeFilter, paymentMethodFilter]);
+  }, [currentPage, paymentTypeFilter, paymentMethodFilter, debouncedSearchTerm]);
 
-  // Handle search
+  // Handle search (kept for backward compatibility, but auto-search is now enabled)
   const handleSearch = () => {
     setCurrentPage(1);
     fetchPayments();
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchTerm('');
+    setCurrentPage(1);
   };
 
   // Handle export
@@ -88,7 +98,7 @@ export function Payments() {
       const params: PaymentQueryParams = {
         payment_type: paymentTypeFilter || undefined,
         payment_method: paymentMethodFilter || undefined,
-        search: searchTerm || undefined
+        search: debouncedSearchTerm || undefined
       };
 
       const blob = await paymentService.exportPayments(params);
@@ -114,6 +124,7 @@ export function Payments() {
     setPaymentMethodFilter('');
     setSearchTerm('');
     setCurrentPage(1);
+    // fetchPayments will be called automatically by useEffect
   };
 
   // Get payment type badge color
@@ -263,14 +274,24 @@ export function Payments() {
                   placeholder="Tìm kiếm theo mã thanh toán hoặc tên khách hàng..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="pl-10"
+                  className="pl-10 pr-12"
                 />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
+                  {searchTerm && debouncedSearchTerm !== searchTerm && (
+                    <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  )}
+                  {searchTerm && debouncedSearchTerm === searchTerm && (
+                    <button
+                      onClick={handleClearSearch}
+                      aria-label="Xóa tìm kiếm"
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-            <Button onClick={handleSearch} className="bg-primary-600 hover:bg-primary-700">
-              Tìm kiếm
-            </Button>
             <Button
               onClick={() => setShowFilters(!showFilters)}
               variant="outline"

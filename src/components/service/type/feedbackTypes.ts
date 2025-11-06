@@ -66,6 +66,8 @@ export interface GetFeedbacksParams {
   status?: FeedbackStatus;
   category?: FeedbackCategory;
   station_id?: string;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
   page?: number;
   limit?: number;
 }
