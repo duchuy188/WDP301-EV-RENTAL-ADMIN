@@ -17,7 +17,7 @@ import {
 import { useDebounce } from '../hooks/useDebounce';
 import { showToast } from '../lib/toast';
 import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTable';
-import { Card, CardContent } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
@@ -321,59 +321,89 @@ export default function Assignment() {
 
       {/* Stats Cards - Global Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          whileHover={{ y: -4 }}
+        >
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100 dark:bg-blue-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Tổng nhân viên
+              </CardTitle>
+              <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+                <Users className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Tổng nhân viên
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {globalStats.total}
-                </p>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
+                {globalStats.total}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex items-center space-x-2 text-xs font-medium text-gray-600 dark:text-gray-400">
+                <div className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mr-1.5 animate-pulse shadow-sm" />
+                  <span>{globalStats.assigned} đã phân công</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-orange-100 dark:bg-orange-900 rounded-lg flex items-center justify-center">
-                <User className="w-6 h-6 text-orange-600 dark:text-orange-400" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+          whileHover={{ y: -4 }}
+        >
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-100 dark:bg-orange-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Chưa phân công
+              </CardTitle>
+              <div className="p-2.5 bg-gradient-to-br from-orange-500 to-amber-600 rounded-xl shadow-md">
+                <User className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Chưa phân công
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {globalStats.unassigned}
-                </p>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent mb-2">
+                {globalStats.unassigned}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                Cần phân công vào trạm
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                <MapPin className="w-6 h-6 text-green-600 dark:text-green-400" />
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+          whileHover={{ y: -4 }}
+        >
+          <Card className="relative overflow-hidden border-0 shadow-lg hover:shadow-xl transition-shadow">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-green-100 dark:bg-green-900/20 rounded-full -mr-16 -mt-16" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                Đã phân công
+              </CardTitle>
+              <div className="p-2.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
+                <MapPin className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
-                  Đã phân công
-                </p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                  {globalStats.assigned}
-                </p>
+            </CardHeader>
+            <CardContent className="relative">
+              <div className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-2">
+                {globalStats.assigned}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                {globalStats.total > 0 ? Math.round((globalStats.assigned / globalStats.total) * 100) : 0}% tổng số
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
 
       {/* Search and Filters */}
@@ -432,11 +462,11 @@ export default function Assignment() {
           <Button
             onClick={handleOpenManagementModal}
             disabled={loadingAssigned}
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white"
+            className="group flex items-center space-x-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
             size="sm"
           >
-            <Settings className={`h-4 w-4 mr-2 ${loadingAssigned ? 'animate-spin' : ''}`} />
-            Quản lý phân công
+            <Settings className={`h-5 w-5 ${loadingAssigned ? 'animate-spin' : 'group-hover:rotate-90 transition-transform duration-200'}`} />
+            <span className="font-semibold">Quản lý phân công</span>
           </Button>
         }
       />

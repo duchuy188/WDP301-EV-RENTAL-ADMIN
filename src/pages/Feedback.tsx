@@ -109,12 +109,12 @@ export function FeedbackPage() {
       }
       
       return { 
-        ...prev, 
+      ...prev, 
         type: viewType as FeedbackType,
         // Reset irrelevant filters when switching tabs
         category: viewType === 'rating' ? undefined : prev.category,
         status: viewType === 'rating' ? undefined : prev.status,
-        page: 1 
+      page: 1 
       };
     });
     
@@ -346,66 +346,66 @@ export function FeedbackPage() {
 
     // Status and other columns
     const endColumns: EnhancedColumn[] = [
-      {
-        key: 'status',
-        header: 'Trạng thái',
-        width: '150px',
-        render: (value: any, row: any) => {
-          if (row.type === 'rating') {
-            return (
-              <Badge variant="success" className="font-medium">
-                <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
-                Hoàn thành
-              </Badge>
-            );
-          }
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      width: '150px',
+      render: (value: any, row: any) => {
+        if (row.type === 'rating') {
           return (
-            <Badge variant={value === 'resolved' ? 'success' : 'warning'} className="font-medium">
-              {value === 'resolved' ? (
-                <><CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Đã giải quyết</>
-              ) : (
-                <><Clock className="w-3.5 h-3.5 mr-1.5" /> Chờ xử lý</>
-              )}
+            <Badge variant="success" className="font-medium">
+              <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+              Hoàn thành
             </Badge>
           );
-        },
+        }
+        return (
+          <Badge variant={value === 'resolved' ? 'success' : 'warning'} className="font-medium">
+            {value === 'resolved' ? (
+              <><CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Đã giải quyết</>
+            ) : (
+              <><Clock className="w-3.5 h-3.5 mr-1.5" /> Chờ xử lý</>
+            )}
+          </Badge>
+        );
       },
-      {
-        key: 'createdAt',
-        header: 'Ngày tạo',
-        sortable: true,
-        width: '180px',
-        render: (value: any) => (
-          <div className="text-sm">
-            <div className="font-medium text-gray-900 dark:text-white">
-              {new Date(value).toLocaleDateString('vi-VN')}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-            </div>
+    },
+    {
+      key: 'createdAt',
+      header: 'Ngày tạo',
+      sortable: true,
+      width: '180px',
+      render: (value: any) => (
+        <div className="text-sm">
+          <div className="font-medium text-gray-900 dark:text-white">
+            {new Date(value).toLocaleDateString('vi-VN')}
           </div>
-        ),
-      },
-      {
-        key: 'actions',
-        header: 'Hành động',
-        width: '100px',
-        render: (_value: any, row: any) => (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleViewDetails(row)}
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            {new Date(value).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Hành động',
+      width: '100px',
+      render: (_value: any, row: any) => (
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleViewDetails(row)}
               className="group h-9 w-9 p-0 bg-gradient-to-br from-blue-50 to-cyan-50 hover:from-blue-100 hover:to-cyan-100 text-blue-600 hover:text-blue-700 dark:from-blue-900/30 dark:to-cyan-900/30 dark:text-blue-400 border-2 border-blue-300 hover:border-blue-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
-              title="Xem chi tiết"
-              aria-label="Xem chi tiết"
-            >
+            title="Xem chi tiết"
+            aria-label="Xem chi tiết"
+          >
               <Eye className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
-            </Button>
-          </div>
-        ),
-      },
-    ];
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
     // Return columns based on view type
     return viewType === 'rating' 
@@ -561,9 +561,9 @@ export function FeedbackPage() {
         >
           <div className="flex items-center justify-between gap-2 mb-4">
             <div className="flex items-center gap-2">
-              <Filter className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bộ lọc</h3>
-            </div>
+            <Filter className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Bộ lọc</h3>
+          </div>
             {(filters.station_id || filters.status || filters.category || clientRatingFilter) && (
               <Button
                 variant="outline"
@@ -604,36 +604,36 @@ export function FeedbackPage() {
             {/* Conditional Filters based on viewType */}
             {viewType === 'complaint' ? (
               <>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Trạng thái
-                  </label>
-                  <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Chọn trạng thái" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả</SelectItem>
-                      <SelectItem value="pending">⏳ Chờ xử lý</SelectItem>
-                      <SelectItem value="resolved">✅ Đã giải quyết</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Trạng thái
+              </label>
+              <Select value={filters.status || 'all'} onValueChange={handleStatusChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn trạng thái" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
+                  <SelectItem value="pending">⏳ Chờ xử lý</SelectItem>
+                  <SelectItem value="resolved">✅ Đã giải quyết</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Danh mục
-                  </label>
-                  <Select value={filters.category || 'all'} onValueChange={handleCategoryChange}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Chọn danh mục" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả</SelectItem>
+              </label>
+              <Select value={filters.category || 'all'} onValueChange={handleCategoryChange}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Chọn danh mục" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả</SelectItem>
                       <SelectItem value="vehicle">🏍️ Xe</SelectItem>
-                      <SelectItem value="staff">👤 Nhân viên</SelectItem>
-                      <SelectItem value="payment">💳 Thanh toán</SelectItem>
-                      <SelectItem value="service">🛠️ Dịch vụ</SelectItem>
-                      <SelectItem value="other">📋 Khác</SelectItem>
+                  <SelectItem value="staff">👤 Nhân viên</SelectItem>
+                  <SelectItem value="payment">💳 Thanh toán</SelectItem>
+                  <SelectItem value="service">🛠️ Dịch vụ</SelectItem>
+                  <SelectItem value="other">📋 Khác</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -703,23 +703,23 @@ export function FeedbackPage() {
                 size="sm"
                 variant={viewType === 'complaint' ? 'default' : 'outline'}
                 className={viewType === 'complaint' 
-                  ? "bg-orange-600 hover:bg-orange-700 text-white font-semibold shadow-md" 
-                  : "border-2 border-gray-300 hover:bg-gray-50 font-medium"}
+                  ? "group flex items-center space-x-2 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105" 
+                  : "group flex items-center space-x-2 border-2 border-gray-300 hover:border-orange-400 hover:bg-orange-50 dark:hover:bg-orange-900/20 font-medium transition-all duration-200"}
                 onClick={() => setViewType('complaint')}
               >
-                <AlertCircle className="h-4 w-4 mr-1.5" />
-                Khiếu nại
+                <AlertCircle className="h-4 w-4 group-hover:rotate-12 transition-transform duration-200" />
+                <span>Khiếu nại</span>
               </Button>
               <Button
                 size="sm"
                 variant={viewType === 'rating' ? 'default' : 'outline'}
                 className={viewType === 'rating' 
-                  ? "bg-green-600 hover:bg-green-700 text-white font-semibold shadow-md" 
-                  : "border-2 border-gray-300 hover:bg-gray-50 font-medium"}
+                  ? "group flex items-center space-x-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105" 
+                  : "group flex items-center space-x-2 border-2 border-gray-300 hover:border-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 font-medium transition-all duration-200"}
                 onClick={() => setViewType('rating')}
               >
-                <ThumbsUp className="h-4 w-4 mr-1.5" />
-                Đánh giá
+                <ThumbsUp className="h-4 w-4 group-hover:-rotate-12 transition-transform duration-200" />
+                <span>Đánh giá</span>
               </Button>
             </div>
           </div>

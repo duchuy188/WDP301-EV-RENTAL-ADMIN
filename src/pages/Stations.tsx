@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   MapPin, 
@@ -70,34 +70,8 @@ export function Stations() {
     };
   };
 
-  // Fetch global statistics một lần khi mount
-  useEffect(() => {
-    const fetchGlobalStats = async () => {
-      try {
-        const response = await stationService.getStations({
-          page: 1,
-          limit: 999, // Get all stations
-        });
-        
-        // Calculate global statistics
-        const globalStats = calculateStationStatistics(response.stations);
-        setStatistics(globalStats);
-      
-        console.log('📊 Global Station Statistics:', globalStats);
-      } catch (error) {
-        console.error('❌ Error fetching global station stats:', error);
-      }
-    };
-    
-    fetchGlobalStats();
-  }, []);
-
-  // Load data when debounced search or filter changes
-  useEffect(() => {
-    loadStations();
-  }, [debouncedSearchTerm, filterActive]);
-
-  const loadStations = async (showLoading = true) => {
+  // Memoized loadStations function
+  const loadStations = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
       const response = await stationService.getStations({
@@ -108,17 +82,41 @@ export function Stations() {
       });
       setStations(response.stations);
       
-      // Nếu không có filter, cập nhật global statistics
+      // Update global statistics when no filters applied
       if (!debouncedSearchTerm && filterActive === null) {
         const globalStats = calculateStationStatistics(response.stations);
         setStatistics(globalStats);
       }
     } catch (error) {
-      console.error('Error loading stations:', error);
+      console.error('❌ Error loading stations:', error);
     } finally {
       if (showLoading) setLoading(false);
     }
-  };
+  }, [debouncedSearchTerm, filterActive]);
+
+  // Fetch global statistics on mount
+  useEffect(() => {
+    const fetchGlobalStats = async () => {
+      try {
+        const response = await stationService.getStations({
+          page: 1,
+          limit: 999,
+        });
+        
+        const globalStats = calculateStationStatistics(response.stations);
+        setStatistics(globalStats);
+      } catch (error) {
+        console.error('❌ Error fetching global stats:', error);
+      }
+    };
+    
+    fetchGlobalStats();
+  }, []);
+
+  // Load stations when search or filter changes
+  useEffect(() => {
+    loadStations();
+  }, [loadStations]);
 
   // Memoized handlers
   const handleClearSearch = useCallback(() => {
@@ -135,195 +133,19 @@ export function Stations() {
     setSearchTerm('');
     setFilterActive(null);
     loadStations(); // Reload stations list - statistics will auto-update
-  }, []);
+  }, [loadStations]);
 
   const handleEditSuccess = useCallback(() => {
     loadStations(); // Reload stations list - statistics will auto-update
-  }, []);
+  }, [loadStations]);
 
   const handleViewStation = useCallback((station: Station) => {
     setSelectedStationId(station._id);
     setShowDetailModal(true);
   }, []);
 
-
-  const handleSyncStation = async (station: Station) => {
-    try {
-      // Early return if station is at full capacity (should not happen due to disabled button)
-      if (station.current_vehicles >= station.max_capacity) {
-        console.log(`⚠️ Không thể sync: Trạm ${station.name} đã đạt sức chứa tối đa (${station.current_vehicles}/${station.max_capacity})`);
-        return;
-      }
-
-      // Check for other potential issues before syncing
-      const issues = checkStationSyncIssues(station);
-      if (issues.length > 0) {
-        console.log(`⚠️ Phát hiện vấn đề tiềm ẩn với trạm ${station.name}:`);
-        issues.forEach(issue => console.log(`   - ${issue}`));
-        
-        // Ask user if they want to proceed despite issues
-        const proceed = window.confirm(
-          `Trạm ${station.name} có vấn đề tiềm ẩn:\n${issues.join('\n')}\n\nBạn có muốn tiếp tục đồng bộ không?`
-        );
-        
-        if (!proceed) {
-          console.log(`❌ Người dùng hủy đồng bộ trạm ${station.name} do phát hiện vấn đề.`);
-          return;
-        }
-      }
-      
-      // Add station to syncing set
-      setSyncingStations(prev => new Set(prev).add(station._id));
-      
-      const response = await stationService.syncStation(station._id);
-      
-      // Show success message based on actual API response
-      if (response.data && response.data.station) {
-        const updatedStation = response.data.station;
-        console.log(`✅ ${response.data.message} - Trạm ${updatedStation.name}: ${updatedStation.current_vehicles} xe`);
-        
-        // Update only this station in the list instead of reloading all
-        setStations(prevStations => 
-          prevStations.map(s => 
-            s._id === station._id 
-              ? { ...s, ...updatedStation } as Station
-              : s
-          )
-        );
-        
-        // Update statistics from current stations data (no API call needed)
-        setTimeout(() => {
-          updateStatisticsFromStations();
-        }, 100); // Small delay to ensure state is updated
-        
-        // Remove from error list if sync was successful
-        setStationsWithErrors(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(station._id);
-          return newSet;
-        });
-      } else {
-        console.log(`✅ Đồng bộ trạm ${station.name} thành công`);
-        
-        // Remove from error list if sync was successful
-        setStationsWithErrors(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(station._id);
-          return newSet;
-        });
-      }
-      
-    } catch (error: any) {
-      console.error('Error syncing station:', error);
-      
-      // Extract detailed error information
-      const errorMessage = error.response?.data?.message || error.message || 'Unknown error';
-      const errorDetails = error.response?.data?.details || '';
-      const statusCode = error.response?.status;
-      
-      // Handle different error types with detailed messages
-      if (statusCode === 500) {
-        console.log(`⚠️ Lỗi server khi đồng bộ trạm ${station.name}`);
-        console.log(`📋 Chi tiết: ${errorMessage}`);
-        if (errorDetails) {
-          console.log(`🔍 Thông tin thêm: ${errorDetails}`);
-        }
-        
-        // Special handling for full capacity causing 500 error
-        if (station.current_vehicles >= station.max_capacity) {
-          console.log(`⚠️ Nguyên nhân có thể: Trạm đã đạt sức chứa tối đa (${station.current_vehicles}/${station.max_capacity})`);
-          console.log(`💡 Giải pháp: Backend cần xử lý trường hợp trạm full capacity gracefully`);
-        } else if (errorMessage.includes('capacity') || errorMessage.includes('full') || errorMessage.includes('maximum')) {
-          console.log(`⚠️ Nguyên nhân có thể: Vấn đề về sức chứa trạm`);
-          console.log(`💡 Giải pháp: Kiểm tra và điều chỉnh sức chứa trạm`);
-        } else {
-          console.log(`💡 Nguyên nhân có thể: API backend chưa được implement đầy đủ hoặc có lỗi xử lý`);
-        }
-      } else if (statusCode === 400) {
-        console.log(`❌ Dữ liệu không hợp lệ cho trạm ${station.name}`);
-        console.log(`📋 Chi tiết: ${errorMessage}`);
-        // Có thể là trạm đã full capacity hoặc có vấn đề với dữ liệu
-        if (errorMessage.includes('capacity') || errorMessage.includes('full') || station.current_vehicles >= station.max_capacity) {
-          console.log(`⚠️ Lý do: Trạm ${station.name} đã đạt sức chứa tối đa (${station.current_vehicles}/${station.max_capacity})`);
-          console.log(`💡 Giải pháp: Cần di chuyển xe ra khỏi trạm hoặc tăng sức chứa tối đa`);
-        }
-      } else if (statusCode === 403) {
-        console.log(`❌ Không có quyền đồng bộ trạm ${station.name}.`);
-      } else if (statusCode === 404) {
-        console.log(`❌ Không tìm thấy trạm ${station.name}.`);
-      } else if (statusCode === 409) {
-        console.log(`⚠️ Xung đột dữ liệu khi đồng bộ trạm ${station.name}`);
-        console.log(`📋 Chi tiết: ${errorMessage}`);
-        // Có thể là xe đang được sử dụng hoặc đã được assign
-      } else if (error.code === 'NETWORK_ERROR' || !error.response) {
-        console.log(`❌ Lỗi kết nối mạng khi đồng bộ trạm ${station.name}.`);
-        console.log(`💡 Giải pháp: Kiểm tra kết nối internet và thử lại.`);
-      } else {
-        console.log(`❌ Lỗi không xác định khi đồng bộ trạm ${station.name}`);
-        console.log(`📋 Status: ${statusCode}, Message: ${errorMessage}`);
-      }
-      
-      // Log current station capacity for debugging
-      console.log(`📊 Thông tin trạm ${station.name}:`);
-      console.log(`   - Sức chứa tối đa: ${station.max_capacity}`);
-      console.log(`   - Xe hiện tại: ${station.current_vehicles}`);
-      console.log(`   - Xe khả dụng: ${station.available_vehicles}`);
-      console.log(`   - Xe đang thuê: ${station.rented_vehicles}`);
-      console.log(`   - Xe bảo trì: ${station.maintenance_vehicles}`);
-      
-      // Show suggested solutions
-      const solutions = suggestSolutions(station);
-      if (solutions.length > 0) {
-        solutions.forEach(solution => console.log(solution));
-      }
-      
-      // Mark station as having error for UI indication
-      setStationsWithErrors(prev => new Set(prev).add(station._id));
-    } finally {
-      // Remove station from syncing set
-      setSyncingStations(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(station._id);
-        return newSet;
-      });
-    }
-  };
-
-  const handleDeleteStation = useCallback((station: Station) => {
-    setStationToDelete(station);
-    setShowDeleteConfirm(true);
-  }, []);
-
-  const handleConfirmDelete = useCallback(async () => {
-    if (!stationToDelete) return;
-    
-    try {
-      setDeleting(true);
-      await stationService.deleteStation(stationToDelete._id);
-      
-      // 1. Close confirmation dialog
-      setShowDeleteConfirm(false);
-      
-      // 2. Show success toast với tên trạm
-      showToast.success(`Xóa trạm "${stationToDelete.name}" thành công`);
-      
-      // 3. Reload stations list - statistics will auto-update
-      loadStations();
-      
-      // 4. Reset state
-      setStationToDelete(null);
-      
-    } catch (error: any) {
-        console.error('Error deleting station:', error);
-      showToast.error(error.response?.data?.message || 'Không thể xóa trạm');
-      // Modal KHÔNG đóng khi lỗi
-    } finally {
-      setDeleting(false);
-      }
-  }, [stationToDelete, loadStations]);
-
-  // Calculate statistics from current stations data (without API call)
-  const updateStatisticsFromStations = () => {
+  // Calculate statistics from current stations data
+  const updateStatisticsFromStations = useCallback(() => {
     if (stations && stations.length > 0) {
       const totalStations = stations.length;
       const activeStations = stations.filter(s => s.status === 'active').length;
@@ -340,10 +162,10 @@ export function Stations() {
         averageVehiclesPerStation
       });
     }
-  };
+  }, [stations]);
 
   // Check for potential sync issues
-  const checkStationSyncIssues = (station: Station) => {
+  const checkStationSyncIssues = useCallback((station: Station) => {
     const issues = [];
     
     // Check if station is at full capacity
@@ -351,38 +173,107 @@ export function Stations() {
       issues.push(`Trạm đã đạt sức chứa tối đa (${station.current_vehicles}/${station.max_capacity})`);
     }
     
-    // NOTE: Không check mismatch nữa vì:
-    // - Backend chỉ trả về: available_vehicles, rented_vehicles, maintenance_vehicles
-    // - Nhưng thực tế có 5 trạng thái: draft, available, reserved, rented, maintenance
-    // - Sự chênh lệch là bình thường (draft + reserved vehicles)
-    // const totalCounted = station.available_vehicles + station.rented_vehicles + station.maintenance_vehicles;
-    // if (totalCounted !== station.current_vehicles) {
-    //   const difference = station.current_vehicles - totalCounted;
-    //   console.log(`ℹ️ Trạm ${station.name}: ${difference} xe có thể đang ở trạng thái draft hoặc reserved`);
-    // }
-    
     // Check if station is inactive but has vehicles
     if (station.status !== 'active' && station.current_vehicles > 0) {
       issues.push(`Trạm không hoạt động nhưng vẫn có ${station.current_vehicles} xe`);
     }
     
     return issues;
-  };
+  }, []);
 
-  // Suggest solutions for station issues
-  const suggestSolutions = (station: Station) => {
-    const solutions = [];
-    
+  const handleSyncStation = useCallback(async (station: Station) => {
+    try {
+      // Early return if station is at full capacity
     if (station.current_vehicles >= station.max_capacity) {
-      solutions.push('💡 Giải pháp cho trạm full:');
-      solutions.push('   1. Di chuyển một số xe sang trạm khác có chỗ trống');
-      solutions.push('   2. Tăng sức chứa tối đa của trạm trong cài đặt');
-      solutions.push('   3. Kiểm tra xe nào đang bảo trì có thể di chuyển');
-    }
-    
-    return solutions;
-  };
+        return;
+      }
 
+      // Check for potential issues before syncing
+      const issues = checkStationSyncIssues(station);
+      if (issues.length > 0) {
+        const proceed = window.confirm(
+          `Trạm ${station.name} có vấn đề tiềm ẩn:\n${issues.join('\n')}\n\nBạn có muốn tiếp tục đồng bộ không?`
+        );
+        
+        if (!proceed) {
+          return;
+        }
+      }
+      
+      setSyncingStations(prev => new Set(prev).add(station._id));
+      
+      const response = await stationService.syncStation(station._id);
+      
+      // Update station in list
+      if (response.data && response.data.station) {
+        const updatedStation = response.data.station;
+        
+        setStations(prevStations => 
+          prevStations.map(s => 
+            s._id === station._id 
+              ? { ...s, ...updatedStation } as Station
+              : s
+          )
+        );
+        
+        // Update statistics
+        setTimeout(() => {
+          updateStatisticsFromStations();
+        }, 100);
+        
+        // Remove from error list
+        setStationsWithErrors(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(station._id);
+          return newSet;
+        });
+      } else {
+        // Remove from error list
+        setStationsWithErrors(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(station._id);
+          return newSet;
+        });
+      }
+      
+    } catch (error: any) {
+      console.error('❌ Error syncing station:', error);
+      
+      // Mark station as having error
+      setStationsWithErrors(prev => new Set(prev).add(station._id));
+    } finally {
+      setSyncingStations(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(station._id);
+        return newSet;
+      });
+    }
+  }, [checkStationSyncIssues, updateStatisticsFromStations]);
+
+  const handleDeleteStation = useCallback((station: Station) => {
+    setStationToDelete(station);
+    setShowDeleteConfirm(true);
+  }, []);
+    
+  const handleConfirmDelete = useCallback(async () => {
+    if (!stationToDelete) return;
+    
+    try {
+      setDeleting(true);
+      await stationService.deleteStation(stationToDelete._id);
+      
+      setShowDeleteConfirm(false);
+      showToast.success(`Xóa trạm "${stationToDelete.name}" thành công`);
+      loadStations();
+      setStationToDelete(null);
+      
+    } catch (error: any) {
+      console.error('❌ Error deleting station:', error);
+      showToast.error(error.response?.data?.message || 'Không thể xóa trạm');
+    } finally {
+      setDeleting(false);
+    }
+  }, [stationToDelete, loadStations]);
 
   // Use stations from API (already filtered)
   const filteredStations = stations || [];
@@ -397,12 +288,14 @@ export function Stations() {
     setCurrentPage(1);
   }, [debouncedSearchTerm, filterActive]);
 
-  const stationColumns = [
+  // Memoized column definitions
+  const stationColumns = useMemo(() => [
     {
       key: 'stt',
       header: 'STT',
       render: (_value: any, _row: any, index?: number) => {
-        const stt = (index ?? 0) + 1;
+        // Calculate STT based on current page and items per page
+        const stt = ((currentPage - 1) * itemsPerPage) + (index ?? 0) + 1;
         return (
           <span className="font-medium text-sm text-gray-600 dark:text-gray-400">{stt}</span>
         );
@@ -441,10 +334,10 @@ export function Stations() {
       header: 'VỊ TRÍ',
       render: (_value: string, row: Station) => (
         <div className="flex items-center space-x-2">
-          <MapPin className="h-4 w-4 text-gray-400" />
+          <MapPin className="h-4 w-4 text-gray-400 dark:text-gray-500" />
           <div>
-            <div className="text-sm text-gray-900">{row.district}, {row.city}</div>
-            <div className="text-xs text-gray-500 truncate max-w-32">{row.address}</div>
+            <div className="text-sm text-gray-900 dark:text-white">{row.district}, {row.city}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-32">{row.address}</div>
           </div>
         </div>
       )
@@ -457,7 +350,7 @@ export function Stations() {
           value === 'active' ? 'success' : 
           value === 'maintenance' ? 'warning' : 'secondary'
         } className={
-          value === 'inactive' ? 'bg-amber-100 text-amber-800 border-amber-200' : ''
+          value === 'inactive' ? 'bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/50 dark:text-amber-200 dark:border-amber-700' : ''
         }>
           {value === 'active' ? 'Hoạt động' : 
            value === 'maintenance' ? 'Bảo trì' : 'Tạm dừng'}
@@ -552,7 +445,7 @@ export function Stations() {
         </div>
       )
     }
-  ];
+  ], [currentPage, itemsPerPage, syncingStations, stationsWithErrors, handleViewStation, handleSyncStation, handleDeleteStation]);
 
   return (
     <div className="space-y-6 p-6">
@@ -740,7 +633,7 @@ export function Stations() {
                       <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
                 </div>
                   )}
-              </div>
+                </div>
               </div>
               
               {/* Filter Status Buttons - Professional */}
@@ -755,8 +648,8 @@ export function Stations() {
                   onClick={() => setFilterActive(null)}
                     className={`h-9 px-4 transition-all ${
                       filterActive === null 
-                        ? "bg-gradient-to-r from-gray-700 to-gray-800 text-white shadow-md hover:shadow-lg" 
-                        : "border-gray-300 hover:border-gray-400 hover:bg-gray-50"
+                        ? "bg-gradient-to-r from-gray-700 to-gray-800 !text-white shadow-md hover:shadow-lg" 
+                        : "border-gray-300 hover:border-gray-400 hover:bg-gray-50 dark:text-white dark:hover:text-white"
                     }`}
                 >
                   Tất cả
@@ -772,8 +665,8 @@ export function Stations() {
                   onClick={() => setFilterActive(true)}
                     className={`h-9 px-4 transition-all ${
                       filterActive === true 
-                        ? "bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-md hover:shadow-lg" 
-                        : "border-gray-300 hover:border-gray-400 hover:bg-green-50"
+                        ? "bg-gradient-to-r from-green-600 to-emerald-600 !text-white shadow-md hover:shadow-lg" 
+                        : "border-gray-300 hover:border-gray-400 hover:bg-green-50 dark:text-white dark:hover:text-white"
                     }`}
                 >
                   Hoạt động
@@ -789,8 +682,8 @@ export function Stations() {
                   onClick={() => setFilterActive(false)}
                     className={`h-9 px-4 transition-all ${
                       filterActive === false 
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:shadow-lg" 
-                        : "border-gray-300 hover:border-gray-400 hover:bg-amber-50"
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 !text-white shadow-md hover:shadow-lg" 
+                        : "border-gray-300 hover:border-gray-400 hover:bg-amber-50 dark:text-white dark:hover:text-white"
                     }`}
                 >
                   Tạm dừng
@@ -811,7 +704,7 @@ export function Stations() {
                     >
                       <RotateCcw className="h-4 w-4" />
                       <span>Đặt lại</span>
-                    </Button>
+                </Button>
                   )}
                 </div>
               </div>
@@ -836,10 +729,10 @@ export function Stations() {
             </div>
             <div className="flex items-center gap-2">
               <Button 
-                className="flex items-center space-x-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+                className="group flex items-center space-x-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
                 onClick={() => setShowCreateModal(true)}
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-5 w-5 group-hover:rotate-90 transition-transform duration-200" />
                 <span className="font-semibold">Thêm trạm</span>
               </Button>
             </div>

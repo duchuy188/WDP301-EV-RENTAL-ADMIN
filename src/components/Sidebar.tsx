@@ -135,7 +135,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
               )}
               onClick={expandSidebar}
             >
-              <div className="p-2.5 bg-gradient-to-r from-primary-800 to-primary-600 rounded-xl hover:from-primary-700 hover:to-primary-500 transition-all duration-200 hover:scale-105 shadow-md">
+              <div className="p-2.5 bg-gradient-to-r from-green-800 to-green-600 rounded-xl hover:from-green-700 hover:to-green-500 transition-all duration-200 hover:scale-105 shadow-md">
                 <Zap className="h-6 w-6 text-white" />
               </div>
               {!isCollapsed && (
@@ -178,8 +178,8 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
                     className={cn(
                       'group flex items-center w-full rounded-xl px-4 py-3 text-sm font-medium transition-all duration-200 relative',
                       isSubmenuActive
-                        ? 'bg-gradient-to-r from-primary-800 to-primary-600 text-white shadow-lg transform scale-[1.02]'
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300 hover:shadow-md hover:ring-1 hover:ring-primary-200 dark:hover:ring-primary-800 hover:scale-[1.02]',
+                      ? 'bg-gradient-to-r from-green-800 to-green-600 text-white shadow-lg transform scale-[1.02]'
+                      : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 hover:transform hover:scale-[1.01]',
                       isCollapsed && 'justify-center px-3'
                     )}
                       title={isCollapsed ? item.name : undefined}
@@ -241,7 +241,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
                                 key={subItem.name}
                                 to={subItem.path}
                                 className={cn(
-                                  'group flex items-center rounded-lg px-3 py-2 text-sm transition-all duration-200',
+                                  'group flex items-center rounded-lg px-4 py-2.5 text-sm transition-all duration-200',
                                   isSubActive
                                     ? 'bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300'
                                     : 'text-gray-600 dark:text-gray-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:text-primary-700 dark:hover:text-primary-300 hover:shadow-sm hover:scale-[1.01]'

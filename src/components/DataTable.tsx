@@ -88,7 +88,7 @@ export function DataTable({ title, columns, data, loading }: DataTableProps) {
             {(data || []).map((row, index) => (
               <tr 
                 key={row.id || row._id || index} 
-                className="hover:bg-gray-50 dark:hover:bg-gray-750 transition-colors duration-150"
+                className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/50 dark:hover:from-slate-700/30 dark:hover:to-slate-600/30 transition-all duration-200 hover:shadow-sm"
               >
                 {columns.map((column) => (
                   <td key={column.key} className="px-4 py-4 text-sm text-gray-900 dark:text-gray-100">

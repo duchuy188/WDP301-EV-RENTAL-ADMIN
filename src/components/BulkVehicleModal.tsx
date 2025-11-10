@@ -88,26 +88,41 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
   const handleBulkCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!bulkFormData.quantity || bulkFormData.quantity <= 0) {
-      showToast.warning('Vui lòng nhập số lượng xe cần tạo');
+    // Validate quantity - ensure it's a positive integer
+    const quantity = parseInt(bulkFormData.quantity.toString(), 10);
+    if (isNaN(quantity) || quantity <= 0 || quantity > 100) {
+      showToast.warning('Vui lòng nhập số lượng xe hợp lệ (1-100)');
+      return;
+    }
+
+    // Validate required fields
+    if (!bulkFormData.model || !bulkFormData.color) {
+      showToast.warning('Vui lòng điền đầy đủ thông tin xe (Model và Màu sắc là bắt buộc)');
       return;
     }
 
     // Create the request body matching the API specification
     const requestBody = {
-      model: bulkFormData.model,
-      year: bulkFormData.year,
-      color: bulkFormData.color,
+      model: bulkFormData.model.trim(),
+      year: parseInt(bulkFormData.year.toString(), 10),
+      color: bulkFormData.color.trim(),
       type: bulkFormData.type,
-      battery_capacity: bulkFormData.batteryCapacity,
-      max_range: bulkFormData.maxRange,
+      battery_capacity: parseFloat(bulkFormData.batteryCapacity.toString()),
+      max_range: parseInt(bulkFormData.maxRange.toString(), 10),
       current_battery: 100,
-      price_per_day: bulkFormData.pricePerDay,
-      deposit_percentage: bulkFormData.depositPercentage,
-      quantity: bulkFormData.quantity,
+      price_per_day: parseInt(bulkFormData.pricePerDay.toString(), 10),
+      deposit_percentage: parseInt(bulkFormData.depositPercentage.toString(), 10),
+      quantity: quantity, // Ensure it's an integer
       export_excel: true,
       images: vehicleImage ? [vehicleImage] : []
     };
+
+    console.log('📝 Bulk create request prepared:', {
+      quantity: requestBody.quantity,
+      model: requestBody.model,
+      color: requestBody.color,
+      type: requestBody.type
+    });
 
     try {
       setLoading(true);
@@ -384,14 +399,19 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                             type="number"
                             min="1"
                             max="100"
+                            step="1"
                             value={bulkFormData.quantity}
-                            onChange={(e) => setBulkFormData({ ...bulkFormData, quantity: parseInt(e.target.value) || 1 })}
+                            onChange={(e) => {
+                              const value = e.target.value;
+                              const numValue = value === '' ? 1 : Math.max(1, Math.min(100, parseInt(value, 10) || 1));
+                              setBulkFormData({ ...bulkFormData, quantity: numValue });
+                            }}
                             placeholder="VD: 10"
                             className="h-11"
                             required
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                            Tối đa 100 xe mỗi lần
+                            Tối đa 100 xe mỗi lần (đang chọn: {bulkFormData.quantity} xe)
                           </p>
                         </div>
                       </div>

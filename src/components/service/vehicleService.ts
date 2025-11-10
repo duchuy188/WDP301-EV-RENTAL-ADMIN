@@ -354,6 +354,12 @@ class VehicleService {
    */
   async bulkCreateVehicles(bulkData: any): Promise<any> {
     try {
+      // Ensure quantity is a valid integer
+      const quantity = parseInt(bulkData.quantity, 10);
+      if (isNaN(quantity) || quantity <= 0) {
+        throw new Error('Số lượng xe phải là một số nguyên dương');
+      }
+      
       // Create FormData to handle image uploads
       const formData = new FormData();
       
@@ -367,14 +373,29 @@ class VehicleService {
       formData.append('current_battery', bulkData.current_battery.toString());
       formData.append('price_per_day', bulkData.price_per_day.toString());
       formData.append('deposit_percentage', bulkData.deposit_percentage.toString());
-      formData.append('quantity', bulkData.quantity.toString());
-      formData.append('export_excel', bulkData.export_excel.toString());
+      // Ensure quantity is sent as a proper integer string
+      formData.append('quantity', quantity.toString());
+      formData.append('export_excel', bulkData.export_excel ? 'true' : 'false');
       
       // Append images (if any)
       if (bulkData.images && bulkData.images.length > 0) {
         bulkData.images.forEach((image: File) => {
           formData.append('images', image);
         });
+      }
+      
+      // Log FormData contents for debugging
+      console.log('🚀 Bulk create vehicles request:');
+      console.log('  - Quantity:', quantity);
+      console.log('  - Model:', bulkData.model);
+      console.log('  - Export Excel:', bulkData.export_excel);
+      console.log('  - FormData entries:');
+      for (const [key, value] of formData.entries()) {
+        if (value instanceof File) {
+          console.log(`    ${key}: [File] ${value.name} (${value.size} bytes)`);
+        } else {
+          console.log(`    ${key}:`, value);
+        }
       }
       
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.bulkCreate, formData, {
@@ -384,6 +405,11 @@ class VehicleService {
         }
       });
       
+      console.log('✅ Bulk create vehicles response received');
+      if (!bulkData.export_excel && response.data) {
+        console.log('  - Response data:', response.data);
+      }
+      
       if (bulkData.export_excel) {
         // Return blob for Excel download
         return response.data;
@@ -391,8 +417,12 @@ class VehicleService {
         // Return JSON response for vehicle creation
         return response.data;
       }
-    } catch (error) {
-      console.error('Error in bulk create vehicles:', error);
+    } catch (error: any) {
+      console.error('❌ Error in bulk create vehicles:', error);
+      if (error.response) {
+        console.error('  - Response status:', error.response.status);
+        console.error('  - Response data:', error.response.data);
+      }
       throw error;
     }
   }

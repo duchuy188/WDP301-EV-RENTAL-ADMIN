@@ -244,7 +244,7 @@ export const ProfessionalPagination: React.FC<ProfessionalPaginationProps> = ({
                 variant="outline"
                 onClick={() => setShowGoToInput(true)}
                 disabled={disabled || loading || totalPages <= 1}
-                className="h-9 px-3"
+                className="h-9 px-3 dark:text-gray-300"
                 title={goToLabel}
               >
                 {goToLabel}
@@ -261,7 +261,7 @@ export const ProfessionalPagination: React.FC<ProfessionalPaginationProps> = ({
             variant="outline"
             onClick={() => handlePageChange(1)}
             disabled={currentPage === 1 || disabled || loading}
-            className="h-9 w-9 p-0"
+            className="h-9 w-9 p-0 dark:text-gray-300"
             title="Trang đầu"
             aria-label="Trang đầu"
           >
@@ -274,7 +274,7 @@ export const ProfessionalPagination: React.FC<ProfessionalPaginationProps> = ({
             variant="outline"
             onClick={() => handlePageChange(currentPage - 1)}
             disabled={currentPage === 1 || disabled || loading}
-            className="h-9 px-3"
+            className="h-9 px-3 dark:text-gray-300"
             title="Trang trước"
             aria-label="Trang trước"
           >
@@ -291,7 +291,7 @@ export const ProfessionalPagination: React.FC<ProfessionalPaginationProps> = ({
                   return (
                     <div
                       key={`ellipsis-${index}`}
-                      className="w-9 h-9 flex items-center justify-center text-gray-400"
+                      className="w-9 h-9 flex items-center justify-center text-gray-400 dark:text-gray-500"
                     >
                       <MoreHorizontal className="h-4 w-4" />
                     </div>
@@ -340,7 +340,7 @@ export const ProfessionalPagination: React.FC<ProfessionalPaginationProps> = ({
             variant="outline"
             onClick={() => handlePageChange(currentPage + 1)}
             disabled={currentPage === totalPages || disabled || loading}
-            className="h-9 px-3"
+            className="h-9 px-3 dark:text-gray-300"
             title="Trang sau"
             aria-label="Trang sau"
           >
@@ -355,7 +355,7 @@ export const ProfessionalPagination: React.FC<ProfessionalPaginationProps> = ({
             variant="outline"
             onClick={() => handlePageChange(totalPages)}
             disabled={currentPage === totalPages || disabled || loading}
-            className="h-9 w-9 p-0"
+            className="h-9 w-9 p-0 dark:text-gray-300"
             title="Trang cuối"
             aria-label="Trang cuối"
           >

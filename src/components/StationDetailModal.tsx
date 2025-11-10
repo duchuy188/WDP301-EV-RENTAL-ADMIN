@@ -832,35 +832,35 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                     {/* Vehicle Statistics - Compact */}
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                       <div className="text-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-800/50 dark:to-gray-700/50 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
-                        <XCircle className="h-5 w-5 mx-auto mb-2 text-gray-600" />
+                        <XCircle className="h-5 w-5 mx-auto mb-2 text-gray-600 dark:text-gray-400" />
                         <div className="text-2xl font-bold text-gray-600 dark:text-gray-400">
                           {(station.vehicles || []).filter(v => v.status === 'draft').length}
                         </div>
                         <div className="text-xs font-medium text-gray-700 dark:text-gray-300">Draft</div>
                       </div>
                       <div className="text-center p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/20 dark:to-green-800/20 rounded-xl border border-green-200 dark:border-green-800 hover:shadow-md transition-shadow">
-                        <CheckCircle className="h-5 w-5 mx-auto mb-2 text-green-600" />
+                        <CheckCircle className="h-5 w-5 mx-auto mb-2 text-green-600 dark:text-green-400" />
                         <div className="text-2xl font-bold text-green-600 dark:text-green-400">
                           {(station.vehicles || []).filter(v => v.status === 'available').length}
                         </div>
                         <div className="text-xs font-medium text-green-700 dark:text-green-300">Sẵn sàng</div>
                       </div>
                       <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20 rounded-xl border border-blue-200 dark:border-blue-800 hover:shadow-md transition-shadow">
-                        <Calendar className="h-5 w-5 mx-auto mb-2 text-blue-600" />
+                        <Calendar className="h-5 w-5 mx-auto mb-2 text-blue-600 dark:text-blue-400" />
                         <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                           {(station.vehicles || []).filter(v => v.status === 'reserved').length}
                         </div>
                         <div className="text-xs font-medium text-blue-700 dark:text-blue-300">Đã đặt</div>
                       </div>
                       <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/20 dark:to-indigo-800/20 rounded-xl border border-indigo-200 dark:border-indigo-800 hover:shadow-md transition-shadow">
-                        <FaMotorcycle className="h-5 w-5 mx-auto mb-2 text-indigo-600" />
+                        <FaMotorcycle className="h-5 w-5 mx-auto mb-2 text-indigo-600 dark:text-indigo-400" />
                         <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
                           {(station.vehicles || []).filter(v => v.status === 'rented').length}
                         </div>
                         <div className="text-xs font-medium text-indigo-700 dark:text-indigo-300">Đang thuê</div>
                       </div>
                       <div className="text-center p-4 bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/20 dark:to-yellow-800/20 rounded-xl border border-yellow-200 dark:border-yellow-800 hover:shadow-md transition-shadow">
-                        <AlertTriangle className="h-5 w-5 mx-auto mb-2 text-yellow-600" />
+                        <AlertTriangle className="h-5 w-5 mx-auto mb-2 text-yellow-600 dark:text-yellow-400" />
                         <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                           {(station.vehicles || []).filter(v => v.status === 'maintenance').length}
                         </div>
@@ -873,7 +873,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                       <CardHeader>
                         <div className="flex items-center justify-between">
                           <CardTitle className="flex items-center space-x-2">
-                            <FaMotorcycle className="h-5 w-5 text-green-600" />
+                            <FaMotorcycle className="h-5 w-5 text-green-600 dark:text-green-400" />
                             <span>Danh sách xe tại trạm ({(station.vehicles || []).length})</span>
                           </CardTitle>
                           
@@ -943,10 +943,10 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {(station.vehicles || []).map((vehicle) => (
-                              <Card key={vehicle._id} className="hover:shadow-lg transition-all duration-200">
+                              <Card key={vehicle._id} className="hover:shadow-lg transition-all duration-200 dark:bg-gray-800 dark:border-gray-700">
                                 <CardContent className="p-4">
                                   <div className="space-y-3">
-                                    <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
+                                    <div className="aspect-video bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                                       {vehicle.main_image ? (
                                         <img 
                                           src={vehicle.main_image} 
@@ -955,14 +955,14 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                         />
                                       ) : (
                                         <div className="w-full h-full flex items-center justify-center">
-                                          <FaMotorcycle className="h-8 w-8 text-gray-400" />
+                                          <FaMotorcycle className="h-8 w-8 text-gray-400 dark:text-gray-500" />
                                         </div>
                                       )}
                                     </div>
                                     
                                     <div>
-                                      <h4 className="font-semibold text-gray-900 truncate">{vehicle.name}</h4>
-                                      <p className="text-sm text-gray-500">{vehicle.model}</p>
+                                      <h4 className="font-semibold text-gray-900 dark:text-white truncate">{vehicle.name}</h4>
+                                      <p className="text-sm text-gray-500 dark:text-gray-400">{vehicle.model}</p>
                                       
                                       <div className="flex items-center justify-between mt-2">
                                         <Badge className={`${getVehicleStatusColor(vehicle.status)} flex items-center gap-1`}>
@@ -970,7 +970,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                           <span>{getVehicleStatusText(vehicle.status)}</span>
                                         </Badge>
                                         
-                                        <div className="flex items-center space-x-1 text-xs text-gray-500">
+                                        <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400">
                                           <Battery className="h-3 w-3" />
                                           <span className={getBatteryColor(vehicle.current_battery)}>
                                             {vehicle.current_battery}%
@@ -979,10 +979,10 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                       </div>
                                       
                                       <div className="flex items-center justify-between mt-3">
-                                        <div className="text-lg font-bold text-green-600">
+                                        <div className="text-lg font-bold text-green-600 dark:text-green-400">
                                           {formatPrice(vehicle.price_per_day)}
                                         </div>
-                                        <div className="text-xs text-gray-500">
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
                                           /ngày
                                         </div>
                                       </div>
@@ -1017,15 +1017,15 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center space-x-2">
-                          <Users className="h-5 w-5 text-purple-600" />
+                          <Users className="h-5 w-5 text-purple-600 dark:text-purple-400" />
                           <span>Nhân viên tại trạm ({staffPagination.total})</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         {staffLoading ? (
                           <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
-                            <span className="ml-3 text-gray-600">Đang tải nhân viên...</span>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 dark:border-purple-400"></div>
+                            <span className="ml-3 text-gray-600 dark:text-gray-300">Đang tải nhân viên...</span>
                           </div>
                         ) : staff.length === 0 ? (
                           <div className="text-center py-16">
@@ -1102,8 +1102,8 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
 
                             {/* Pagination */}
                             {staffPagination.total > staffPagination.limit && (
-                              <div className="flex items-center justify-between border-t pt-4">
-                                <div className="text-sm text-gray-500">
+                              <div className="flex items-center justify-between border-t dark:border-gray-700 pt-4">
+                                <div className="text-sm text-gray-500 dark:text-gray-400">
                                   Hiển thị {((staffPagination.page - 1) * staffPagination.limit) + 1} - {Math.min(staffPagination.page * staffPagination.limit, staffPagination.total)} 
                                   trong tổng số {staffPagination.total} nhân viên
                                 </div>
@@ -1116,7 +1116,7 @@ export function StationDetailModal({ isOpen, onClose, stationId, onEdit }: Stati
                                   >
                                     Trước
                                   </Button>
-                                  <span className="text-sm text-gray-500">
+                                  <span className="text-sm text-gray-500 dark:text-gray-400">
                                     Trang {staffPagination.page} / {Math.ceil(staffPagination.total / staffPagination.limit)}
                                   </span>
                                   <Button

@@ -38,40 +38,40 @@ const getStatusConfig = (status: VehicleStatus) => {
       return {
         label: 'Sẵn sàng',
         color: 'bg-green-500',
-        textColor: 'text-green-700',
-        bgColor: 'bg-green-50',
+        textColor: 'text-green-700 dark:text-green-300',
+        bgColor: 'bg-green-50 dark:bg-green-900/30',
         icon: CheckCircle
       };
     case 'rented':
       return {
         label: 'Đang thuê',
         color: 'bg-blue-500',
-        textColor: 'text-blue-700',
-        bgColor: 'bg-blue-50',
+        textColor: 'text-blue-700 dark:text-blue-300',
+        bgColor: 'bg-blue-50 dark:bg-blue-900/30',
         icon: Users
       };
     case 'maintenance':
       return {
         label: 'Bảo trì',
         color: 'bg-yellow-500',
-        textColor: 'text-yellow-700',
-        bgColor: 'bg-yellow-50',
+        textColor: 'text-yellow-700 dark:text-yellow-300',
+        bgColor: 'bg-yellow-50 dark:bg-yellow-900/30',
         icon: Wrench
       };
     case 'broken':
       return {
         label: 'Hỏng',
         color: 'bg-red-500',
-        textColor: 'text-red-700',
-        bgColor: 'bg-red-50',
+        textColor: 'text-red-700 dark:text-red-300',
+        bgColor: 'bg-red-50 dark:bg-red-900/30',
         icon: AlertTriangle
       };
     default:
       return {
         label: 'Không xác định',
         color: 'bg-gray-500',
-        textColor: 'text-gray-700',
-        bgColor: 'bg-gray-50',
+        textColor: 'text-gray-700 dark:text-gray-300',
+        bgColor: 'bg-gray-50 dark:bg-gray-800',
         icon: Clock
       };
   }
@@ -194,28 +194,28 @@ export function VehicleCard({
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-9 w-9 p-0 bg-white/95 hover:bg-white shadow-lg hover:shadow-xl transition-all hover:scale-110"
+                  className="h-9 w-9 p-0 bg-white/95 dark:bg-gray-800/95 hover:bg-white dark:hover:bg-gray-700 shadow-lg hover:shadow-xl transition-all hover:scale-110"
                   onClick={(e) => {
                     e.stopPropagation();
                     onView(vehicle);
                   }}
                   title="Xem chi tiết"
                 >
-                  <Eye className="h-4 w-4 text-blue-600" />
+                  <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                 </Button>
               )}
               {onEdit && (
                 <Button
                   size="sm"
                   variant="secondary"
-                  className="h-9 w-9 p-0 bg-white/95 hover:bg-white shadow-lg hover:shadow-xl transition-all hover:scale-110"
+                  className="h-9 w-9 p-0 bg-white/95 dark:bg-gray-800/95 hover:bg-white dark:hover:bg-gray-700 shadow-lg hover:shadow-xl transition-all hover:scale-110"
                   onClick={(e) => {
                     e.stopPropagation();
                     onEdit(vehicle);
                   }}
                   title="Chỉnh sửa"
                 >
-                  <Edit className="h-4 w-4 text-gray-700" />
+                  <Edit className="h-4 w-4 text-gray-700 dark:text-gray-300" />
                 </Button>
               )}
             </div>
@@ -230,10 +230,10 @@ export function VehicleCard({
                 {vehicle.brand} {vehicle.model}
               </h3>
               <div className="flex items-center space-x-2">
-                <div className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-sm font-mono font-semibold text-gray-700 dark:text-gray-300">
+                <div className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-sm font-mono font-semibold text-gray-700 dark:text-gray-200">
                   {vehicle.licensePlate}
                 </div>
-                <span className="text-xs text-gray-500">• {vehicle.year}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">• {vehicle.year}</span>
               </div>
             </div>
             <div className="flex items-center space-x-1.5">
@@ -271,23 +271,23 @@ export function VehicleCard({
 
           {/* Technical Info */}
           <div className="space-y-3 mb-4">
-            <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg">
+            <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-100 dark:border-blue-900/30">
               <div className="flex items-center space-x-2">
-                <Zap className="w-4 h-4 text-blue-600" />
+                <Zap className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Dung lượng pin:</span>
               </div>
-              <span className="font-semibold text-blue-600">{vehicle.batteryCapacity}kWh</span>
+              <span className="font-semibold text-blue-600 dark:text-blue-400">{vehicle.batteryCapacity}kWh</span>
             </div>
-            <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg">
+            <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-lg border border-green-100 dark:border-green-900/30">
               <div className="flex items-center space-x-2">
-                <Gauge className="w-4 h-4 text-green-600" />
+                <Gauge className="w-4 h-4 text-green-600 dark:text-green-400" />
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tầm xa:</span>
               </div>
-              <span className="font-semibold text-green-600">{vehicle.maxRange}km</span>
+              <span className="font-semibold text-green-600 dark:text-green-400">{vehicle.maxRange}km</span>
             </div>
-            <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+            <div className="flex items-center justify-between p-2.5 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-lg border border-amber-200 dark:border-amber-800/50">
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Giá thuê:</span>
-              <span className="font-bold text-base text-amber-700 dark:text-amber-400">
+              <span className="font-bold text-base text-amber-700 dark:text-amber-300">
                 {new Intl.NumberFormat('vi-VN', {
                   style: 'currency',
                   currency: 'VND'
@@ -312,12 +312,12 @@ export function VehicleCard({
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-700">
             {onAssign && vehicle.status === 'available' && (
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all font-medium"
+                className="flex-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-300 dark:hover:border-blue-600 hover:text-blue-700 dark:hover:text-blue-400 transition-all font-medium dark:text-gray-300"
                 onClick={(e) => {
                   e.stopPropagation();
                   onAssign(vehicle);
@@ -332,7 +332,7 @@ export function VehicleCard({
               <Button
                 size="sm"
                 variant="outline"
-                className="flex-1 hover:bg-gray-50 hover:border-gray-300 transition-all font-medium"
+                className="flex-1 hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-gray-300 dark:hover:border-gray-500 transition-all font-medium dark:text-gray-300"
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit(vehicle);
@@ -346,7 +346,7 @@ export function VehicleCard({
             <Button
               size="sm"
               variant="ghost"
-              className="px-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all"
+              className="px-3 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400 transition-all"
               onClick={(e) => {
                 e.stopPropagation();
                 // Show more options menu

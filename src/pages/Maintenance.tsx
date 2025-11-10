@@ -424,7 +424,7 @@ export function MaintenancePage() {
                       <option value="createdAt_desc">Mới nhất</option>
                       <option value="createdAt_asc">Cũ nhất</option>
                     </select>
-                  </div>
+          </div>
 
                   {/* Reset Filters - Smart button chỉ hiện khi có filter */}
                   {(filters.status !== 'all' || filters.station_id || searchTerm) && (
@@ -444,8 +444,8 @@ export function MaintenancePage() {
                       </Button>
                     </motion.div>
                   )}
-                </div>
-              </div>
+            </div>
+          </div>
             </CardContent>
           </Card>
         </motion.div>
@@ -464,10 +464,6 @@ export function MaintenancePage() {
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                     Danh sách báo cáo bảo trì
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    Hiển thị {filteredReports.length} / {pagination.total} báo cáo
-                    {debouncedSearchTerm && ` (lọc: "${debouncedSearchTerm}")`}
-                  </p>
                 </div>
               </div>
             </div>
