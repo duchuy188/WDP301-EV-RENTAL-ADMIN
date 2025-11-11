@@ -133,7 +133,15 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
       const url = window.URL.createObjectURL(excelBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `vehicles-created-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      // Tạo tên file bao gồm model, name (model) và màu xe
+      const sanitizedModel = bulkFormData.model.replace(/[/\\?%*:|"<>]/g, '-');
+      const sanitizedColor = bulkFormData.color.replace(/[/\\?%*:|"<>]/g, '-');
+      const fileName = quantity === 1
+        ? `${sanitizedModel}_${sanitizedColor}_${new Date().toISOString().split('T')[0]}.xlsx`
+        : `${sanitizedModel}_${sanitizedColor}_${quantity}-xe_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);

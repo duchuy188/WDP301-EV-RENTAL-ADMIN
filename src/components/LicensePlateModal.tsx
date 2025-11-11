@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { vehicleService } from './service/vehicleService';
 import { showToast } from '../lib/toast';
@@ -22,6 +24,7 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
   const [draftVehicles, setDraftVehicles] = useState<VehicleUI[]>([]);
+  const [selectedVehicleIds, setSelectedVehicleIds] = useState<Set<string>>(new Set());
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<{
     success: number;
@@ -51,8 +54,67 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
     if (!isOpen) {
       setSelectedFile(null);
       setImportResult(null);
+      setSelectedVehicleIds(new Set());
     }
   }, [isOpen]);
+
+  // Toggle select all vehicles
+  const handleSelectAll = () => {
+    if (selectedVehicleIds.size === draftVehicles.length) {
+      setSelectedVehicleIds(new Set());
+    } else {
+      setSelectedVehicleIds(new Set(draftVehicles.map(v => v.id)));
+    }
+  };
+
+  // Toggle single vehicle selection
+  const handleToggleVehicle = (vehicleId: string) => {
+    const newSet = new Set(selectedVehicleIds);
+    if (newSet.has(vehicleId)) {
+      newSet.delete(vehicleId);
+    } else {
+      newSet.add(vehicleId);
+    }
+    setSelectedVehicleIds(newSet);
+  };
+
+  // Map màu xe sang màu CSS
+  const getColorStyle = (color: string) => {
+    const colorLower = color.toLowerCase().trim();
+    const colorMap: Record<string, { bg: string; text: string; border: string }> = {
+      'đỏ': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-300 dark:border-red-700' },
+      'red': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-300 dark:border-red-700' },
+      'xanh': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-300 dark:border-blue-700' },
+      'blue': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-300 dark:border-blue-700' },
+      'xanh dương': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-300 dark:border-blue-700' },
+      'xanh lá': { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', border: 'border-green-300 dark:border-green-700' },
+      'green': { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', border: 'border-green-300 dark:border-green-700' },
+      'vàng': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-300 dark:border-yellow-700' },
+      'yellow': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-300 dark:border-yellow-700' },
+      'cam': { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-300 dark:border-orange-700' },
+      'orange': { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-300 dark:border-orange-700' },
+      'tím': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-300 dark:border-purple-700' },
+      'purple': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-300 dark:border-purple-700' },
+      'hồng': { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-700 dark:text-pink-300', border: 'border-pink-300 dark:border-pink-700' },
+      'pink': { bg: 'bg-pink-100 dark:bg-pink-900/30', text: 'text-pink-700 dark:text-pink-300', border: 'border-pink-300 dark:border-pink-700' },
+      'trắng': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600' },
+      'white': { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-700 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600' },
+      'đen': { bg: 'bg-gray-800 dark:bg-gray-900', text: 'text-white dark:text-gray-100', border: 'border-gray-700 dark:border-gray-800' },
+      'black': { bg: 'bg-gray-800 dark:bg-gray-900', text: 'text-white dark:text-gray-100', border: 'border-gray-700 dark:border-gray-800' },
+      'xám': { bg: 'bg-gray-300 dark:bg-gray-600', text: 'text-gray-800 dark:text-gray-200', border: 'border-gray-400 dark:border-gray-500' },
+      'gray': { bg: 'bg-gray-300 dark:bg-gray-600', text: 'text-gray-800 dark:text-gray-200', border: 'border-gray-400 dark:border-gray-500' },
+      'nâu': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300 dark:border-amber-700' },
+      'brown': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-300 dark:border-amber-700' },
+      'bạc': { bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-300 dark:border-slate-600' },
+      'silver': { bg: 'bg-slate-200 dark:bg-slate-700', text: 'text-slate-700 dark:text-slate-300', border: 'border-slate-300 dark:border-slate-600' },
+    };
+    
+    return colorMap[colorLower] || { 
+      bg: 'bg-gray-100 dark:bg-gray-700', 
+      text: 'text-gray-700 dark:text-gray-300', 
+      border: 'border-gray-300 dark:border-gray-600' 
+    };
+  };
 
   const handleExportDraftVehicles = async () => {
     try {
@@ -63,6 +125,14 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         return;
       }
 
+      if (selectedVehicleIds.size === 0) {
+        showToast.warning('Vui lòng chọn ít nhất 1 xe để export!');
+        return;
+      }
+
+      // Lọc xe được chọn
+      const vehiclesToExport = draftVehicles.filter(v => selectedVehicleIds.has(v.id));
+
       // Gọi API backend để lấy file Excel template
       // API này sẽ export file với format đúng mà backend expect khi import
       const blob = await vehicleService.exportDraftVehicles();
@@ -71,13 +141,24 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `vehicles-no-plates-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      // Tạo tên file bao gồm model, name và màu xe
+      // Nếu có nhiều xe, lấy thông tin xe đầu tiên làm đại diện
+      const firstVehicle = vehiclesToExport[0];
+      const sanitizedModel = firstVehicle.model.replace(/[/\\?%*:|"<>]/g, '-');
+      const sanitizedName = firstVehicle.name.replace(/[/\\?%*:|"<>]/g, '-');
+      const sanitizedColor = firstVehicle.color.replace(/[/\\?%*:|"<>]/g, '-');
+      const fileName = vehiclesToExport.length === 1
+        ? `${sanitizedModel}_${sanitizedName}_${sanitizedColor}_${new Date().toISOString().split('T')[0]}.xlsx`
+        : `Danh-sach-bien-so-${vehiclesToExport.length}-xe_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
       
-      showToast.success(`Đã xuất danh sách ${draftVehicles.length} xe chưa có biển số thành công!`);
+      showToast.success(`Đã xuất danh sách ${vehiclesToExport.length} xe chưa có biển số thành công!`);
     } catch (error: any) {
       console.error('Error exporting draft vehicles:', error);
       
@@ -85,17 +166,20 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
       console.log('API export không khả dụng, dùng client-side export');
       
       try {
+        // Lọc xe được chọn
+        const vehiclesToExport = draftVehicles.filter(v => selectedVehicleIds.has(v.id));
+        
         // Tạo dữ liệu cho Excel worksheet - match format của backend (3 cột như bulk-create)
-        console.log('Draft vehicles for export:', draftVehicles);
+        console.log('Draft vehicles for export:', vehiclesToExport);
         
         const worksheetData = [
-          ['ID', 'Tên xe', 'Biển số xe'], // Format giống bulk-create
-          ...draftVehicles.map((vehicle) => {
+          ['vehicle_id', 'Tên xe', 'license_plate'], // Header theo format backend mong đợi
+          ...vehiclesToExport.map((vehicle) => {
             console.log('Exporting vehicle:', vehicle);
             return [
-              vehicle.id || '', // ID
-              `${vehicle.model || ''} - ${vehicle.color || ''}`, // Tên xe (model - color)
-              '' // Biển số xe (trống để user điền)
+              vehicle.id, // vehicle_id (ID thật của xe trong database)
+              `${vehicle.model || ''} - ${vehicle.name || ''} - ${vehicle.color || ''}`, // Tên xe (model - name - color)
+              '' // license_plate (biển số xe - trống để user điền)
             ];
           })
         ];
@@ -109,16 +193,25 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
 
         // Set column widths cho format 3 cột
         const columnWidths = [
-          { wch: 30 }, // ID
-          { wch: 25 }, // Tên xe
-          { wch: 20 }  // Biển số xe
+          { wch: 35 }, // vehicle_id - cần rộng vì là ID dài
+          { wch: 40 }, // Tên xe - rộng hơn để chứa model - name - color
+          { wch: 20 }  // license_plate - biển số xe
         ];
         worksheet['!cols'] = columnWidths;
 
         // Export file Excel thật (.xlsx)
-        XLSX.writeFile(workbook, `vehicles-no-plates-${new Date().toISOString().split('T')[0]}.xlsx`);
+        // Tạo tên file bao gồm model, name và màu xe
+        const firstVehicle = vehiclesToExport[0];
+        const sanitizedModel = firstVehicle.model.replace(/[/\\?%*:|"<>]/g, '-');
+        const sanitizedName = firstVehicle.name.replace(/[/\\?%*:|"<>]/g, '-');
+        const sanitizedColor = firstVehicle.color.replace(/[/\\?%*:|"<>]/g, '-');
+        const fileName = vehiclesToExport.length === 1
+          ? `${sanitizedModel}_${sanitizedName}_${sanitizedColor}_${new Date().toISOString().split('T')[0]}.xlsx`
+          : `Danh-sach-bien-so-${vehiclesToExport.length}-xe_${new Date().toISOString().split('T')[0]}.xlsx`;
         
-        showToast.success(`Đã xuất ${draftVehicles.length} xe chưa có biển số thành công!`);
+        XLSX.writeFile(workbook, fileName);
+        
+        showToast.success(`Đã xuất ${vehiclesToExport.length} xe chưa có biển số thành công!`);
       } catch (fallbackError) {
         console.error('Fallback export error:', fallbackError);
         showToast.error('Có lỗi xảy ra khi xuất danh sách xe');
@@ -317,19 +410,32 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         toastId = null;
       }
       
-      console.error('Error importing license plates:', error);
-      console.error('Error details:', {
+      console.error('❌ Error importing license plates:', error);
+      console.error('❌ Error response:', error.response);
+      console.error('❌ Error details:', {
         status: error.response?.status,
+        statusText: error.response?.statusText,
         data: error.response?.data,
-        message: error.message
+        message: error.message,
+        fullError: error
       });
       
       let errorMessage = 'Không thể import biển số';
+      let errorDetails = '';
       
+      // Extract detailed error message
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
+      } else if (error.response?.data?.error) {
+        errorMessage = error.response.data.error;
       } else if (error.message) {
         errorMessage = error.message;
+      }
+      
+      // Add status code to error message
+      if (error.response?.status) {
+        errorDetails = `(HTTP ${error.response.status})`;
+        errorMessage = `${errorMessage} ${errorDetails}`;
       }
       
       setImportResult({
@@ -337,7 +443,7 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         failed: 1,
         errors: [{ 
           licensePlate: 'Lỗi hệ thống', 
-          error: `${errorMessage}` 
+          error: `${errorMessage}${error.response?.data ? '\n' + JSON.stringify(error.response.data, null, 2) : ''}` 
         }]
       });
       
@@ -477,18 +583,181 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
               </CardHeader>
               <CardContent className="p-6 space-y-4">
               <p className="text-sm text-gray-600 mb-4">
-                Xuất file Excel chứa danh sách các xe chưa có biển số để thêm biển số.
+                Chọn xe cần export để thêm biển số.
               </p>
               
               {/* Thống kê xe chưa có biển số */}
               {draftVehicles.length > 0 ? (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-center space-x-2">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <span className="text-sm font-medium text-green-800">
-                      Tìm thấy {draftVehicles.length} xe chưa có biển số
-                    </span>
+                <div className="space-y-4">
+                  {/* Header với thống kê */}
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-2 border-green-200 dark:border-green-700 rounded-xl p-4 shadow-sm">
+                    <div className="flex items-center justify-between flex-wrap gap-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-green-100 dark:bg-green-900/40 rounded-lg">
+                          <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-green-900 dark:text-green-100">
+                            {draftVehicles.length} xe chưa có biển số
+                          </p>
+                          <p className="text-xs text-green-700 dark:text-green-300 mt-0.5">
+                            Chọn xe cần export để thêm biển số
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSelectAll}
+                        className="h-9 px-4 border-2 border-green-300 dark:border-green-700 bg-white dark:bg-gray-800 text-green-700 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 font-semibold transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md"
+                      >
+                        {selectedVehicleIds.size === draftVehicles.length ? (
+                          <>
+                            <X className="h-4 w-4 mr-2" />
+                            Bỏ chọn tất cả
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            Chọn tất cả
+                          </>
+                        )}
+                      </Button>
+                    </div>
                   </div>
+
+                  {/* Danh sách xe với checkbox - Professional Design */}
+                  <div className="border-2 border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden max-h-80 shadow-sm">
+                    <div className="overflow-y-auto max-h-80">
+                      {draftVehicles.map((vehicle, index) => (
+                        <label
+                          key={vehicle.id}
+                          className={`group flex items-center p-4 hover:bg-gradient-to-r hover:from-green-50 hover:to-emerald-50 dark:hover:from-green-900/10 dark:hover:to-emerald-900/10 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-all duration-200 ${
+                            selectedVehicleIds.has(vehicle.id) 
+                              ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20' 
+                              : 'bg-white dark:bg-gray-800'
+                          }`}
+                        >
+                          {/* Checkbox */}
+                          <div className="flex-shrink-0">
+                            <input
+                              type="checkbox"
+                              checked={selectedVehicleIds.has(vehicle.id)}
+                              onChange={() => handleToggleVehicle(vehicle.id)}
+                              className="w-5 h-5 text-green-600 bg-white dark:bg-gray-700 rounded-md border-2 border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-green-500 focus:ring-offset-2 cursor-pointer transition-all"
+                            />
+                          </div>
+
+                          {/* Content */}
+                          <div className="ml-4 flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-3">
+                              {/* Left: Vehicle Info */}
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                {/* Number Badge */}
+                                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
+                                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
+                                    {index + 1}
+                                  </span>
+                                </div>
+
+                                {/* Motorcycle Icon */}
+                                <div className={`flex-shrink-0 p-2.5 rounded-lg transition-all duration-200 ${
+                                  selectedVehicleIds.has(vehicle.id)
+                                    ? 'bg-green-100 dark:bg-green-900/30'
+                                    : 'bg-gray-100 dark:bg-gray-700 group-hover:bg-green-100 dark:group-hover:bg-green-900/30'
+                                }`}>
+                                  <FaMotorcycle className={`h-5 w-5 transition-colors duration-200 ${
+                                    selectedVehicleIds.has(vehicle.id)
+                                      ? 'text-green-600 dark:text-green-400'
+                                      : 'text-gray-600 dark:text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400'
+                                  }`} />
+                                </div>
+
+                                {/* Vehicle Name */}
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                                    {vehicle.model}
+                                  </p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                    {vehicle.name}
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Right: Color Badge với màu thật */}
+                              <div className="flex-shrink-0">
+                                {(() => {
+                                  const colorStyle = getColorStyle(vehicle.color);
+                                  return (
+                                    <Badge className={`flex items-center gap-2 px-3 py-1.5 font-semibold transition-all duration-200 shadow-sm ${colorStyle.bg} ${colorStyle.text} border-2 ${colorStyle.border}`}>
+                                      <div className={`w-3 h-3 rounded-full ${colorStyle.bg} border-2 ${colorStyle.border} shadow-inner`}></div>
+                                      {vehicle.color}
+                                    </Badge>
+                                  );
+                                })()}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Checkmark Indicator */}
+                          {selectedVehicleIds.has(vehicle.id) && (
+                            <div className="ml-2 flex-shrink-0">
+                              <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400 animate-in fade-in zoom-in duration-200" />
+                            </div>
+                          )}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Hiển thị số xe đã chọn - Enhanced */}
+                  {selectedVehicleIds.size > 0 ? (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-2 border-blue-200 dark:border-blue-700 rounded-xl p-4 shadow-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                            <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-blue-900 dark:text-blue-100">
+                              Đã chọn {selectedVehicleIds.size} xe
+                            </p>
+                            <p className="text-xs text-blue-700 dark:text-blue-300 mt-0.5">
+                              Sẵn sàng export {selectedVehicleIds.size} / {draftVehicles.length} xe
+                            </p>
+                          </div>
+                        </div>
+                        {/* Progress indicator */}
+                        <div className="flex items-center space-x-2">
+                          <div className="w-32 h-2 bg-blue-200 dark:bg-blue-900/40 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 transition-all duration-300"
+                              style={{ width: `${(selectedVehicleIds.size / draftVehicles.length) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-bold text-blue-700 dark:text-blue-300 min-w-[3rem] text-right">
+                            {Math.round((selectedVehicleIds.size / draftVehicles.length) * 100)}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20 border-2 border-amber-200 dark:border-amber-700 rounded-xl p-4 shadow-sm">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-amber-100 dark:bg-amber-900/40 rounded-lg">
+                          <Info className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-amber-900 dark:text-amber-100">
+                            Chưa chọn xe nào
+                          </p>
+                          <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">
+                            Vui lòng chọn ít nhất 1 xe để export
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
@@ -503,20 +772,33 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
               
               <Button
                 onClick={handleExportDraftVehicles}
-                disabled={exportLoading || draftVehicles.length === 0}
-                className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-3 rounded-lg font-medium shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={exportLoading || draftVehicles.length === 0 || selectedVehicleIds.size === 0}
+                className="group relative w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-2xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-lg hover:scale-[1.02] overflow-hidden"
               >
-                {exportLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
-                    Đang xuất...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-5 w-5 mr-2" />
-                    Export danh sách xe ({draftVehicles.length})
-                  </>
-                )}
+                {/* Animated background effect */}
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-green-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                {/* Content */}
+                <div className="relative flex items-center justify-center">
+                  {exportLoading ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2"></div>
+                      <span>Đang xuất file Excel...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-5 w-5 mr-2 group-hover:animate-bounce" />
+                      <span>
+                        {selectedVehicleIds.size > 0 
+                          ? `Export ${selectedVehicleIds.size} xe đã chọn` 
+                          : 'Chọn xe để export'}
+                      </span>
+                      {selectedVehicleIds.size > 0 && (
+                        <FileSpreadsheet className="h-4 w-4 ml-2 opacity-70" />
+                      )}
+                    </>
+                  )}
+                </div>
               </Button>
               </CardContent>
             </Card>

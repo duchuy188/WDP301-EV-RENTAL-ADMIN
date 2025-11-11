@@ -76,19 +76,44 @@ export function BulkPricingModal({ isOpen, onClose, onSuccess }: BulkPricingModa
   const checkVehicleCount = useCallback(async () => {
     try {
       setCheckingCount(true);
-      // Get vehicles with filter
       const response = await vehicleService.getVehiclesForAdmin({
         page: 1,
-        limit: 1000,
-        model: exportFilter.model,
-        color: exportFilter.color
+        limit: 1000
       });
       
-      // Filter by year (client-side since API might not support it)
-      const matchingVehicles = (response.data || []).filter(v => v.year === exportFilter.year);
+      // Filter by model, color AND year on client-side để đảm bảo chính xác
+      const matchingVehicles = (response.data || []).filter(v => {
+        const modelMatch = v.model?.toLowerCase().trim() === exportFilter.model.toLowerCase().trim();
+        const colorMatch = v.color?.toLowerCase().trim() === exportFilter.color.toLowerCase().trim();
+        const yearMatch = v.year === exportFilter.year;
+        
+        // Debug từng xe
+        if (modelMatch) {
+          console.log('🔍 Vehicle check:', {
+            id: v.id,
+            name: v.name,
+            model: v.model,
+            color: v.color,
+            year: v.year,
+            modelMatch,
+            colorMatch,
+            yearMatch,
+            finalMatch: modelMatch && colorMatch && yearMatch
+          });
+        }
+        
+        return modelMatch && colorMatch && yearMatch;
+      });
+      
+      console.log('✅ Filtered result:', {
+        totalVehicles: response.data?.length || 0,
+        matchingVehicles: matchingVehicles.length,
+        vehicles: matchingVehicles.map(v => ({ id: v.id, name: v.name, model: v.model, color: v.color, year: v.year }))
+      });
+      
       setMatchingVehicleCount(matchingVehicles.length);
     } catch (error) {
-      console.error('Error checking vehicle count:', error);
+      console.error('❌ Error checking vehicle count:', error);
       setMatchingVehicleCount(null);
     } finally {
       setCheckingCount(false);
