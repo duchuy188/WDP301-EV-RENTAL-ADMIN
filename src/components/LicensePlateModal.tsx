@@ -133,9 +133,12 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
       // Lọc xe được chọn
       const vehiclesToExport = draftVehicles.filter(v => selectedVehicleIds.has(v.id));
 
-      // Gọi API backend để lấy file Excel template
+    
+      const selectedIds = Array.from(selectedVehicleIds);
+      
+      // Gọi API backend để lấy file Excel template với danh sách IDs đã chọn
       // API này sẽ export file với format đúng mà backend expect khi import
-      const blob = await vehicleService.exportDraftVehicles();
+      const blob = await vehicleService.exportDraftVehicles(selectedIds);
       
       // Download file Excel
       const url = window.URL.createObjectURL(blob);
