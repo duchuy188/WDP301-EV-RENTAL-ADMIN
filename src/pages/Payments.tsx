@@ -453,7 +453,7 @@ export function Payments() {
                         </Badge>
                       ) : payment.paymentType === 'holding_fee' ? (
                         <Badge className="bg-gradient-to-r from-teal-500 to-teal-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
-                          🏍️ Phí giữ xe
+                          🔒 Phí giữ chỗ
                         </Badge>
                       ) : payment.paymentType === 'refund' ? (
                         <Badge className="bg-gradient-to-r from-green-500 to-emerald-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">

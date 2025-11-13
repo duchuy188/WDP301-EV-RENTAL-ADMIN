@@ -124,7 +124,7 @@ export const PAYMENT_TYPE_LABELS: Record<string, string> = {
   deposit: 'Tiền cọc',
   rental_fee: 'Phí thuê xe',
   additional_fee: 'Phí phát sinh',
-  holding_fee: 'Phí giữ xe'
+  holding_fee: 'Phí giữ chỗ'
 };
 
 // Payment status labels
