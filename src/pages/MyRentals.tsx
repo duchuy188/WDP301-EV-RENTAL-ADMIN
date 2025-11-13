@@ -367,7 +367,7 @@ export function MyRentalsPage() {
                       transition={{ delay: index * 0.05, duration: 0.3 }}
                       layout
                     >
-                      <Card className="group h-full hover:shadow-2xl transition-all duration-300 border-0 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden relative">
+                      <Card className="group h-full hover:shadow-2xl transition-all duration-300 border-0 bg-white dark:bg-gray-800 rounded-2xl overflow-hidden relative flex flex-col">
                         {/* Top Gradient Bar */}
                         <div className={`h-1.5 w-full ${
                           rental.status === 'active' ? 'bg-gradient-to-r from-blue-500 to-blue-600' :
@@ -399,7 +399,7 @@ export function MyRentalsPage() {
                           </div>
                         </CardHeader>
 
-                        <CardContent className="space-y-4">
+                        <CardContent className="space-y-4 flex-1 flex flex-col">
                           {/* Time Info Card */}
                           <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-gray-700/50 dark:to-gray-700/30 rounded-xl p-4 border border-slate-200 dark:border-gray-600">
                             <div className="flex items-center gap-2 mb-3">
@@ -489,32 +489,43 @@ export function MyRentalsPage() {
                             </div>
                           </div>
 
-                          {/* Fees - Compact */}
-                          <div className={`rounded-lg p-3 border ${
-                            rental.total_fees && rental.total_fees > 0 
-                              ? 'bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-800' 
-                              : 'bg-gray-50 dark:bg-gray-700/50 border-gray-200 dark:border-gray-600'
-                          }`}>
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">Tổng phí:</span>
-                              <span className={`text-base font-bold ${
-                                rental.total_fees && rental.total_fees > 0
-                                  ? 'text-orange-600 dark:text-orange-400'
-                                  : 'text-gray-400 dark:text-gray-500 italic'
-                              }`}>
-                                {rental.total_fees && rental.total_fees > 0 ? formatCurrency(rental.total_fees) : 'Chưa có phí'}
+                          {/* Payment Summary - Fixed Height */}
+                          <div className="rounded-lg p-3 border bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200 dark:border-blue-800">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                Tổng thanh toán:
                               </span>
+                              <span className="text-base font-bold text-blue-600 dark:text-blue-400">
+                                {rental.payments && rental.payments.length > 0
+                                  ? formatCurrency(rental.payments.reduce((sum, p) => sum + (Number(p?.amount) || 0), 0))
+                                  : '0đ'}
+                              </span>
+                            </div>
+                            
+                            {/* Always render this div to maintain consistent height */}
+                            <div className={`flex items-center justify-between pt-2 border-t border-blue-200 dark:border-blue-700 min-h-[24px] ${
+                              rental.total_fees && Number(rental.total_fees) > 0 ? '' : 'invisible'
+                            }`}>
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                (Bao gồm phí phạt:
+                              </span>
+                              <span className="text-xs font-bold text-orange-600 dark:text-orange-400">
+                                {rental.total_fees && Number(rental.total_fees) > 0 
+                                  ? formatCurrency(Number(rental.total_fees)) 
+                                  : '0đ'})</span>
                             </div>
                           </div>
 
-                          {/* Action Button */}
-                          <Button
+                          {/* Action Button - Always at bottom */}
+                          <div className="mt-auto pt-4">
+                            <Button
                             onClick={() => handleViewDetail(rental)}
                             className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 group-hover:scale-[1.02]"
                           >
                             <Eye className="w-5 h-5 mr-2" />
                             Xem chi tiết
                           </Button>
+                          </div>
                         </CardContent>
                       </Card>
                     </motion.div>

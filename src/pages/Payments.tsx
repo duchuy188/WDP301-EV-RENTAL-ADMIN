@@ -322,9 +322,9 @@ export function Payments() {
                 >
                   <option value="">Tất cả</option>
                   <option value="deposit">💰 Tiền cọc</option>
-                  <option value="rental_fee">🚗 Phí thuê xe</option>
+                  <option value="rental_fee">🏍️ Phí thuê xe</option>
                   <option value="additional_fee">⚠️ Phí phát sinh</option>
-                  <option value="holding_fee">🏍️ Phí giữ xe</option>
+                  <option value="holding_fee">🔒 Phí giữ chỗ</option>
                 </select>
               </div>
 
@@ -445,7 +445,7 @@ export function Payments() {
                         </Badge>
                       ) : payment.paymentType === 'rental' || payment.paymentType === 'rental_fee' ? (
                         <Badge className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">
-                          🚗 Phí thuê xe
+                          🏍️ Phí thuê xe
                         </Badge>
                       ) : payment.paymentType === 'penalty' || payment.paymentType === 'additional_fee' ? (
                         <Badge className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0 shadow-md font-semibold inline-flex items-center justify-center min-w-[130px]">

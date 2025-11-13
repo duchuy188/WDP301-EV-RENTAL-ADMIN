@@ -114,7 +114,7 @@ class RentalService {
       
       const response = await axiosInstance.get<GetRentalByIdResponse>(`/api/rentals/${id}`, {
         params: {
-          populate: 'vehicle_id,user_id,station_id,booking_id,pickup_staff_id,return_staff_id,contract'
+          populate: 'vehicle_id,user_id,station_id,booking_id,pickup_staff_id,return_staff_id,contract,payments'
         }
       });
       

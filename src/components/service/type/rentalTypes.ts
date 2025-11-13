@@ -12,6 +12,16 @@ export interface VehicleCondition {
   notes?: string;
 }
 
+// Payment info in rental
+export interface RentalPayment {
+  _id: string;
+  amount: number;
+  payment_method: string;
+  payment_type: 'holding_fee' | 'deposit' | 'rental_fee' | 'additional_fee';
+  status: 'pending' | 'completed' | 'cancelled';
+  createdAt?: string;
+}
+
 export interface Rental {
   _id: string;
   code: string;
@@ -33,6 +43,7 @@ export interface Rental {
   damage_fee?: number;
   other_fees?: number;
   total_fees?: number;
+  payments?: RentalPayment[];
   staff_notes?: string;
   customer_notes?: string;
   created_by: string | { _id: string; [key: string]: any };

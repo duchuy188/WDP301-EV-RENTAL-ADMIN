@@ -36,9 +36,24 @@ export function RentalDetailModal({ rental: initialRental, isOpen, onClose }: Re
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'info' | 'condition' | 'images' | 'fees'>('info');
 
-  // Update local rental when prop changes
+  // Fetch full rental data when modal opens
   useEffect(() => {
-    setRental(initialRental);
+    if (isOpen && initialRental?._id) {
+      // Fetch full rental data with all payments
+      const fetchFullRental = async () => {
+        try {
+          const response = await RentalService.getRentalById(initialRental._id);
+          setRental(response.data);
+        } catch (error) {
+          console.error('Failed to fetch full rental:', error);
+          // Fallback to initial data if fetch fails
+          setRental(initialRental);
+        }
+      };
+      fetchFullRental();
+    } else {
+      setRental(initialRental);
+    }
     setActiveTab('info'); // Reset to first tab
   }, [initialRental, isOpen]);
 
@@ -502,51 +517,149 @@ export function RentalDetailModal({ rental: initialRental, isOpen, onClose }: Re
                       </div>
                     )}
 
-                    {/* Tab 4: Chi phí & Ghi chú */}
+                    {/* Tab 4: Chi tiết thanh toán & Ghi chú */}
                     {activeTab === 'fees' && (
                       <div className="space-y-4">
-                        {/* Fees */}
-                        {rental.total_fees && rental.total_fees > 0 ? (
-                          <div className="bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
-                            <h3 className="text-base font-bold text-orange-800 mb-3 flex items-center gap-2">
-                              <DollarSign className="w-5 h-5" />
-                              Chi phí phát sinh
-                            </h3>
-                            <div className="space-y-2">
-                              {rental.late_fee && rental.late_fee > 0 && (
-                                <div className="flex justify-between bg-white/50 rounded p-2">
-                                  <span className="text-sm">Phí trễ:</span>
-                                  <span className="font-bold">{formatCurrency(rental.late_fee)}</span>
-                                </div>
-                              )}
-                              {rental.damage_fee && rental.damage_fee > 0 && (
-                                <div className="flex justify-between bg-white/50 rounded p-2">
-                                  <span className="text-sm">Phí hư hỏng:</span>
-                                  <span className="font-bold">{formatCurrency(rental.damage_fee)}</span>
-                                </div>
-                              )}
-                              {rental.other_fees && rental.other_fees > 0 && (
-                                <div className="flex justify-between bg-white/50 rounded p-2">
-                                  <span className="text-sm">Phí khác:</span>
-                                  <span className="font-bold">{formatCurrency(rental.other_fees)}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between bg-orange-100 dark:bg-orange-900/40 rounded p-3 border-t-2 border-orange-300">
-                                <span className="font-bold">Tổng phí:</span>
-                                <span className="font-bold text-xl text-orange-600">{formatCurrency(rental.total_fees)}</span>
+                        {/* Payment Details Section */}
+                        {rental.payments && rental.payments.length > 0 ? (
+                          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="p-2 bg-blue-100 dark:bg-blue-900/40 rounded-lg">
+                                <svg className="w-5 h-5 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
                               </div>
+                              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                Chi tiết thanh toán
+                              </h3>
+                            </div>
+
+                            <div className="space-y-3">
+                              {/* Danh sách payments */}
+                              {(() => {
+                                console.log('💳 All payments:', rental.payments);
+                                const validPayments = rental.payments.filter(p => p && p.amount && Number(p.amount) > 0);
+                                console.log('💳 Valid payments after filter:', validPayments);
+                                console.log('💳 Total amount:', validPayments.reduce((sum, p) => sum + Number(p.amount), 0));
+                                return validPayments;
+                              })()
+                                .map((payment, index) => {
+                                const paymentTypeLabels: Record<string, string> = {
+                                  holding_fee: 'Phí giữ chỗ',
+                                  deposit: 'Tiền cọc',
+                                  rental_fee: 'Phí thuê xe',
+                                  additional_fee: 'Phí phạt'
+                                };
+
+                                const paymentMethodLabels: Record<string, string> = {
+                                  cash: 'Tiền mặt',
+                                  vnpay: 'VNPay'
+                                };
+
+                                const paymentStatusColors: Record<string, string> = {
+                                  pending: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-300',
+                                  completed: 'bg-green-100 text-green-700 border-green-300 dark:bg-green-900/30 dark:text-green-300',
+                                  cancelled: 'bg-red-100 text-red-700 border-red-300 dark:bg-red-900/30 dark:text-red-300'
+                                };
+
+                                const paymentStatusLabels: Record<string, string> = {
+                                  completed: 'Đã thanh toán',
+                                  pending: 'Chờ thanh toán',
+                                  cancelled: 'Đã hủy'
+                                };
+
+                                return (
+                                  <div 
+                                    key={payment._id || index}
+                                    className="flex items-center justify-between p-3 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                                  >
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                          {paymentTypeLabels[payment.payment_type] || payment.payment_type}
+                                        </span>
+                                        <span className={`text-xs px-2 py-0.5 rounded-full border ${
+                                          paymentStatusColors[payment.status] || 'bg-gray-100 text-gray-700'
+                                        }`}>
+                                          {paymentStatusLabels[payment.status] || payment.status}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                        <span>{paymentMethodLabels[payment.payment_method] || payment.payment_method || 'N/A'}</span>
+                                        {payment.createdAt && (
+                                          <>
+                                            <span>•</span>
+                                            <span>
+                                              {new Date(payment.createdAt).toLocaleString('vi-VN', {
+                                                day: '2-digit',
+                                                month: '2-digit',
+                                                year: 'numeric',
+                                                hour: '2-digit',
+                                                minute: '2-digit'
+                                              })}
+                                            </span>
+                                          </>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className={`text-lg font-bold ${
+                                        payment.payment_type === 'additional_fee' 
+                                          ? 'text-orange-600 dark:text-orange-400'
+                                          : 'text-blue-600 dark:text-blue-400'
+                                      }`}>
+                                        {formatCurrency(Number(payment.amount) || 0)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+
+                              {/* Tổng cộng */}
+                              {(() => {
+                                const validPayments = rental.payments.filter(p => p && p.amount && Number(p.amount) > 0);
+                                const totalAmount = validPayments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+                                
+                                return totalAmount > 0 && (
+                                  <div className="pt-3 border-t-2 border-blue-300 dark:border-blue-700">
+                                    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-100 to-indigo-100 dark:from-blue-900/40 dark:to-indigo-900/40 rounded-lg">
+                                      <span className="text-lg font-bold text-gray-900 dark:text-white">
+                                        Tổng thanh toán:
+                                      </span>
+                                      <span className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                                        {formatCurrency(totalAmount)}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+
+                              {/* Hiển thị phí phạt nếu có */}
+                              {!!(rental.total_fees && Number(rental.total_fees) > 0) && (
+                                <div className="mt-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg border border-orange-200 dark:border-orange-700">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="text-orange-700 dark:text-orange-300 font-medium">
+                                      📌 Tổng phí phạt/phát sinh:
+                                    </span>
+                                    <span className="text-orange-600 dark:text-orange-400 font-bold">
+                                      {formatCurrency(Number(rental.total_fees))}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           </div>
                         ) : (
-                          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4 border border-gray-200 text-center">
-                            <p className="text-gray-500">Không có phí phát sinh</p>
+                          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 text-center">
+                            <DollarSign className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-2" />
+                            <p className="text-gray-500 dark:text-gray-400">Chưa có thông tin thanh toán</p>
                           </div>
                         )}
 
                         {/* Notes */}
                         {rental.staff_notes && (
                           <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4 border border-amber-200">
-                            <h4 className="font-bold text-sm text-amber-800 mb-2 flex items-center gap-2">
+                            <h4 className="font-bold text-sm text-amber-800 dark:text-amber-300 mb-2 flex items-center gap-2">
                               <FileText className="w-4 h-4" />
                               Ghi chú nhân viên
                             </h4>
@@ -556,7 +669,7 @@ export function RentalDetailModal({ rental: initialRental, isOpen, onClose }: Re
 
                         {rental.customer_notes && (
                           <div className="bg-cyan-50 dark:bg-cyan-900/20 rounded-xl p-4 border border-cyan-200">
-                            <h4 className="font-bold text-sm text-cyan-800 mb-2 flex items-center gap-2">
+                            <h4 className="font-bold text-sm text-cyan-800 dark:text-cyan-300 mb-2 flex items-center gap-2">
                               <User className="w-4 h-4" />
                               Ghi chú khách hàng
                             </h4>
