@@ -159,6 +159,7 @@ export interface VehicleQueryParams {
   limit?: number;
   search?: string;
   sort?: string;
+  order?: 'asc' | 'desc';
   status?: VehicleStatus;
   stationId?: string;
   brand?: string;

@@ -23,18 +23,10 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     
-    // Minimal request logging in development
-    if (import.meta.env.DEV) {
-      console.log(`🌐 ${config.method?.toUpperCase()} ${config.url}`, {
-        params: config.params,
-        ...(config.data && { data: config.data })
-      });
-    }
     
     return config;
   },
   (error: AxiosError) => {
-    console.error('Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -42,11 +34,6 @@ axiosInstance.interceptors.request.use(
 // Response interceptor - Handle responses and errors
 axiosInstance.interceptors.response.use(
   (response: AxiosResponse) => {
-    // Minimal response logging in development
-    if (import.meta.env.DEV) {
-      console.log(`✅ ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`);
-    }
-    
     return response;
   },
   (error: AxiosError) => {

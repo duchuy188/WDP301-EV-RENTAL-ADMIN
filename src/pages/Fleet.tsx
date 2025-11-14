@@ -73,15 +73,6 @@ export function Fleet() {
     loadStatistics();
   }, []);
 
-  // Debug vehicles state
-  useEffect(() => {
-    if (import.meta.env.DEV) {
-      console.log('Fleet: Vehicles state updated:', {
-        count: vehicles.length,
-        vehicles: vehicles.slice(0, 3).map(v => ({ id: v.id, name: v.name, color: v.color }))
-      });
-    }
-  }, [vehicles]);
 
   // Reload vehicles when debounced search or filters change
   useEffect(() => {
@@ -102,38 +93,12 @@ export function Fleet() {
         search: debouncedSearchTerm,
         status: statusFilter || undefined,
         type: typeFilter || undefined,
+        sort: 'createdAt',
+        order: 'desc', // Sort by newest first
         // color: undefined, // Always fetch all colors, filter on client-side
         batteryLevelMin: batteryFilter?.min,
         batteryLevelMax: batteryFilter?.max
       });
-      // Log only in development mode
-      if (import.meta.env.DEV) {
-        console.log('Fleet: Received vehicles response:', response);
-        console.log('Fleet: Response data type:', typeof response.data);
-        console.log('Fleet: Response data length:', response.data?.length);
-        console.log('Fleet: First vehicle:', response.data?.[0]);
-        console.log('Fleet: Current filters:', { statusFilter, typeFilter, colorFilter, searchTerm });
-        console.log('Fleet: API params sent:', {
-          page: 1,
-          limit: 100,
-          search: debouncedSearchTerm,
-          status: statusFilter || undefined,
-          type: typeFilter || undefined,
-          color: 'not sent - using client-side filtering',
-          batteryLevelMin: batteryFilter?.min,
-          batteryLevelMax: batteryFilter?.max
-        });
-        
-        // Debug vehicle colors
-        if (response.data && response.data.length > 0) {
-          console.log('Fleet: Vehicle colors found:', response.data.map(v => ({ 
-            id: v.id, 
-            name: v.name, 
-            color: v.color,
-            licensePlate: v.licensePlate 
-          })));
-        }
-      }
       
       let vehiclesData = response.data || [];
       
@@ -159,16 +124,8 @@ export function Fleet() {
             vehicleColor.includes(expectedColor.toLowerCase())
           );
         });
-        
-        console.log('Fleet: Client-side color filtering applied:', {
-          colorFilter,
-          expectedColors,
-          filteredCount: vehiclesData.length,
-          originalCount: response.data?.length || 0
-        });
       }
       
-      console.log('Fleet: Setting vehicles state with', vehiclesData.length, 'vehicles');
       setVehicles(vehiclesData);
       
       // Check if this is mock data (in development)
@@ -178,26 +135,9 @@ export function Fleet() {
         setIsUsingMockData(false);
       }
     } catch (error) {
-      console.error('Error loading vehicles:', error);
-      
-      // Try to get mock data in development mode
-      if (import.meta.env.DEV) {
-        try {
-          console.log('Attempting to load mock data...');
-          const mockResponse = await vehicleService.getMockVehicles();
-          console.log('Mock data loaded:', mockResponse);
-          setVehicles(mockResponse.data);
-          setIsUsingMockData(true);
-        } catch (mockError) {
-          console.error('Failed to load mock data:', mockError);
-          setVehicles([]);
-          setIsUsingMockData(false);
-        }
-      } else {
-        // Set empty array on error to prevent UI issues
-        setVehicles([]);
-        setIsUsingMockData(false);
-      }
+      // Set empty array on error to prevent UI issues
+      setVehicles([]);
+      setIsUsingMockData(false);
     } finally {
       setLoading(false);
     }
@@ -208,8 +148,6 @@ export function Fleet() {
       const response = await vehicleService.getVehicleStatistics();
       setStatistics(response.data || null);
     } catch (error) {
-      console.error('Error loading statistics:', error);
-      
       // If using mock data, calculate statistics from mock vehicles
       if (isUsingMockData && vehicles.length > 0) {
         const mockStats = {
@@ -273,7 +211,6 @@ export function Fleet() {
       setVehicleToDelete(null);
       
     } catch (error: any) {
-      console.error('Error deleting vehicle:', error);
       showToast.error(error.response?.data?.message || 'Không thể xóa xe');
       // Modal KHÔNG đóng khi lỗi
     } finally {
@@ -302,7 +239,6 @@ export function Fleet() {
   }, []);
 
   const handleBulkAction = (action: string, vehicles: VehicleUI[]) => {
-    console.log('Bulk action:', action, 'on vehicles:', vehicles);
     // Handle bulk actions like assign, maintenance, export, etc.
     switch (action) {
       case 'assign':
@@ -318,7 +254,6 @@ export function Fleet() {
         setLicensePlateModalOpen(true);
         break;
       default:
-        console.log('Unknown bulk action:', action);
     }
   };
 
@@ -376,7 +311,6 @@ export function Fleet() {
 
   // Log filtered vehicles in development mode
   if (import.meta.env.DEV && filteredVehicles.length > 0) {
-    console.log('Fleet: Filtered vehicles count:', filteredVehicles.length);
   }
 
   const vehicleColumns: EnhancedColumn[] = [

@@ -65,11 +65,9 @@ export function Staff() {
       };
       
       setGlobalStats(stats);
-      console.log('📊 Global Staff Statistics:', stats);
-      
       return stats;
     } catch (err) {
-      console.error('❌ Error fetching global staff stats:', err);
+      // Error handled silently
     }
   }, []);
 
@@ -85,10 +83,9 @@ export function Staff() {
           fetchGlobalStats(),
         ]);
         
-        console.log('🏢 Loaded stations for filter:', stationsResponse.stations?.length || 0);
         setStations(stationsResponse.stations || []);
       } catch (err: any) {
-        console.error('Error fetching initial data:', err);
+        // Error handled silently
       } finally {
         setLoadingStations(false);
       }
@@ -108,10 +105,6 @@ export function Staff() {
         if (selectedStationId) {
           const response = await stationService.getStationStaff(selectedStationId);
           
-          // Debug log to see response structure
-          console.log('🔍 Station Staff Response:', response);
-          console.log('🔍 Response data:', response.data);
-          
           // Handle different response structures
           let staffArray: any[] = [];
           
@@ -125,8 +118,6 @@ export function Staff() {
           } else if (Array.isArray(response)) {
             staffArray = response as any[];
           }
-          
-          console.log('📊 Staff array:', staffArray);
           
           // Transform station staff data to match User interface
           let staffData = staffArray.map((s: any) => ({
@@ -153,8 +144,6 @@ export function Staff() {
             );
           }
           
-          console.log('✅ Transformed staff data:', staffData);
-          
           setStaff(staffData);
           setPagination({
             total: staffData.length,
@@ -174,7 +163,6 @@ export function Staff() {
           setPagination(response.pagination);
         }
       } catch (err: any) {
-        console.error('Error fetching staff:', err);
         const errorMessage = err.response?.data?.message || err.message || 'Không thể tải danh sách nhân viên';
         setError(errorMessage);
         showToast.error(errorMessage);
@@ -294,6 +282,10 @@ export function Staff() {
     // Clear filter and refresh the staff list
     setSelectedStationId('');
     setPagination(prev => ({ ...prev, page: 1 }));
+    
+    // Trigger refresh by incrementing refreshTrigger
+    // This will cause useEffect to re-fetch staff data
+    setRefreshTrigger(prev => prev + 1);
     
     // Refresh global stats
     fetchGlobalStats();

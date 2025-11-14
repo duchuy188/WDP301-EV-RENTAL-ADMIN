@@ -39,43 +39,172 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = 'Tên trạm là bắt buộc';
-    if (!formData.address.trim()) newErrors.address = 'Địa chỉ là bắt buộc';
-    if (!formData.district.trim()) newErrors.district = 'Quận/huyện là bắt buộc';
-    if (!formData.city.trim()) newErrors.city = 'Thành phố là bắt buộc';
-    if (!formData.phone.trim()) newErrors.phone = 'Số điện thoại là bắt buộc';
-    if (!formData.email.trim()) newErrors.email = 'Email là bắt buộc';
-    if (!formData.opening_time) newErrors.opening_time = 'Giờ mở cửa là bắt buộc';
-    if (!formData.closing_time) newErrors.closing_time = 'Giờ đóng cửa là bắt buộc';
-    if (!formData.max_capacity || formData.max_capacity <= 0) newErrors.max_capacity = 'Sức chứa phải lớn hơn 0';
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Tên trạm là bắt buộc';
+    } else if (formData.name.trim().length < 3) {
+      newErrors.name = 'Tên trạm phải có ít nhất 3 ký tự';
+    } else if (formData.name.trim().length > 100) {
+      newErrors.name = 'Tên trạm không được vượt quá 100 ký tự';
+    }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (formData.email && !emailRegex.test(formData.email)) {
-      newErrors.email = 'Email không hợp lệ';
+    // Address validation
+    if (!formData.address.trim()) {
+      newErrors.address = 'Địa chỉ là bắt buộc';
+    } else if (formData.address.trim().length < 10) {
+      newErrors.address = 'Địa chỉ phải có ít nhất 10 ký tự';
+    } else if (formData.address.trim().length > 200) {
+      newErrors.address = 'Địa chỉ không được vượt quá 200 ký tự';
+    }
+
+    // District validation
+    if (!formData.district.trim()) {
+      newErrors.district = 'Quận/huyện là bắt buộc';
+    } else if (formData.district.trim().length < 2) {
+      newErrors.district = 'Quận/huyện phải có ít nhất 2 ký tự';
+    } else if (formData.district.trim().length > 50) {
+      newErrors.district = 'Quận/huyện không được vượt quá 50 ký tự';
+    }
+
+    // City validation
+    if (!formData.city.trim()) {
+      newErrors.city = 'Thành phố là bắt buộc';
+    } else if (formData.city.trim().length < 2) {
+      newErrors.city = 'Thành phố phải có ít nhất 2 ký tự';
+    } else if (formData.city.trim().length > 50) {
+      newErrors.city = 'Thành phố không được vượt quá 50 ký tự';
     }
 
     // Phone validation
-    const phoneRegex = /^(\+84|84|0)[1-9][0-9]{8,9}$/;
-    if (formData.phone && !phoneRegex.test(formData.phone.replace(/\s/g, ''))) {
-      newErrors.phone = 'Số điện thoại không hợp lệ';
+    if (!formData.phone.trim()) {
+      newErrors.phone = 'Số điện thoại là bắt buộc';
+    } else {
+      const phoneRegex = /^(\+84|84|0)[1-9][0-9]{8,9}$/;
+      const cleanedPhone = formData.phone.replace(/\s/g, '');
+      if (!phoneRegex.test(cleanedPhone)) {
+        newErrors.phone = 'Số điện thoại không hợp lệ. Ví dụ: 0123456789, 0912345678, +84912345678';
+      }
+    }
+
+    // Email validation
+    if (!formData.email.trim()) {
+      newErrors.email = 'Email là bắt buộc';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const trimmedEmail = formData.email.trim();
+      if (!emailRegex.test(trimmedEmail)) {
+        newErrors.email = 'Email không hợp lệ. Ví dụ: station@vinfast.vn';
+      } else if (trimmedEmail.length > 100) {
+        newErrors.email = 'Email không được vượt quá 100 ký tự';
+      }
+    }
+
+    // Opening time validation
+    if (!formData.opening_time) {
+      newErrors.opening_time = 'Giờ mở cửa là bắt buộc';
+    }
+
+    // Closing time validation
+    if (!formData.closing_time) {
+      newErrors.closing_time = 'Giờ đóng cửa là bắt buộc';
+    }
+
+    // Time range validation: opening time must be before closing time
+    if (formData.opening_time && formData.closing_time) {
+      const [openHour, openMin] = formData.opening_time.split(':').map(Number);
+      const [closeHour, closeMin] = formData.closing_time.split(':').map(Number);
+      const openMinutes = openHour * 60 + openMin;
+      const closeMinutes = closeHour * 60 + closeMin;
+      
+      if (openMinutes >= closeMinutes) {
+        newErrors.closing_time = 'Giờ đóng cửa phải sau giờ mở cửa';
+      }
+    }
+
+    // Max capacity validation
+    if (!formData.max_capacity || formData.max_capacity <= 0) {
+      newErrors.max_capacity = 'Sức chứa phải lớn hơn 0';
+    } else if (formData.max_capacity > 500) {
+      newErrors.max_capacity = 'Sức chứa không được vượt quá 500 xe';
+    } else if (formData.max_capacity < 1) {
+      newErrors.max_capacity = 'Sức chứa tối thiểu là 1 xe';
+    }
+
+    // Description validation (optional but if provided, check length)
+    if (formData.description && formData.description.length > 1000) {
+      newErrors.description = 'Mô tả không được vượt quá 1000 ký tự';
     }
 
     setErrors(newErrors);
+    
+    // If there are errors, scroll to first error field
+    if (Object.keys(newErrors).length > 0) {
+      const firstErrorField = Object.keys(newErrors)[0];
+      setTimeout(() => {
+        const errorElement = document.querySelector(`[name="${firstErrorField}"]`) || 
+                            document.getElementById(`field-${firstErrorField}`) ||
+                            document.querySelector(`input[placeholder*="${getFieldPlaceholder(firstErrorField)}"]`);
+        
+        if (errorElement) {
+          errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          (errorElement as HTMLElement).focus();
+        } else {
+          // Fallback: scroll to first error message
+          const firstErrorMsg = document.querySelector('.text-red-500');
+          if (firstErrorMsg) {
+            firstErrorMsg.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }, 100);
+    }
+    
     return Object.keys(newErrors).length === 0;
+  };
+
+  const getFieldPlaceholder = (field: string): string => {
+    const placeholders: Record<string, string> = {
+      name: 'Trạm',
+      address: 'Địa chỉ',
+      district: 'Quận',
+      city: 'TP.HCM',
+      phone: '0123456789',
+      email: 'station@vinfast.vn'
+    };
+    return placeholders[field] || '';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    // Trim all string fields before validation and submission
+    const trimmedFormData: CreateStationRequest = {
+      ...formData,
+      name: typeof formData.name === 'string' ? formData.name.trim() : formData.name,
+      address: typeof formData.address === 'string' ? formData.address.trim() : formData.address,
+      district: typeof formData.district === 'string' ? formData.district.trim() : formData.district,
+      city: typeof formData.city === 'string' ? formData.city.trim() : formData.city,
+      phone: typeof formData.phone === 'string' ? formData.phone.trim() : formData.phone,
+      email: typeof formData.email === 'string' ? formData.email.trim() : formData.email,
+      description: typeof formData.description === 'string' ? formData.description.trim() : formData.description,
+    };
+    
+    // Temporarily update form data for validation
+    const originalFormData = formData;
+    setFormData(trimmedFormData);
+    
+    // Validate with trimmed data
+    if (!validateForm()) {
+      // Restore original form data if validation fails
+      setFormData(originalFormData);
+      return;
+    }
 
     try {
       setLoading(true);
-      const response = await stationService.createStation(formData);
+      // Submit with trimmed data
+      const response = await stationService.createStation(trimmedFormData);
       
       showToast.success('Tạo trạm mới thành công!');
-      console.log('Station created successfully:', response.message);
       
       // Reset form
       setFormData({
@@ -99,14 +228,15 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
     } catch (error: any) {
       const errorMessage = error.response?.data?.message || error.message || 'Không thể tạo trạm';
       showToast.error(`Lỗi: ${errorMessage}`);
-      console.error('Error creating station:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleInputChange = (field: keyof CreateStationRequest, value: string | number) => {
+    // Don't trim while typing - allow spaces. Trim will be done during validation
     setFormData(prev => ({ ...prev, [field]: value }));
+    
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }));
@@ -252,6 +382,8 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Tên trạm <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-name"
+                            name="name"
                             value={formData.name}
                             onChange={(e) => handleInputChange('name', e.target.value)}
                             placeholder="VD: Trạm thuê xe VinFast Quận 1"
@@ -270,14 +402,24 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Sức chứa tối đa <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-max_capacity"
+                            name="max_capacity"
                             type="number"
                             value={formData.max_capacity}
-                            onChange={(e) => handleInputChange('max_capacity', parseInt(e.target.value) || 0)}
+                            onChange={(e) => {
+                              const value = parseInt(e.target.value) || 0;
+                              if (value >= 0 && value <= 500) {
+                                handleInputChange('max_capacity', value);
+                              }
+                            }}
                             placeholder="50"
                             min="1"
-                            max="200"
+                            max="500"
                             className={`${errors.max_capacity ? 'border-red-500 ring-red-500' : 'border-gray-300 dark:border-gray-600'} h-11`}
                           />
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
+                            Tối đa 500 xe
+                          </p>
                           {errors.max_capacity && (
                             <p className="text-red-500 text-xs mt-1 flex items-center">
                               <AlertCircle className="h-3 w-3 mr-1" />
@@ -292,6 +434,8 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                           Địa chỉ chi tiết <span className="text-red-500">*</span>
                         </label>
                         <Input
+                          id="field-address"
+                          name="address"
                           value={formData.address}
                           onChange={(e) => handleInputChange('address', e.target.value)}
                           placeholder="VD: 123 Nguyễn Huệ, Phường Bến Nghé"
@@ -311,6 +455,8 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Quận/Huyện <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-district"
+                            name="district"
                             value={formData.district}
                             onChange={(e) => handleInputChange('district', e.target.value)}
                             placeholder="VD: Quận 1"
@@ -329,6 +475,8 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Thành phố <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-city"
+                            name="city"
                             value={formData.city}
                             onChange={(e) => handleInputChange('city', e.target.value)}
                             placeholder="VD: TP.HCM"
@@ -346,14 +494,28 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                       <div>
                         <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                           Mô tả trạm
+                          <span className="text-xs text-gray-500 font-normal ml-2">
+                            ({formData.description?.length || 0}/1000 ký tự)
+                          </span>
                         </label>
                         <textarea
+                          id="field-description"
+                          name="description"
                           value={formData.description}
                           onChange={(e) => handleInputChange('description', e.target.value)}
                           placeholder="Mô tả về vị trí, tiện ích và đặc điểm của trạm thuê xe..."
-                          className="w-full px-4 py-3 border-2 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all resize-none"
+                          className={`w-full px-4 py-3 border-2 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all resize-none ${
+                            errors.description ? 'border-red-500 ring-red-500' : 'border-gray-300 dark:border-gray-600'
+                          }`}
                           rows={3}
+                          maxLength={1000}
                         />
+                        {errors.description && (
+                          <p className="text-red-500 text-xs mt-1 flex items-center">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {errors.description}
+                          </p>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -375,6 +537,8 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Số điện thoại <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-phone"
+                            name="phone"
                             value={formData.phone}
                             onChange={(e) => handleInputChange('phone', e.target.value)}
                             placeholder="0123456789"
@@ -393,6 +557,8 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Email <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-email"
+                            name="email"
                             type="email"
                             value={formData.email}
                             onChange={(e) => handleInputChange('email', e.target.value)}
@@ -427,10 +593,12 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Giờ mở cửa <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-opening_time"
+                            name="opening_time"
                             type="time"
                             value={formData.opening_time}
                             onChange={(e) => handleInputChange('opening_time', e.target.value)}
-                            className="h-11 border-gray-300 dark:border-gray-600"
+                            className={`h-11 ${errors.opening_time ? 'border-red-500 ring-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                           />
                           {errors.opening_time && (
                             <p className="text-red-500 text-xs mt-1 flex items-center">
@@ -445,10 +613,12 @@ export function CreateStationModal({ isOpen, onClose, onSuccess }: CreateStation
                             Giờ đóng cửa <span className="text-red-500">*</span>
                           </label>
                           <Input
+                            id="field-closing_time"
+                            name="closing_time"
                             type="time"
                             value={formData.closing_time}
                             onChange={(e) => handleInputChange('closing_time', e.target.value)}
-                            className="h-11 border-gray-300 dark:border-gray-600"
+                            className={`h-11 ${errors.closing_time ? 'border-red-500 ring-red-500' : 'border-gray-300 dark:border-gray-600'}`}
                           />
                           {errors.closing_time && (
                             <p className="text-red-500 text-xs mt-1 flex items-center">

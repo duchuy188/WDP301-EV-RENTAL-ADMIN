@@ -48,7 +48,7 @@ class VehicleService {
           limit: params?.limit || 10,
           search: params?.search,
           sort: params?.sort || 'createdAt',
-          order: params?.sort?.includes('desc') ? 'desc' : 'asc',
+          order: params?.order || 'desc', // Default to desc for newest first
           status: params?.status,
           station_id: params?.stationId,
           brand: params?.brand,
@@ -59,13 +59,10 @@ class VehicleService {
       });
 
       // Handle the actual API response structure
-      console.log('Raw API Response:', response.data);
-      
       const apiResponse: VehicleListResponse = response.data;
       
       // Check if vehicles array exists
       if (!apiResponse.vehicles || !Array.isArray(apiResponse.vehicles)) {
-        console.warn('No vehicles array in response, returning empty array');
         return {
           data: [],
           pagination: apiResponse.pagination || { total: 0, page: 1, limit: 10, pages: 0 }
@@ -73,11 +70,10 @@ class VehicleService {
       }
       
       // Normalize vehicles for UI
-      const normalizedVehicles = apiResponse.vehicles.map((vehicle, index) => {
+      const normalizedVehicles = apiResponse.vehicles.map((vehicle) => {
         try {
           return normalizeVehicleForUI(vehicle);
         } catch (error) {
-          console.error(`Error normalizing vehicle at index ${index}:`, error, vehicle);
           // Return a fallback vehicle object
           return {
             id: vehicle._id || `fallback-${index}`,
@@ -107,18 +103,13 @@ class VehicleService {
         }
       });
 
-      console.log('Normalized vehicles:', normalizedVehicles);
-
       return {
         data: normalizedVehicles,
         pagination: apiResponse.pagination
       };
     } catch (error) {
-      console.error('Error fetching vehicles for admin:', error);
-      
       // Return mock data for development if network fails
       if (import.meta.env.DEV) {
-        console.warn('Using mock data due to network error');
         const mockData = this.getMockVehicles();
         // Throw a special error to indicate we're using mock data
         const mockError = new Error('Using mock data due to network error');
@@ -232,7 +223,6 @@ class VehicleService {
       const response = await axiosInstance.get(API_CONFIG.endpoints.vehicles.getById(id));
       return response.data;
     } catch (error) {
-      console.error(`Error fetching vehicle ${id}:`, error);
       throw error;
     }
   }
@@ -245,7 +235,6 @@ class VehicleService {
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.create, vehicleData);
       return response.data;
     } catch (error) {
-      console.error('Error creating vehicle:', error);
       throw error;
     }
   }
@@ -258,7 +247,6 @@ class VehicleService {
       const response = await axiosInstance.put(API_CONFIG.endpoints.vehicles.update(id), vehicleData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating vehicle ${id}:`, error);
       throw error;
     }
   }
@@ -270,16 +258,6 @@ class VehicleService {
    */
   async updateVehicleWithImages(id: string, formData: FormData): Promise<ApiResponse<Vehicle>> {
     try {
-      console.log('🔄 Updating vehicle with images:', id);
-      console.log('📦 FormData contents:');
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`  ${key}: [File] ${value.name} (${value.size} bytes)`);
-        } else {
-          console.log(`  ${key}:`, value);
-        }
-      }
-      
       // Dùng PUT như API documentation (không phải POST!)
       const response = await axiosInstance.put(API_CONFIG.endpoints.vehicles.update(id), formData, {
         headers: {
@@ -287,25 +265,8 @@ class VehicleService {
         }
       });
       
-      console.log('✅ Vehicle updated successfully with images');
-      console.log('📸 Response:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error(`❌ Error updating vehicle ${id} with images:`, error);
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', JSON.stringify(error.response.data, null, 2));
-        console.error('Response headers:', error.response.headers);
-        
-        // Log readable error message
-        const errorMsg = error.response.data?.message || error.response.data?.error || 'Unknown error';
-        console.error('📛 Error message from server:', errorMsg);
-      } else if (error.request) {
-        console.error('No response received from server');
-        console.error('Request:', error.request);
-      } else {
-        console.error('Error setting up request:', error.message);
-      }
       throw error;
     }
   }
@@ -318,7 +279,6 @@ class VehicleService {
       const response = await axiosInstance.patch(API_CONFIG.endpoints.vehicles.updateStatus(id), statusData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating vehicle ${id} status:`, error);
       throw error;
     }
   }
@@ -331,7 +291,6 @@ class VehicleService {
       const response = await axiosInstance.patch(API_CONFIG.endpoints.vehicles.updateBattery(id), batteryData);
       return response.data;
     } catch (error) {
-      console.error(`Error updating vehicle ${id} battery:`, error);
       throw error;
     }
   }
@@ -344,7 +303,6 @@ class VehicleService {
       const response = await axiosInstance.delete(API_CONFIG.endpoints.vehicles.delete(id));
       return response.data;
     } catch (error) {
-      console.error(`Error deleting vehicle ${id}:`, error);
       throw error;
     }
   }
@@ -354,12 +312,6 @@ class VehicleService {
    */
   async bulkCreateVehicles(bulkData: any): Promise<any> {
     try {
-      // Ensure quantity is a valid integer
-      const quantity = parseInt(bulkData.quantity, 10);
-      if (isNaN(quantity) || quantity <= 0) {
-        throw new Error('Số lượng xe phải là một số nguyên dương');
-      }
-      
       // Create FormData to handle image uploads
       const formData = new FormData();
       
@@ -373,29 +325,14 @@ class VehicleService {
       formData.append('current_battery', bulkData.current_battery.toString());
       formData.append('price_per_day', bulkData.price_per_day.toString());
       formData.append('deposit_percentage', bulkData.deposit_percentage.toString());
-      // Ensure quantity is sent as a proper integer string
-      formData.append('quantity', quantity.toString());
-      formData.append('export_excel', bulkData.export_excel ? 'true' : 'false');
+      formData.append('quantity', bulkData.quantity.toString());
+      formData.append('export_excel', bulkData.export_excel.toString());
       
       // Append images (if any)
       if (bulkData.images && bulkData.images.length > 0) {
         bulkData.images.forEach((image: File) => {
           formData.append('images', image);
         });
-      }
-      
-      // Log FormData contents for debugging
-      console.log('🚀 Bulk create vehicles request:');
-      console.log('  - Quantity:', quantity);
-      console.log('  - Model:', bulkData.model);
-      console.log('  - Export Excel:', bulkData.export_excel);
-      console.log('  - FormData entries:');
-      for (const [key, value] of formData.entries()) {
-        if (value instanceof File) {
-          console.log(`    ${key}: [File] ${value.name} (${value.size} bytes)`);
-        } else {
-          console.log(`    ${key}:`, value);
-        }
       }
       
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.bulkCreate, formData, {
@@ -405,11 +342,6 @@ class VehicleService {
         }
       });
       
-      console.log('✅ Bulk create vehicles response received');
-      if (!bulkData.export_excel && response.data) {
-        console.log('  - Response data:', response.data);
-      }
-      
       if (bulkData.export_excel) {
         // Return blob for Excel download
         return response.data;
@@ -417,12 +349,7 @@ class VehicleService {
         // Return JSON response for vehicle creation
         return response.data;
       }
-    } catch (error: any) {
-      console.error('❌ Error in bulk create vehicles:', error);
-      if (error.response) {
-        console.error('  - Response status:', error.response.status);
-        console.error('  - Response data:', error.response.data);
-      }
+    } catch (error) {
       throw error;
     }
   }
@@ -435,7 +362,6 @@ class VehicleService {
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.assignByQuantity, assignData);
       return response.data;
     } catch (error) {
-      console.error('Error assigning vehicles by quantity:', error);
       throw error;
     }
   }
@@ -445,12 +371,9 @@ class VehicleService {
    */
   async withdrawVehiclesFromStation(withdrawData: WithdrawVehiclesRequest): Promise<ApiResponse<WithdrawVehiclesResponse>> {
     try {
-      console.log('Withdrawing vehicles from station:', withdrawData);
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.withdrawFromStation, withdrawData);
-      console.log('Withdraw response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error withdrawing vehicles from station:', error);
       throw error;
     }
   }
@@ -473,7 +396,6 @@ class VehicleService {
         message: 'Lấy danh sách model thành công'
       };
     } catch (error) {
-      console.error('Error getting vehicle models:', error);
       throw error;
     }
   }
@@ -496,7 +418,6 @@ class VehicleService {
         message: 'Lấy danh sách brand thành công'
       };
     } catch (error) {
-      console.error('Error getting vehicle brands:', error);
       throw error;
     }
   }
@@ -507,11 +428,9 @@ class VehicleService {
   async getVehicleStatistics(): Promise<ApiResponse<VehicleStatistics>> {
     try {
       const response = await axiosInstance.get(API_CONFIG.endpoints.vehicles.statistics);
-      console.log('Raw statistics response:', response.data);
       
       // Handle the actual API response structure
       const statsData = response.data;
-      console.log('Raw statistics data:', statsData);
       
       // Calculate totals from the actual API response
       const statusStats = statsData.statusStats || [];
@@ -546,11 +465,8 @@ class VehicleService {
         message: 'Statistics retrieved successfully'
       };
     } catch (error) {
-      console.error('Error fetching vehicle statistics:', error);
-      
       // Return mock statistics for development if network fails
       if (import.meta.env.DEV) {
-        console.warn('Using mock statistics due to network error');
         return {
           data: {
             totalVehicles: 3,
@@ -588,7 +504,6 @@ class VehicleService {
       });
       return response.data;
     } catch (error) {
-      console.error('Error searching vehicles:', error);
       throw error;
     }
   }
@@ -601,7 +516,6 @@ class VehicleService {
       const response = await axiosInstance.get(`${this.baseUrl}/status/${status}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching vehicles by status ${status}:`, error);
       throw error;
     }
   }
@@ -616,7 +530,6 @@ class VehicleService {
       });
       return response.data;
     } catch (error) {
-      console.error('Error fetching vehicles need charging:', error);
       throw error;
     }
   }
@@ -629,7 +542,6 @@ class VehicleService {
       const response = await axiosInstance.get(`${this.baseUrl}/need-maintenance`);
       return response.data;
     } catch (error) {
-      console.error('Error fetching vehicles need maintenance:', error);
       throw error;
     }
   }
@@ -642,7 +554,6 @@ class VehicleService {
       const response = await axiosInstance.get(`${this.baseUrl}/${vehicleId}/history`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching vehicle ${vehicleId} history:`, error);
       throw error;
     }
   }
@@ -667,7 +578,6 @@ class VehicleService {
       });
       return response.data;
     } catch (error) {
-      console.error('Error exporting vehicles:', error);
       throw error;
     }
   }
@@ -687,45 +597,22 @@ class VehicleService {
       });
       return response.data;
     } catch (error) {
-      console.error('Error importing vehicles:', error);
       throw error;
     }
   }
 
   /**
    * Export danh sách xe chưa có biển số
-   * @param vehicleIds - Danh sách IDs của các xe cần export (optional)
    */
-  async exportDraftVehicles(vehicleIds?: string[]): Promise<Blob> {
+  async exportDraftVehicles(): Promise<Blob> {
     try {
-      
-      let url = API_CONFIG.endpoints.vehicles.exportDraftVehicles;
-      
-      if (vehicleIds && vehicleIds.length > 0) {
-        url = `${url}?ids=${vehicleIds.join(',')}`;
-        console.log('Exporting selected draft vehicles:', vehicleIds.length, 'vehicles');
-        console.log('Vehicle IDs:', vehicleIds);
-      } else {
-        console.log('Exporting ALL draft vehicles (no IDs specified)');
-      }
-      
-      console.log('API endpoint:', url);
-
-      const response = await axiosInstance.get(url, {
+      const response = await axiosInstance.get(API_CONFIG.endpoints.vehicles.exportDraftVehicles, {
         responseType: 'blob',
         timeout: 60000 // 60 seconds timeout
       });
       
-      console.log('Export draft vehicles response received, blob size:', response.data.size);
       return response.data;
     } catch (error: any) {
-      console.error('Error exporting draft vehicles:', error);
-      
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-      }
-      
       throw error;
     }
   }
@@ -737,9 +624,6 @@ class VehicleService {
     try {
       const formData = new FormData();
       formData.append('excel_file', file); // API spec shows 'excel_file' as parameter name
-      
-      console.log('Importing license plates with file:', file.name, 'size:', file.size);
-      console.log('API endpoint:', API_CONFIG.endpoints.vehicles.importLicensePlates);
 
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.importLicensePlates, formData, {
         headers: {
@@ -748,22 +632,8 @@ class VehicleService {
         timeout: 60000 // 60 seconds timeout for file upload
       });
       
-      console.log('Import license plates response:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Error importing license plates:', error);
-      
-      // Log detailed error information
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('Request error:', error.request);
-      } else {
-        console.error('Error message:', error.message);
-      }
-      
       throw error;
     }
   }
@@ -775,9 +645,6 @@ class VehicleService {
     try {
       // Sử dụng filter được truyền vào, hoặc rỗng nếu không có
       const requestBody = filter || {};
-      
-      console.log('Exporting pricing template with filter:', requestBody);
-      console.log('API endpoint:', API_CONFIG.endpoints.vehicles.exportPricingTemplate);
 
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.exportPricingTemplate, requestBody, {
         responseType: 'blob',
@@ -787,18 +654,8 @@ class VehicleService {
         timeout: 60000 // 60 seconds timeout
       });
       
-      console.log('Export pricing template response received, blob size:', response.data.size);
       return response.data;
     } catch (error: any) {
-      console.error('Error exporting pricing template:', error);
-      
-      // Log detailed error information
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
-      }
-      
       throw error;
     }
   }
@@ -810,9 +667,6 @@ class VehicleService {
     try {
       const formData = new FormData();
       formData.append('excel_file', file); // API spec shows 'excel_file' as parameter name
-      
-      console.log('Importing pricing updates with file:', file.name, 'size:', file.size);
-      console.log('API endpoint:', API_CONFIG.endpoints.vehicles.importPricingUpdates);
 
       const response = await axiosInstance.post(API_CONFIG.endpoints.vehicles.importPricingUpdates, formData, {
         headers: {
@@ -821,22 +675,8 @@ class VehicleService {
         timeout: 60000 // 60 seconds timeout for file upload
       });
       
-      console.log('Import pricing updates response:', response.data);
       return response.data;
     } catch (error: any) {
-      console.error('Error importing pricing updates:', error);
-      
-      // Log detailed error information
-      if (error.response) {
-        console.error('Response status:', error.response.status);
-        console.error('Response data:', error.response.data);
-        console.error('Response headers:', error.response.headers);
-      } else if (error.request) {
-        console.error('Request error:', error.request);
-      } else {
-        console.error('Error message:', error.message);
-      }
-      
       throw error;
     }
   }

@@ -19,10 +19,12 @@ import {
   AlertCircle,
   Info
 } from 'lucide-react';
+import { FaMotorcycle } from 'react-icons/fa';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import AIService from './service/aiService';
+import { stationService } from './service/stationService';
 import { StationForecastData, ForecastPeriod } from './service/type/aiTypes';
 import { showToast } from '../lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
@@ -42,9 +44,85 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
   const fetchStationForecast = async () => {
     try {
       setLoading(true);
-      const response = await AIService.getStationForecast(stationId, period);
-      setData(response.data);
-      console.log('🎯 Station AI Forecast:', response.data);
+      
+      // Fetch station info and AI forecast in parallel
+      const [stationResponse, aiResponse] = await Promise.all([
+        stationService.getStationById(stationId).catch(() => null),
+        AIService.getStationForecast(stationId, period)
+      ]);
+      
+      const station = stationResponse?.station;
+      const apiData = aiResponse.data as any;
+      
+      // Extract station info
+      const currentVehicles = station?.current_vehicles || 0;
+      const maxCapacity = station?.max_capacity || 1;
+      const availableVehicles = station?.available_vehicles || 0;
+      
+      // Calculate peak demand from hourly trend
+      const hourlyTrends = apiData.hourlyTrend || [];
+      const peakDemand = Math.max(...hourlyTrends.map((h: any) => h.forecast || 0), 0);
+      
+      // Calculate metrics
+      const currentUtilization = maxCapacity > 0 ? Math.round((currentVehicles / maxCapacity) * 100) : 0;
+      
+      // Calculate shortage: if peak demand > available vehicles, we have shortage
+      // Assume each booking needs 1 vehicle (could be adjusted)
+      const vehiclesNeededForPeak = Math.ceil(peakDemand);
+      const shortage = Math.max(0, vehiclesNeededForPeak - availableVehicles);
+      
+      // Optimal capacity: peak demand + 20% buffer
+      const optimalCapacity = Math.ceil(peakDemand * 1.2);
+      const vehiclesNeeded = Math.max(0, optimalCapacity - currentVehicles);
+      
+      // Determine timing based on shortage
+      let timing: 'immediate' | 'short_term' | 'long_term' = 'short_term';
+      if (shortage > currentVehicles * 0.5) {
+        timing = 'immediate';
+      } else if (shortage > currentVehicles * 0.2) {
+        timing = 'short_term';
+      } else {
+        timing = 'long_term';
+      }
+      
+      // Check if it's already StationForecastData format
+      if (apiData.stationInfo && apiData.forecast && apiData.capacityAnalysis) {
+        setData(apiData);
+      } else {
+        // Transform from DemandForecastData to StationForecastData
+        const transformedData: StationForecastData = {
+          stationInfo: {
+            name: station?.name || stationName,
+            currentVehicles: currentVehicles
+          },
+          forecast: {
+            period: apiData.totalForecast?.period || period,
+            predictedBookings: apiData.totalForecast?.predictedBookings || 0,
+            confidence: apiData.totalForecast?.confidence || 0
+          },
+          capacityAnalysis: {
+            currentUtilization: currentUtilization,
+            peakDemand: Math.round(peakDemand * 10) / 10, // Round to 1 decimal
+            shortage: shortage
+          },
+          recommendations: {
+            vehiclesNeeded: vehiclesNeeded,
+            optimalCapacity: optimalCapacity,
+            timing: timing
+          },
+          peakHours: hourlyTrends
+            .filter((h: any) => h.forecast > 0)
+            .map((h: any) => ({
+              hour: h.hour,
+              demand: Math.round((h.forecast || 0) * 10) / 10
+            }))
+            .sort((a: any, b: any) => b.demand - a.demand)
+            .slice(0, 8),
+          strategies: Array.isArray(apiData.recommendations) ? apiData.recommendations : []
+        };
+        
+        setData(transformedData);
+      }
     } catch (error: any) {
       showToast.error(error.message || 'Không thể tải dữ liệu dự báo trạm');
     } finally {
@@ -171,7 +249,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                     </CardHeader>
                     <CardContent>
                       <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {data.stationInfo.currentVehicles}
+                        {data?.stationInfo?.currentVehicles ?? 0}
                       </p>
                     </CardContent>
                   </Card>
@@ -185,10 +263,10 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                     </CardHeader>
                     <CardContent>
                       <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {data.forecast.predictedBookings}
+                        {data?.forecast?.predictedBookings ?? 0}
                       </p>
                       <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-                        Confidence: {data.forecast.confidence}%
+                        Confidence: {data?.forecast?.confidence ?? 0}%
                       </p>
                     </CardContent>
                   </Card>
@@ -202,7 +280,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                     </CardHeader>
                     <CardContent>
                       <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {data.forecast.period}
+                        {data?.forecast?.period ?? 'N/A'}
                       </p>
                     </CardContent>
                   </Card>
@@ -223,14 +301,14 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                           Tỷ lệ sử dụng hiện tại
                         </span>
-                        <span className={`text-lg font-bold ${getUtilizationColor(data.capacityAnalysis.currentUtilization)}`}>
-                          {data.capacityAnalysis.currentUtilization}%
+                        <span className={`text-lg font-bold ${getUtilizationColor(data?.capacityAnalysis?.currentUtilization ?? 0)}`}>
+                          {data?.capacityAnalysis?.currentUtilization ?? 0}%
                         </span>
                       </div>
                       <div className="w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
-                          className={`h-full ${getUtilizationBg(data.capacityAnalysis.currentUtilization)} transition-all duration-500`}
-                          style={{ width: `${data.capacityAnalysis.currentUtilization}%` }}
+                          className={`h-full ${getUtilizationBg(data?.capacityAnalysis?.currentUtilization ?? 0)} transition-all duration-500`}
+                          style={{ width: `${data?.capacityAnalysis?.currentUtilization ?? 0}%` }}
                         />
                       </div>
                     </div>
@@ -243,7 +321,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                           <span className="text-sm text-red-700 dark:text-red-300">Nhu cầu cao điểm</span>
                         </div>
                         <p className="text-2xl font-bold text-red-900 dark:text-red-100">
-                          {data.capacityAnalysis.peakDemand}
+                          {data?.capacityAnalysis?.peakDemand ?? 0}
                         </p>
                         <p className="text-xs text-red-600 dark:text-red-400 mt-1">bookings dự kiến</p>
                       </div>
@@ -254,7 +332,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                           <span className="text-sm text-orange-700 dark:text-orange-300">Thiếu hụt</span>
                         </div>
                         <p className="text-2xl font-bold text-orange-900 dark:text-orange-100">
-                          {data.capacityAnalysis.shortage}
+                          {data?.capacityAnalysis?.shortage ?? 0}
                         </p>
                         <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">xe cần bổ sung</p>
                       </div>
@@ -276,7 +354,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                         <FaMotorcycle className="w-8 h-8 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Xe cần thêm</p>
                         <p className="text-3xl font-bold text-blue-900 dark:text-blue-100">
-                          {data.recommendations.vehiclesNeeded}
+                          {data?.recommendations?.vehiclesNeeded ?? 0}
                         </p>
                       </div>
 
@@ -284,7 +362,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                         <Target className="w-8 h-8 text-green-600 dark:text-green-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Công suất tối ưu</p>
                         <p className="text-3xl font-bold text-green-900 dark:text-green-100">
-                          {data.recommendations.optimalCapacity}
+                          {data?.recommendations?.optimalCapacity ?? 0}
                         </p>
                       </div>
 
@@ -292,7 +370,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                         <Clock className="w-8 h-8 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">Thời điểm</p>
                         <div className="flex items-center justify-center mt-2">
-                          {getTimingBadge(data.recommendations.timing)}
+                          {getTimingBadge(data?.recommendations?.timing ?? 'short_term')}
                         </div>
                       </div>
                     </div>
@@ -304,7 +382,7 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                         Chiến lược thực hiện
                       </p>
                       <div className="space-y-2">
-                        {data.strategies.map((strategy, index) => (
+                        {(data?.strategies || []).map((strategy, index) => (
                           <div
                             key={index}
                             className="flex items-start gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
@@ -327,11 +405,11 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {data.peakHours && data.peakHours.length > 0 ? (
+                    {data?.peakHours && data.peakHours.length > 0 ? (
                       <div className="space-y-3">
                         {data.peakHours.map((peak, index) => {
-                          const maxDemand = Math.max(...data.peakHours.map(p => p.demand));
-                          const widthPercent = (peak.demand / maxDemand) * 100;
+                          const maxDemand = Math.max(...data.peakHours.map(p => p.demand), 1);
+                          const widthPercent = maxDemand > 0 ? (peak.demand / maxDemand) * 100 : 0;
                           
                           return (
                             <div key={index} className="flex items-center gap-3">
@@ -374,13 +452,13 @@ export function StationAIDetailModal({ isOpen, onClose, stationId, stationName }
                           Tóm tắt phân tích AI
                         </p>
                         <p className="text-sm text-purple-800 dark:text-purple-200">
-                          Trạm <strong>{data.stationInfo.name}</strong> hiện có <strong>{data.stationInfo.currentVehicles} xe</strong> với 
-                          tỷ lệ sử dụng <strong>{data.capacityAnalysis.currentUtilization}%</strong>. 
-                          AI dự báo <strong>{data.forecast.predictedBookings} bookings</strong> trong {data.forecast.period} tới 
-                          (độ tin cậy {data.forecast.confidence}%). 
-                          Để đáp ứng nhu cầu cao điểm ({data.capacityAnalysis.peakDemand} bookings), 
-                          cần bổ sung <strong>{data.recommendations.vehiclesNeeded} xe</strong> để 
-                          đạt công suất tối ưu <strong>{data.recommendations.optimalCapacity} xe</strong>.
+                          Trạm <strong>{data?.stationInfo?.name ?? stationName}</strong> hiện có <strong>{data?.stationInfo?.currentVehicles ?? 0} xe</strong> với 
+                          tỷ lệ sử dụng <strong>{data?.capacityAnalysis?.currentUtilization ?? 0}%</strong>. 
+                          AI dự báo <strong>{data?.forecast?.predictedBookings ?? 0} bookings</strong> trong {data?.forecast?.period ?? period} tới 
+                          (độ tin cậy {data?.forecast?.confidence ?? 0}%). 
+                          Để đáp ứng nhu cầu cao điểm ({data?.capacityAnalysis?.peakDemand ?? 0} bookings), 
+                          cần bổ sung <strong>{data?.recommendations?.vehiclesNeeded ?? 0} xe</strong> để 
+                          đạt công suất tối ưu <strong>{data?.recommendations?.optimalCapacity ?? 0} xe</strong>.
                         </p>
                       </div>
                     </div>

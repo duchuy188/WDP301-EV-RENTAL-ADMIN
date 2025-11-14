@@ -13,7 +13,6 @@ import {
   Target,
   Zap,
   Activity,
-  MousePointerClick,
   Clock
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -37,11 +36,34 @@ export function AIDashboard() {
     try {
       const response = await AIService.checkHealth();
       setAiHealthy(response.data.status === 'operational');
-      console.log('🤖 AI Service:', response.data.status);
     } catch (error) {
       setAiHealthy(false);
-      console.error('AI Service offline');
     }
+  };
+
+  // Calculate overall trend from available data if missing
+  const calculateOverallTrend = (dashboardData: any): string => {
+    if (dashboardData?.trendAnalysis?.trends?.overall) {
+      return dashboardData.trendAnalysis.trends.overall;
+    }
+
+    // Fallback: Calculate from growth rate if available
+    const growthRate = dashboardData?.trendAnalysis?.trends?.growthRate;
+    if (growthRate !== undefined && growthRate !== null) {
+      if (growthRate > 5) return 'increasing';
+      if (growthRate < -5) return 'decreasing';
+      return 'stable';
+    }
+
+    // Fallback: Calculate from demand forecast data
+    const hourlyTrends = dashboardData?.demandForecast?.hourlyTrend || [];
+    const totalForecast = hourlyTrends.reduce((sum: number, trend: any) => sum + (trend.forecast || 0), 0);
+    const avgForecast = totalForecast / Math.max(hourlyTrends.length, 1);
+    
+    // If average forecast is meaningful, estimate trend
+    if (avgForecast > 1) return 'increasing';
+    if (avgForecast < 0.5) return 'decreasing';
+    return 'stable';
   };
 
   // Fetch AI dashboard
@@ -49,10 +71,54 @@ export function AIDashboard() {
     try {
       setLoading(true);
       const response = await AIService.getAIDashboard(period);
+      
+      // Calculate overall trend if missing
+      if (response.data && !response.data.trendAnalysis?.trends?.overall) {
+        const calculatedTrend = calculateOverallTrend(response.data);
+        if (!response.data.trendAnalysis) {
+          response.data.trendAnalysis = {
+            trends: {
+              overall: calculatedTrend as any,
+              growthRate: 0,
+              seasonality: [],
+              cyclical: ''
+            },
+            factors: {
+              weather: '',
+              events: '',
+              economic: ''
+            },
+            forecasts: {
+              shortTerm: {
+                period: '',
+                trend: 'stable',
+                confidence: 0
+              },
+              longTerm: {
+                period: '',
+                trend: 'stable',
+                confidence: 0
+              }
+            },
+            opportunities: [],
+            challenges: [],
+            recommendations: []
+          };
+        } else if (!response.data.trendAnalysis.trends) {
+          response.data.trendAnalysis.trends = {
+            overall: calculatedTrend as any,
+            growthRate: 0,
+            seasonality: [],
+            cyclical: ''
+          };
+        } else {
+          response.data.trendAnalysis.trends.overall = calculatedTrend as any;
+        }
+      }
+      
       setData(response.data);
-      console.log('📊 AI Dashboard loaded:', response.data);
-    } catch (error: any) {
-      showToast.error(error.message || 'Không thể tải dashboard AI');
+       } catch (error: any) {
+         showToast.error(error.message || 'Không thể tải dashboard AI');
     } finally {
       setLoading(false);
     }
@@ -62,10 +128,6 @@ export function AIDashboard() {
     checkAIHealth();
     fetchDashboard();
   }, [period]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
-  };
 
   const getTrendIcon = (trend: string) => {
     if (trend === 'up' || trend === 'increasing') return <TrendingUp className="w-5 h-5 text-green-500" />;
@@ -306,14 +368,40 @@ export function AIDashboard() {
                       Xu hướng tổng thể
                     </p>
                     <div className="flex items-center gap-2">
-                      {getTrendIcon(data.trendAnalysis?.trends?.overall || 'stable')}
-                      <p className="text-2xl font-bold text-purple-900 dark:text-purple-100 capitalize">
-                        {data.trendAnalysis?.trends?.overall || 'N/A'}
-                      </p>
-                      <Badge variant="default" className="ml-2">
-                        +{data.trendAnalysis?.trends?.growthRate || 0}%
-                      </Badge>
+                      {(() => {
+                        const overallTrend = data.trendAnalysis?.trends?.overall;
+                        const displayTrend = overallTrend || 'stable';
+                        const growthRate = data.trendAnalysis?.trends?.growthRate || 0;
+                        
+                        return (
+                          <>
+                            {getTrendIcon(displayTrend)}
+                            <p className="text-2xl font-bold text-purple-900 dark:text-purple-100 capitalize">
+                              {overallTrend ? (
+                                overallTrend === 'up' ? 'Tăng trưởng' :
+                                overallTrend === 'down' ? 'Giảm' :
+                                overallTrend === 'increasing' ? 'Tăng trưởng' :
+                                overallTrend === 'decreasing' ? 'Giảm' :
+                                overallTrend === 'stable' ? 'Ổn định' :
+                                overallTrend
+                              ) : (
+                                <span className="text-gray-400 italic">Chưa có dữ liệu</span>
+                              )}
+                            </p>
+                            {overallTrend && (
+                              <Badge variant={growthRate >= 0 ? "default" : "destructive"} className="ml-2">
+                                {growthRate >= 0 ? '+' : ''}{growthRate}%
+                              </Badge>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
+                    {!data.trendAnalysis?.trends?.overall && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 italic">
+                        Dữ liệu xu hướng đang được cập nhật...
+                      </p>
+                    )}
                   </div>
 
                   <div>
