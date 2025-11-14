@@ -89,7 +89,7 @@ export function Fleet() {
       
       const response = await vehicleService.getVehiclesForAdmin({
         page: 1,
-        limit: 100,
+        limit: 500, // Tăng limit lên 500 để hiển thị đủ tất cả xe
         search: debouncedSearchTerm,
         status: statusFilter || undefined,
         type: typeFilter || undefined,

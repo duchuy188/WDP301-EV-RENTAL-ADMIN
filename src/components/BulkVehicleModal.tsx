@@ -37,14 +37,14 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
   // Bulk Create State
   const [bulkFormData, setBulkFormData] = useState({
     model: '',
-    year: '' as number | '',
+    year: new Date().getFullYear(),
     color: '',
-    type: '' as 'scooter' | 'motorcycle' | '',
-    batteryCapacity: '' as number | '',
-    maxRange: '' as number | '',
-    pricePerDay: '' as number | '',
-    depositPercentage: '' as number | '',
-    quantity: '' as number | ''
+    type: 'scooter' as 'scooter' | 'motorcycle',
+    batteryCapacity: 2.5,
+    maxRange: 80,
+    pricePerDay: 150000,
+    depositPercentage: 50,
+    quantity: 1
   });
   
   const [bulkResult, setBulkResult] = useState<BulkCreateResponse | null>(null);
@@ -56,14 +56,14 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
   const resetForm = useCallback(() => {
     setBulkFormData({
       model: '',
-      year: '',
+      year: new Date().getFullYear(),
       color: '',
-      type: '',
-      batteryCapacity: '',
-      maxRange: '',
-      pricePerDay: '',
-      depositPercentage: '',
-      quantity: ''
+      type: 'scooter' as 'scooter' | 'motorcycle',
+      batteryCapacity: 2.5,
+      maxRange: 80,
+      pricePerDay: 150000,
+      depositPercentage: 50,
+      quantity: 1
     });
     setBulkResult(null);
     setVehicleImage(null);
@@ -188,7 +188,15 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
       const url = window.URL.createObjectURL(excelBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `vehicles-created-${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      // Tạo tên file bao gồm model, name và màu xe
+      const sanitizedModel = bulkFormData.model.replace(/[/\\?%*:|"<>]/g, '-');
+      const sanitizedColor = bulkFormData.color.replace(/[/\\?%*:|"<>]/g, '-');
+      const fileName = quantity === 1
+        ? `${sanitizedModel}_${sanitizedColor}_${new Date().toISOString().split('T')[0]}.xlsx`
+        : `${sanitizedModel}_${sanitizedColor}_${quantity}-xe_${new Date().toISOString().split('T')[0]}.xlsx`;
+      
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
