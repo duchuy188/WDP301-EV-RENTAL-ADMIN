@@ -19,6 +19,7 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
+import { AnimatedStatCard } from '../components/ui/animated-stat-card';
 import MaintenanceService from '../components/service/maintenanceService';
 import { MaintenanceReport, GetMaintenanceParams, MaintenanceStatus } from '../components/service/type/maintenanceTypes';
 import { showToast } from '../lib/toast';
@@ -273,67 +274,35 @@ export function MaintenancePage() {
         </motion.div>
 
         {/* Stats Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"
-        >
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Tổng số</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                  {stats.reported + stats.fixed}
-                </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">báo cáo</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
-                <Wrench className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Đã báo cáo</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.reported}</p>
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">cần xử lý</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl">
-                <AlertTriangle className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Đã sửa</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.fixed}</p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {stats.reported + stats.fixed > 0 
-                    ? ((stats.fixed / (stats.reported + stats.fixed)) * 100).toFixed(0) 
-                    : 0}%
-                </p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl">
-                <CheckCircle className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <AnimatedStatCard
+            title="Tổng số"
+            value={stats.reported + stats.fixed}
+            subtitle="báo cáo"
+            icon={Wrench}
+            gradientFrom="from-blue-500"
+            gradientTo="to-blue-600"
+            delay={0}
+          />
+          <AnimatedStatCard
+            title="Đã báo cáo"
+            value={stats.reported}
+            subtitle="cần xử lý"
+            icon={AlertTriangle}
+            gradientFrom="from-orange-500"
+            gradientTo="to-orange-600"
+            delay={0.1}
+          />
+          <AnimatedStatCard
+            title="Đã sửa"
+            value={stats.fixed}
+            subtitle={`${stats.reported + stats.fixed > 0 ? ((stats.fixed / (stats.reported + stats.fixed)) * 100).toFixed(0) : 0}%`}
+            icon={CheckCircle}
+            gradientFrom="from-green-500"
+            gradientTo="to-green-600"
+            delay={0.2}
+          />
+        </div>
 
         {/* Search & Filter Section */}
         <motion.div
@@ -548,7 +517,7 @@ export function MaintenancePage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm">
-                            <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded inline-block">
+                            <div className="font-mono text-xs bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-200 px-2 py-1 rounded inline-block">
                               {report.code}
                             </div>
                           </td>

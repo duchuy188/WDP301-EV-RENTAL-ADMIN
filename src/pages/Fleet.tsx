@@ -51,7 +51,7 @@ export function Fleet() {
   const [colorFilter, setColorFilter] = useState<string | null>(null);
   const [batteryFilter] = useState<{ min: number; max: number } | null>(null);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
-  const [sortBy, setSortBy] = useState<'name' | 'battery' | 'price' | 'year'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'battery' | 'price' | 'year' | 'createdAt'>('createdAt');
   
   // Modal states
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -304,8 +304,13 @@ export function Fleet() {
         case 'year':
           return b.year - a.year;
         case 'name':
-        default:
           return (a.name || a.licensePlate).localeCompare(b.name || b.licensePlate);
+        case 'createdAt':
+        default:
+          // Sort by newest first (most recent createdAt)
+          const dateA = new Date(a.createdAt || 0).getTime();
+          const dateB = new Date(b.createdAt || 0).getTime();
+          return dateB - dateA;
       }
     });
 
@@ -319,7 +324,7 @@ export function Fleet() {
       header: 'STT',
       width: '60px',
       render: (_value: any, _row: VehicleUI, index?: number) => (
-        <div className="text-center font-medium text-gray-700">
+        <div className="text-center font-medium text-gray-700 dark:text-gray-300">
           {(index !== undefined ? index : 0) + 1}
         </div>
       )
@@ -356,9 +361,9 @@ export function Fleet() {
           </div>
           {/* Vehicle Info */}
           <div>
-            <div className="font-medium text-gray-900">{row.licensePlate}</div>
-            <div className="text-sm text-gray-500">{row.brand} {row.model} ({row.year})</div>
-            <div className="text-xs text-gray-400">
+            <div className="font-medium text-gray-900 dark:text-white">{row.licensePlate}</div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">{row.brand} {row.model} ({row.year})</div>
+            <div className="text-xs text-gray-400 dark:text-gray-500">
               {row.name} • {row.type === 'scooter' ? 'Xe máy điện' : 'Mô tô điện'}
             </div>
           </div>

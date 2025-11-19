@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ProfessionalPagination } from './ui/professional-pagination';
 import { showToast } from '../lib/toast';
+import { useDebounce } from '../hooks/useDebounce';
 
 export interface EnhancedColumn {
   key: string;
@@ -69,6 +70,7 @@ export function EnhancedDataTable({
   customActions
 }: EnhancedDataTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const debouncedSearchQuery = useDebounce(searchQuery, 1500);
   const [sortState, setSortState] = useState<SortState>({ column: null, direction: null });
   const [currentPage, setCurrentPage] = useState(1);
   const [currentPageSize, setCurrentPageSize] = useState(pageSize);
@@ -85,11 +87,11 @@ export function EnhancedDataTable({
     let filtered = [...data];
 
     // Global search
-    if (searchQuery) {
+    if (debouncedSearchQuery) {
       filtered = filtered.filter(row =>
         columns.some(column => {
           const value = row[column.key];
-          return value?.toString().toLowerCase().includes(searchQuery.toLowerCase());
+          return value?.toString().toLowerCase().includes(debouncedSearchQuery.toLowerCase());
         })
       );
     }
@@ -128,7 +130,7 @@ export function EnhancedDataTable({
     }
 
     return filtered;
-  }, [data, searchQuery, sortState, columnFilters, columns]);
+  }, [data, debouncedSearchQuery, sortState, columnFilters, columns]);
 
   // Pagination
   const totalPages = Math.ceil(processedData.length / currentPageSize);

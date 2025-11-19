@@ -16,7 +16,8 @@ import {
   BadgeCheck,
   DollarSign,
   MessageSquare,
-  Wrench
+  Wrench,
+  AlertTriangle
 } from 'lucide-react';
 import { FaMotorcycle } from 'react-icons/fa';
 import { cn } from '../lib/utils';
@@ -63,6 +64,7 @@ const menuItems = [
   { name: 'Quản lý đặt và thuê xe', icon: BadgeCheck, path: '/staff/rentals' },
   { name: 'Quản lý Thanh toán', icon: DollarSign, path: '/payments' },
   { name: 'Quản lý phản hồi', icon: MessageSquare, path: '/feedback' },
+  { name: 'Quản lý báo cáo sự cố', icon: AlertTriangle, path: '/reports' },
   { name: 'Quản lý bảo trì', icon: Wrench, path: '/maintenance' },
   { name: 'Báo cáo & Phân tích', icon: BarChart3, path: '/analytics' },
 ];

@@ -19,6 +19,7 @@ import { EnhancedDataTable, EnhancedColumn } from '../components/EnhancedDataTab
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { ProfessionalPagination } from '../components/ui/professional-pagination';
+import { AnimatedStatCard } from '../components/ui/animated-stat-card';
 import FeedbackService from '../components/service/feedbackService';
 import { Feedback, GetFeedbacksParams, FeedbackType, FeedbackStatus, FeedbackCategory } from '../components/service/type/feedbackTypes';
 import { showToast } from '../lib/toast';
@@ -456,101 +457,53 @@ export function FeedbackPage() {
         </motion.div>
 
         {/* Stats Cards */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6"
-        >
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Tổng số</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">phản hồi</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl">
-                <MessageSquare className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Đánh giá</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.ratings}</p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {((stats.ratings / stats.total) * 100 || 0).toFixed(0)}%
-                </p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-green-500 to-green-600 rounded-xl">
-                <ThumbsUp className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Khiếu nại</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.complaints}</p>
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  {((stats.complaints / stats.total) * 100 || 0).toFixed(0)}%
-                </p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl">
-                <AlertCircle className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Chờ xử lý</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.pending}</p>
-                <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">cần xử lý</p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-xl">
-                <Clock className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Đã giải quyết</p>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.resolved}</p>
-                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  {stats.complaints > 0 ? ((stats.resolved / stats.complaints) * 100).toFixed(0) : 0}%
-                </p>
-              </div>
-              <div className="p-3 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl">
-                <CheckCircle className="w-8 h-8 text-white" />
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
+          <AnimatedStatCard
+            title="Tổng số"
+            value={stats.total}
+            subtitle="phản hồi"
+            icon={MessageSquare}
+            gradientFrom="from-blue-500"
+            gradientTo="to-blue-600"
+            delay={0}
+          />
+          <AnimatedStatCard
+            title="Đánh giá"
+            value={stats.ratings}
+            subtitle={`${((stats.ratings / stats.total) * 100 || 0).toFixed(0)}%`}
+            icon={ThumbsUp}
+            gradientFrom="from-green-500"
+            gradientTo="to-green-600"
+            delay={0.1}
+          />
+          <AnimatedStatCard
+            title="Khiếu nại"
+            value={stats.complaints}
+            subtitle={`${((stats.complaints / stats.total) * 100 || 0).toFixed(0)}%`}
+            icon={AlertCircle}
+            gradientFrom="from-orange-500"
+            gradientTo="to-orange-600"
+            delay={0.2}
+          />
+          <AnimatedStatCard
+            title="Chờ xử lý"
+            value={stats.pending}
+            subtitle="cần xử lý"
+            icon={Clock}
+            gradientFrom="from-yellow-500"
+            gradientTo="to-yellow-600"
+            delay={0.3}
+          />
+          <AnimatedStatCard
+            title="Đã giải quyết"
+            value={stats.resolved}
+            subtitle={`${stats.complaints > 0 ? ((stats.resolved / stats.complaints) * 100).toFixed(0) : 0}%`}
+            icon={CheckCircle}
+            gradientFrom="from-emerald-500"
+            gradientTo="to-emerald-600"
+            delay={0.4}
+          />
+        </div>
 
         {/* Filters */}
         <motion.div

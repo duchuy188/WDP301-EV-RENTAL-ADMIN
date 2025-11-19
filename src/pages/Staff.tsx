@@ -546,7 +546,7 @@ export function Staff() {
           <CardContent className="flex items-center justify-center py-12">
             <div className="flex items-center space-x-2">
               <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              <span className="text-gray-600">Đang tải dữ liệu nhân viên...</span>
+              <span className="text-gray-600 dark:text-gray-300">Đang tải dữ liệu nhân viên...</span>
             </div>
           </CardContent>
         </Card>
@@ -554,8 +554,8 @@ export function Staff() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="text-center">
-              <p className="text-red-600 mb-2">Lỗi khi tải dữ liệu</p>
-              <p className="text-gray-600 text-sm">{error}</p>
+              <p className="text-red-600 dark:text-red-400 mb-2">Lỗi khi tải dữ liệu</p>
+              <p className="text-gray-600 dark:text-gray-300 text-sm">{error}</p>
             </div>
           </CardContent>
         </Card>

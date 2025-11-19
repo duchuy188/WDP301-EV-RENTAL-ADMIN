@@ -16,6 +16,7 @@ import RiskyCustomers from './pages/RiskyCustomers';
 import Assignment from './pages/Assignment';
 import Payments from './pages/Payments';
 import { FeedbackPage } from './pages/Feedback';
+import { ReportsPage } from './pages/Reports';
 import { MyRentalsPage } from './pages/MyRentals';
 import { MaintenancePage } from './pages/Maintenance';
 import { Chatbot } from './components/Chatbot';
@@ -79,6 +80,7 @@ function AppContent() {
                 <Route path="/staff/rentals" element={<MyRentalsPage />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/feedback" element={<FeedbackPage />} />
+                <Route path="/reports" element={<ReportsPage />} />
                 <Route path="/maintenance" element={<MaintenancePage />} />
                 <Route path="/analytics" element={<Analytics />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
