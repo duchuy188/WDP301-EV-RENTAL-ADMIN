@@ -603,12 +603,25 @@ class VehicleService {
 
   /**
    * Export danh sách xe chưa có biển số
+   * @param vehicleIds - Danh sách IDs của các xe cần export (optional)
    */
-  async exportDraftVehicles(): Promise<Blob> {
+  async exportDraftVehicles(vehicleIds?: string[]): Promise<Blob> {
     try {
-      const response = await axiosInstance.get(API_CONFIG.endpoints.vehicles.exportDraftVehicles, {
+  
+      let url = API_CONFIG.endpoints.vehicles.exportDraftVehicles;
+      
+      if (vehicleIds && vehicleIds.length > 0) {
+       
+        url = `${url}?ids=${vehicleIds.join(',')}`;
+        console.log('Exporting selected draft vehicles:', vehicleIds.length, 'vehicles');
+        console.log('Vehicle IDs:', vehicleIds);
+      } else {
+        console.log('Exporting ALL draft vehicles (no IDs specified)');
+      }
+      
+      const response = await axiosInstance.get(url, {
         responseType: 'blob',
-        timeout: 60000 // 60 seconds timeout
+        timeout: 60000 
       });
       
       return response.data;
