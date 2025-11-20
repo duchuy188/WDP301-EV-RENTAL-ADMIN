@@ -145,22 +145,12 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
     setErrors({});
 
     // Parse validated values (all validated, so safe to parse)
-    const year = typeof bulkFormData.year === 'number' ? bulkFormData.year : parseInt(String(bulkFormData.year), 10);
-    const batteryCapacity = typeof bulkFormData.batteryCapacity === 'number' 
-      ? bulkFormData.batteryCapacity 
-      : parseFloat(String(bulkFormData.batteryCapacity));
-    const maxRange = typeof bulkFormData.maxRange === 'number' 
-      ? bulkFormData.maxRange 
-      : parseInt(String(bulkFormData.maxRange), 10);
-    const pricePerDay = typeof bulkFormData.pricePerDay === 'number' 
-      ? bulkFormData.pricePerDay 
-      : parseInt(String(bulkFormData.pricePerDay), 10);
-    const depositPercentage = typeof bulkFormData.depositPercentage === 'number' 
-      ? bulkFormData.depositPercentage 
-      : parseInt(String(bulkFormData.depositPercentage), 10);
-    const quantity = typeof bulkFormData.quantity === 'number' 
-      ? bulkFormData.quantity 
-      : parseInt(String(bulkFormData.quantity), 10);
+    const year = parseInt(String(bulkFormData.year).trim(), 10);
+    const batteryCapacity = parseFloat(String(bulkFormData.batteryCapacity).trim());
+    const maxRange = parseInt(String(bulkFormData.maxRange).trim(), 10);
+    const pricePerDay = parseInt(String(bulkFormData.pricePerDay).replace(/\./g, '').trim(), 10);
+    const depositPercentage = parseInt(String(bulkFormData.depositPercentage).trim(), 10);
+    const quantity = parseInt(String(bulkFormData.quantity).trim(), 10);
 
     // Create the request body matching the API specification
     const requestBody = {

@@ -17,14 +17,14 @@ export interface ValidationResult {
  */
 export interface VehicleBulkFormData {
   model: string;
-  year: number | '';
+  year: number | string;
   color: string;
-  type: 'scooter' | 'motorcycle' | '';
-  batteryCapacity: number | '';
-  maxRange: number | '';
-  pricePerDay: number | '';
-  depositPercentage: number | '';
-  quantity: number | '';
+  type: 'scooter' | 'motorcycle' | string;
+  batteryCapacity: number | string;
+  maxRange: number | string;
+  pricePerDay: number | string;
+  depositPercentage: number | string;
+  quantity: number | string;
 }
 
 export function validateVehicleBulkForm(formData: VehicleBulkFormData): ValidationResult {
@@ -40,11 +40,12 @@ export function validateVehicleBulkForm(formData: VehicleBulkFormData): Validati
   }
 
   // Year validation
-  if (formData.year === '') {
+  if (!formData.year || formData.year === '') {
     errors.push({ field: 'year', message: 'Năm sản xuất là bắt buộc' });
   } else {
-    const year = typeof formData.year === 'number' ? formData.year : parseInt(String(formData.year), 10);
-    if (isNaN(year) || year < 2000 || year > 2030) {
+    const yearStr = String(formData.year).trim();
+    const year = parseInt(yearStr, 10);
+    if (!yearStr || isNaN(year) || year < 2000 || year > 2030) {
       errors.push({ field: 'year', message: 'Năm sản xuất phải từ 2000 đến 2030' });
     }
   }
@@ -60,61 +61,56 @@ export function validateVehicleBulkForm(formData: VehicleBulkFormData): Validati
   }
 
   // Battery capacity validation
-  if (formData.batteryCapacity === '') {
+  if (!formData.batteryCapacity || formData.batteryCapacity === '') {
     errors.push({ field: 'batteryCapacity', message: 'Dung lượng pin là bắt buộc' });
   } else {
-    const batteryCapacity = typeof formData.batteryCapacity === 'number' 
-      ? formData.batteryCapacity 
-      : parseFloat(String(formData.batteryCapacity));
-    if (isNaN(batteryCapacity) || batteryCapacity < 1 || batteryCapacity > 10) {
+    const batteryStr = String(formData.batteryCapacity).trim();
+    const batteryCapacity = parseFloat(batteryStr);
+    if (!batteryStr || isNaN(batteryCapacity) || batteryCapacity < 1 || batteryCapacity > 10) {
       errors.push({ field: 'batteryCapacity', message: 'Dung lượng pin phải từ 1 đến 10 kWh' });
     }
   }
 
   // Max range validation
-  if (formData.maxRange === '') {
+  if (!formData.maxRange || formData.maxRange === '') {
     errors.push({ field: 'maxRange', message: 'Quãng đường tối đa là bắt buộc' });
   } else {
-    const maxRange = typeof formData.maxRange === 'number' 
-      ? formData.maxRange 
-      : parseInt(String(formData.maxRange), 10);
-    if (isNaN(maxRange) || maxRange < 50 || maxRange > 200) {
+    const rangeStr = String(formData.maxRange).trim();
+    const maxRange = parseInt(rangeStr, 10);
+    if (!rangeStr || isNaN(maxRange) || maxRange < 50 || maxRange > 200) {
       errors.push({ field: 'maxRange', message: 'Quãng đường tối đa phải từ 50 đến 200 km' });
     }
   }
 
   // Price per day validation
-  if (formData.pricePerDay === '') {
+  if (!formData.pricePerDay || formData.pricePerDay === '') {
     errors.push({ field: 'pricePerDay', message: 'Giá thuê là bắt buộc' });
   } else {
-    const pricePerDay = typeof formData.pricePerDay === 'number' 
-      ? formData.pricePerDay 
-      : parseInt(String(formData.pricePerDay), 10);
-    if (isNaN(pricePerDay) || pricePerDay < 50000 || pricePerDay > 500000) {
+    const priceStr = String(formData.pricePerDay).replace(/\./g, '').trim();
+    const pricePerDay = parseInt(priceStr, 10);
+    if (!priceStr || isNaN(pricePerDay) || pricePerDay < 50000 || pricePerDay > 500000) {
       errors.push({ field: 'pricePerDay', message: 'Giá thuê phải từ 50,000 đến 500,000 VNĐ' });
     }
   }
 
   // Deposit percentage validation
-  if (formData.depositPercentage === '') {
+  if (!formData.depositPercentage || formData.depositPercentage === '') {
     errors.push({ field: 'depositPercentage', message: 'Phần trăm cọc là bắt buộc' });
   } else {
-    const depositPercentage = typeof formData.depositPercentage === 'number' 
-      ? formData.depositPercentage 
-      : parseInt(String(formData.depositPercentage), 10);
-    if (isNaN(depositPercentage) || depositPercentage < 10 || depositPercentage > 100) {
+    const depositStr = String(formData.depositPercentage).trim();
+    const depositPercentage = parseInt(depositStr, 10);
+    if (!depositStr || isNaN(depositPercentage) || depositPercentage < 10 || depositPercentage > 100) {
       errors.push({ field: 'depositPercentage', message: 'Phần trăm cọc phải từ 10 đến 100%' });
     }
   }
 
   // Quantity validation
-  if (formData.quantity === '') {
+  if (!formData.quantity || formData.quantity === '') {
     errors.push({ field: 'quantity', message: 'Số lượng xe là bắt buộc' });
   } else {
-    const quantity = typeof formData.quantity === 'number' 
-      ? formData.quantity 
-      : parseInt(String(formData.quantity), 10);
-    if (isNaN(quantity) || quantity <= 0 || quantity > 100) {
+    const quantityStr = String(formData.quantity).trim();
+    const quantity = parseInt(quantityStr, 10);
+    if (!quantityStr || isNaN(quantity) || quantity <= 0 || quantity > 100) {
       errors.push({ field: 'quantity', message: 'Số lượng xe phải từ 1 đến 100' });
     }
   }

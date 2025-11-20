@@ -46,7 +46,13 @@ interface RecentActivity {
   title: string;
   description: string;
   time: string;
-  status: 'pending' | 'in-progress' | 'completed';
+  status: 'pending' | 'in-progress' | 'completed' | 'cancelled';
+  vehicleName?: string;
+  licensePlate?: string;
+  customerName?: string;
+  stationName?: string;
+  amount?: number;
+  issueType?: string;
 }
 
 interface VehicleStatusData {
@@ -120,8 +126,17 @@ export function Dashboard() {
         vehicleService.getVehicleStatistics(),
         analyticsService.getRevenueOverview({ period }),
         UserService.getUsers({ limit: 1000, role: 'EV Renter' }),
-        rentalService.getAdminRentals({ limit: 100, status: 'active' }),
-        maintenanceService.getMaintenanceReports({ limit: 10 })
+        rentalService.getAdminRentals({ 
+          limit: 100, 
+          sortBy: 'updatedAt', 
+          sortOrder: 'desc',
+          populate: 'user_id,vehicle_id,station_id,pickup_staff_id,return_staff_id' // Populate all related fields
+        }),
+        maintenanceService.getMaintenanceReports({ 
+          limit: 100, 
+          sortBy: 'updatedAt', 
+          sortOrder: 'desc'
+        })
       ]);
 
       // Try to fetch peak data separately (may not be available)
@@ -321,40 +336,83 @@ export function Dashboard() {
         setHourlyData([]);
       }
 
-      // Process recent activities
+      // Process recent activities - combine rentals and maintenance
       const activities: RecentActivity[] = [];
       
-      // Add recent rentals
+      // Debug: Log raw rental data to check population
+      console.log('🔍 Raw rentals data:', rentalsData.data?.rentals?.slice(0, 2));
+      console.log('🔍 Raw maintenance data:', maintenanceData.data?.reports?.slice(0, 2));
+      
+      // Add recent rentals (all status) - use updatedAt for latest activity
       if (rentalsData.data?.rentals) {
-        rentalsData.data.rentals.slice(0, 5).forEach((rental: any) => {
+        rentalsData.data.rentals.forEach((rental: any) => {
+          // Use updatedAt to show the most recent activity (status changes, updates, etc.)
+          const rentalTime = rental.updatedAt || rental.actual_start_time || rental.start_time || rental.createdAt;
+          
+          // Extract data - API returns: vehicle_id{name, license_plate}, user_id{fullname, email, phone}, station_id{name, address}
+          const vehicleName = rental.vehicle_id?.name || 'N/A';
+          const licensePlate = rental.vehicle_id?.license_plate || 'N/A';
+          const customerName = rental.user_id?.fullname || rental.user_id?.name || 'Khách hàng';
+          const stationName = rental.station_id?.name || 'Không có thông tin';
+          
           activities.push({
-            id: rental._id,
+            id: `rental-${rental._id}`,
             type: 'rental',
-            title: `${rental.vehicle_id?.name || 'Xe'} - ${rental.vehicle_id?.license_plate || 'N/A'}`,
-            description: `Khách hàng: ${rental.user_id?.name || 'N/A'}`,
-            time: rental.actual_start_time || rental.createdAt,
-            status: rental.status === 'active' ? 'in-progress' : 'completed'
+            title: `${vehicleName} - ${licensePlate}`,
+            description: `Thuê xe tại ${stationName}`,
+            time: rentalTime,
+            status: rental.status === 'active' ? 'in-progress' : 
+                    rental.status === 'completed' ? 'completed' : 
+                    rental.status === 'cancelled' ? 'cancelled' : 'pending',
+            vehicleName,
+            licensePlate,
+            customerName,
+            stationName,
+            amount: rental.total_amount || rental.amount || 0
           });
         });
       }
 
-      // Add recent maintenance
+      // Add recent maintenance - use updatedAt for latest activity
       if (maintenanceData.data?.reports) {
-        maintenanceData.data.reports.slice(0, 5).forEach((report: any) => {
+        maintenanceData.data.reports.forEach((report: any) => {
+          // Use updatedAt to show the most recent activity (status changes, updates, etc.)
+          const maintenanceTime = report.updatedAt || report.reported_at || report.createdAt;
+          
+          // Extract data with multiple fallback paths
+          const vehicleName = report.vehicle_id?.name || report.vehicle?.name || 'N/A';
+          const licensePlate = report.vehicle_id?.license_plate || report.vehicle?.license_plate || 'N/A';
+          const stationName = report.station_id?.name || report.station?.name || 'Không có thông tin';
+          const issueDesc = report.issue_description || report.description || 'Bảo trì định kỳ';
+          const issueType = report.issue_type || report.type || 'Bảo trì';
+          
           activities.push({
-            id: report._id,
+            id: `maintenance-${report._id}`,
             type: 'maintenance',
-            title: `${report.vehicle_id?.name || 'Xe'} - ${report.vehicle_id?.license_plate || 'N/A'}`,
-            description: report.issue_description || 'Bảo trì định kỳ',
-            time: report.reported_at || report.createdAt,
+            title: `${vehicleName} - ${licensePlate}`,
+            description: issueDesc,
+            time: maintenanceTime,
             status: report.status === 'pending' ? 'pending' : 
-                    report.status === 'in_progress' ? 'in-progress' : 'completed'
+                    report.status === 'in_progress' ? 'in-progress' : 'completed',
+            vehicleName,
+            licensePlate,
+            customerName: undefined, // Maintenance không có customer
+            stationName,
+            issueType: issueType
           });
         });
       }
+      
+      console.log('Recent activities processed:', activities);
 
-      // Sort by time and take top 10
-      activities.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+      // Sort by time descending (newest first) and take top 10
+      activities.sort((a, b) => {
+        const timeA = new Date(a.time).getTime();
+        const timeB = new Date(b.time).getTime();
+        return timeB - timeA; // Descending order - newest activity first
+      });
+      
+      // Take top 10 most recent activities
       setRecentActivities(activities.slice(0, 10));
 
       // Fetch staff performance
@@ -702,6 +760,10 @@ const kpiCards = [
                     transition={{ delay: index * 0.05 }}
                     whileHover={{ scale: 1.02, y: -4 }}
                     className="group"
+                    onClick={() => {
+                      setSelectedStation({ id: station.id, name: station.name });
+                      setShowStationDetail(true);
+                    }}
                   >
                     <div className={`relative p-4 rounded-xl border-2 transition-all cursor-pointer ${
                       index === 0 
@@ -1065,159 +1127,262 @@ const kpiCards = [
           </Card>
         </motion.div>
 
-        {/* System Status and Recent Activities */}
-        <div className="space-y-6">
-          {/* System Status */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Zap className="h-5 w-5 text-green-600" />
-                  Trạng thái hệ thống
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {loading ? (
-                  <div className="animate-pulse space-y-3">
-                    <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                    <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                    <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                  </div>
-                ) : (
-                  <>
-                <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-400">
-                  <p className="text-sm font-semibold text-green-800 dark:text-green-200 flex items-center">
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    Hệ thống hoạt động bình thường
-                  </p>
-                  <p className="text-xs text-green-600 dark:text-green-300 mt-1">
-                        {stats.totalVehicles} xe trong hệ thống
-                  </p>
+        {/* System Status */}
+        <motion.div
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.8 }}
+          className="h-full"
+        >
+          <Card className="border-0 shadow-lg h-full flex flex-col">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Zap className="h-5 w-5 text-green-600" />
+                Trạng thái hệ thống
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 flex-1">
+              {loading ? (
+                <div className="animate-pulse space-y-3">
+                  <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                  <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
+                  <div className="h-16 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
                 </div>
-                    
-                    {stats.maintenanceVehicles > 0 && (
-                <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-400">
-                  <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-2" />
-                    Cảnh báo bảo trì
-                  </p>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
-                          {stats.maintenanceVehicles} xe cần bảo trì
-                  </p>
-                </div>
-                    )}
-                    
-                <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-400">
-                  <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 flex items-center">
-                        <Battery className="h-4 w-4 mr-2" />
-                        Tỷ lệ sử dụng
-                  </p>
-                  <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-                        {stats.totalVehicles > 0 
-                          ? ((stats.activeRentals / stats.totalVehicles) * 100).toFixed(1)
-                          : 0}% xe đang được thuê
-                  </p>
-                </div>
-
-                    {stats.availableVehicles > 0 && (
-                      <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-l-4 border-purple-400">
-                        <p className="text-sm font-semibold text-purple-800 dark:text-purple-200 flex items-center">
-                          <FaMotorcycle className="h-4 w-4 mr-2" />
-                          Xe sẵn sàng
-                        </p>
-                        <p className="text-xs text-purple-600 dark:text-purple-300 mt-1">
-                          {stats.availableVehicles} xe có thể cho thuê ngay
-                  </p>
-                </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          {/* Recent Activity */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.9 }}
-          >
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-green-600" />
-                  <span>Hoạt động gần đây</span>
-                  </div>
-                  {!loading && recentActivities.length > 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      {recentActivities.length} hoạt động
-                    </Badge>
+              ) : (
+                <>
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border-l-4 border-green-400">
+                <p className="text-sm font-semibold text-green-800 dark:text-green-200 flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Hệ thống hoạt động bình thường
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-300 mt-1">
+                      {stats.totalVehicles} xe trong hệ thống
+                </p>
+              </div>
+                  
+                  {stats.maintenanceVehicles > 0 && (
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border-l-4 border-yellow-400">
+                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-200 flex items-center">
+                  <AlertCircle className="h-4 w-4 mr-2" />
+                  Cảnh báo bảo trì
+                </p>
+                <p className="text-xs text-yellow-600 dark:text-yellow-300 mt-1">
+                        {stats.maintenanceVehicles} xe cần bảo trì
+                </p>
+              </div>
                   )}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {loading ? (
-                  <div className="animate-pulse space-y-2">
-                    {[...Array(5)].map((_, i) => (
-                      <div key={i} className="flex items-start gap-2 p-2">
-                        <div className="h-8 w-8 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-                        <div className="flex-1 space-y-1">
-                          <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
-                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : recentActivities.length === 0 ? (
-                  <div className="text-center py-6">
-                    <AlertCircle className="h-10 w-10 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Chưa có hoạt động</p>
-                  </div>
-                ) : (
-                  recentActivities.slice(0, 5).map((activity) => (
-                    <div 
-                      key={activity.id} 
-                      className="flex items-start gap-2 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
-                    >
-                      <div className={`p-1.5 rounded-md ${
-                        activity.type === 'rental' ? 'bg-blue-100 dark:bg-blue-900/20' :
-                        activity.type === 'maintenance' ? 'bg-orange-100 dark:bg-orange-900/20' :
-                        'bg-green-100 dark:bg-green-900/20'
-                      }`}>
-                        {activity.status === 'completed' ? (
-                          <CheckCircle className={`h-3 w-3 ${
-                            activity.type === 'rental' ? 'text-blue-600' :
-                            activity.type === 'maintenance' ? 'text-orange-600' :
-                            'text-green-600'
-                          }`} />
-                        ) : activity.status === 'in-progress' ? (
-                          <Clock className="h-3 w-3 text-yellow-600" />
-                        ) : (
-                          <AlertCircle className="h-3 w-3 text-red-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="font-medium text-xs text-gray-900 dark:text-white truncate">
-                          {activity.title}
-                      </p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                          {getTimeAgo(activity.time)}
-                      </p>
-                    </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                  
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-l-4 border-blue-400">
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-200 flex items-center">
+                      <Battery className="h-4 w-4 mr-2" />
+                      Tỷ lệ sử dụng
+                </p>
+                <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
+                      {stats.totalVehicles > 0 
+                        ? ((stats.activeRentals / stats.totalVehicles) * 100).toFixed(1)
+                        : 0}% xe đang được thuê
+                </p>
+              </div>
 
-        </div>
+                  {stats.availableVehicles > 0 && (
+                    <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg border-l-4 border-purple-400">
+                      <p className="text-sm font-semibold text-purple-800 dark:text-purple-200 flex items-center">
+                        <FaMotorcycle className="h-4 w-4 mr-2" />
+                        Xe sẵn sàng
+                      </p>
+                      <p className="text-xs text-purple-600 dark:text-purple-300 mt-1">
+                        {stats.availableVehicles} xe có thể cho thuê ngay
+                </p>
+              </div>
+                  )}
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
+
+      {/* Recent Activity Section - Full Width Table */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.9 }}
+      >
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5 text-green-600" />
+                <span>Hoạt động gần đây</span>
+              </div>
+              {!loading && recentActivities.length > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {recentActivities.length} hoạt động
+                </Badge>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="animate-pulse flex gap-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                    <div className="h-10 w-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4"></div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : recentActivities.length === 0 ? (
+              <div className="text-center py-12">
+                <AlertCircle className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500 dark:text-gray-400">Chưa có hoạt động</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-center py-3 px-3 text-sm font-semibold text-gray-700 dark:text-gray-300 w-12">STT</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Loại hoạt động</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Xe</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Biển số</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Khách hàng</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Trạm</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Trạng thái</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Số tiền</th>
+                      <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700 dark:text-gray-300">Thời gian</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentActivities.map((activity, index) => (
+                      <motion.tr
+                        key={activity.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                      >
+                        {/* STT */}
+                        <td className="py-3 px-3 text-center">
+                          <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-300">
+                            {index + 1}
+                          </span>
+                        </td>
+
+                        {/* Type - Loại hoạt động */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <div className={`p-2 rounded-lg ${
+                              activity.type === 'rental' ? 'bg-blue-100 dark:bg-blue-900/30' :
+                              activity.type === 'maintenance' ? 'bg-orange-100 dark:bg-orange-900/30' :
+                              'bg-green-100 dark:bg-green-900/30'
+                            }`}>
+                              {activity.type === 'rental' ? (
+                                <FaMotorcycle className="h-4 w-4 text-blue-600" />
+                              ) : activity.type === 'maintenance' ? (
+                                <AlertCircle className="h-4 w-4 text-orange-600" />
+                              ) : (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              )}
+                            </div>
+                            <Badge 
+                              variant="outline"
+                              className={`${
+                                activity.type === 'rental' ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800' :
+                                activity.type === 'maintenance' ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800' :
+                                'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800'
+                              }`}
+                            >
+                              {activity.type === 'rental' ? 'Thuê xe' :
+                               activity.type === 'maintenance' ? 'Bảo trì' :
+                               'Trả xe'}
+                            </Badge>
+                          </div>
+                        </td>
+
+                        {/* Vehicle Name */}
+                        <td className="py-3 px-4">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
+                            {activity.vehicleName || 'N/A'}
+                          </p>
+                        </td>
+
+                        {/* License Plate */}
+                        <td className="py-3 px-4">
+                          <Badge variant="outline" className="font-mono text-xs">
+                            {activity.licensePlate || 'N/A'}
+                          </Badge>
+                        </td>
+
+                        {/* Customer Name */}
+                        <td className="py-3 px-4">
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            {activity.customerName || '-'}
+                          </p>
+                        </td>
+
+                        {/* Station */}
+                        <td className="py-3 px-4">
+                          <p className="text-sm text-gray-700 dark:text-gray-300 max-w-xs truncate" title={activity.stationName}>
+                            {activity.stationName || '-'}
+                          </p>
+                        </td>
+
+                        {/* Status - Trạng thái */}
+                        <td className="py-3 px-4">
+                          <Badge 
+                            variant="outline" 
+                            className={`text-xs ${
+                              activity.status === 'completed' ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' :
+                              activity.status === 'in-progress' ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800' :
+                              activity.status === 'cancelled' ? 'bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400 border-gray-200 dark:border-gray-800' :
+                              'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
+                            }`}
+                          >
+                            {activity.status === 'completed' ? '✓ Hoàn thành' :
+                             activity.status === 'in-progress' ? '⏳ Đang xử lý' :
+                             activity.status === 'cancelled' ? '✗ Đã hủy' :
+                             '⏱ Chờ xử lý'}
+                          </Badge>
+                        </td>
+
+                        {/* Amount */}
+                        <td className="py-3 px-4 text-right">
+                          {activity.amount && activity.amount > 0 ? (
+                            <span className="text-sm font-semibold text-green-600 dark:text-green-400">
+                              {formatCurrency(activity.amount)}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400 dark:text-gray-600">-</span>
+                          )}
+                        </td>
+
+                        {/* Time */}
+                        <td className="py-3 px-4 text-right">
+                          <p className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            {getTimeAgo(activity.time)}
+                          </p>
+                          <p className="text-xs text-gray-400 dark:text-gray-600 whitespace-nowrap">
+                            {new Date(activity.time).toLocaleString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {/* Top Staff Performance Section - Below Hourly Chart */}
       <motion.div
