@@ -1,6 +1,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertTriangle, X } from 'lucide-react';
 import { Button } from './button';
+import { useEffect } from 'react';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
@@ -25,6 +26,19 @@ export function ConfirmationDialog({
   variant = 'warning',
   loading = false,
 }: ConfirmationDialogProps) {
+  
+  // Disable body scroll when dialog is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isOpen]);
   
   const variants = {
     danger: {
@@ -66,17 +80,18 @@ export function ConfirmationDialog({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[10001]"
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[10001]"
           />
 
           {/* Dialog */}
-          <div className="fixed inset-0 z-[10002] flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[10002] flex items-center justify-center p-0 m-0">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: "spring", duration: 0.3 }}
-              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-200 dark:border-gray-700"
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-gray-200 dark:border-gray-700 mx-4"
+              onClick={(e) => e.stopPropagation()}
             >
               {/* Icon & Title */}
               <div className={`${style.bg} p-6`}>

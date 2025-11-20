@@ -186,6 +186,11 @@ export function Fleet() {
   };
 
   const handleDeleteVehicle = useCallback((vehicle: VehicleUI) => {
+    // Chỉ cho phép xóa xe có status là 'draft'
+    if (vehicle.status !== 'draft') {
+      showToast.error('Chỉ có thể xóa xe có trạng thái "Chưa gán biển"');
+      return;
+    }
     setVehicleToDelete(vehicle);
     setShowDeleteConfirm(true);
   }, []);
@@ -480,11 +485,16 @@ export function Fleet() {
               e.stopPropagation();
               handleDeleteVehicle(row);
             }}
-            className="group h-9 w-9 p-0 bg-gradient-to-br from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-red-600 hover:text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-400 border-2 border-red-300 hover:border-red-500 shadow-sm hover:shadow-md transition-all duration-200 hover:scale-110"
-            title="Xóa xe"
+            disabled={row.status !== 'draft'}
+            className={`group h-9 w-9 p-0 border-2 shadow-sm transition-all duration-200 ${
+              row.status === 'draft'
+                ? 'bg-gradient-to-br from-red-50 to-rose-50 hover:from-red-100 hover:to-rose-100 text-red-600 hover:text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-400 border-red-300 hover:border-red-500 hover:shadow-md hover:scale-110 cursor-pointer'
+                : 'bg-gray-50 text-gray-400 border-gray-200 dark:bg-gray-800 dark:text-gray-600 dark:border-gray-700 opacity-50 cursor-not-allowed'
+            }`}
+            title={row.status === 'draft' ? 'Xóa xe' : 'Chỉ có thể xóa xe chưa gán biển'}
             aria-label="Xóa xe"
           >
-            <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform duration-200" />
+            <Trash2 className={`h-4 w-4 transition-transform duration-200 ${row.status === 'draft' ? 'group-hover:scale-110' : ''}`} />
           </Button>
         </div>
       )

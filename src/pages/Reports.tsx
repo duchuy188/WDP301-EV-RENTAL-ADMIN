@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
+import { FaMotorcycle } from 'react-icons/fa';
 import { 
   AlertTriangle, 
   Eye, 
@@ -19,7 +20,7 @@ import { Button } from '../components/ui/button';
 import { ProfessionalPagination } from '../components/ui/professional-pagination';
 import { AnimatedStatCard } from '../components/ui/animated-stat-card';
 import ReportService from '../components/service/reportService';
-import { Report, GetReportsParams, IssueType, ReportStatus, getIssueTypeLabel, getReportStatusLabel, getReportStatusColor } from '../components/service/type/reportTypes';
+import { Report, GetReportsParams, IssueType, ReportStatus, getIssueTypeLabel, getReportStatusLabel, getReportStatusColor, getIssueTypeColor } from '../components/service/type/reportTypes';
 import { showToast } from '../lib/toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ReportDetailModal } from '../components/ReportDetailModal';
@@ -225,14 +226,16 @@ export function ReportsPage() {
       header: 'Trạng thái',
       sortable: true,
       render: (_value: any, report: Report) => (
-        <Badge className={getReportStatusColor(report.status)}>
-          {report.status === 'pending' ? (
-            <Clock size={14} className="mr-1" />
-          ) : (
-            <CheckCircle size={14} className="mr-1" />
-          )}
-          {getReportStatusLabel(report.status)}
-        </Badge>
+        <div className="flex justify-center">
+          <Badge className={`${getReportStatusColor(report.status)} min-w-[130px] justify-center`}>
+            {report.status === 'pending' ? (
+              <Clock size={14} className="mr-1" />
+            ) : (
+              <CheckCircle size={14} className="mr-1" />
+            )}
+            {getReportStatusLabel(report.status)}
+          </Badge>
+        </div>
       )
     },
     {
@@ -240,9 +243,11 @@ export function ReportsPage() {
       header: 'Loại sự cố',
       sortable: true,
       render: (_value: any, report: Report) => (
-        <Badge className="bg-purple-50 text-purple-600">
-          {getIssueTypeLabel(report.issue_type)}
-        </Badge>
+        <div className="flex justify-center">
+          <Badge className={`${getIssueTypeColor(report.issue_type)} min-w-[140px] justify-center`}>
+            {getIssueTypeLabel(report.issue_type)}
+          </Badge>
+        </div>
       )
     },
     {
@@ -250,7 +255,7 @@ export function ReportsPage() {
       header: 'Xe',
       render: (_value: any, report: Report) => (
         <div className="flex items-center gap-2">
-          <Car size={16} className="text-gray-500 dark:text-gray-400" />
+          <FaMotorcycle className="text-gray-500 dark:text-gray-400" size={16} />
           <div>
             <div className="text-sm font-medium text-gray-900 dark:text-white">
               {report.vehicle_id.name}

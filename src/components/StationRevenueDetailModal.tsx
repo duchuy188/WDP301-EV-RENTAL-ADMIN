@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, TrendingUp, Clock, Users, Car, DollarSign } from 'lucide-react';
+import { X, TrendingUp, Clock, Users, Bike, DollarSign } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
@@ -127,7 +127,7 @@ export function StationRevenueDetailModal({
                 {/* Revenue by Vehicle Type */}
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center">
-                    <Car className="h-5 w-5 mr-2 text-blue-600" />
+                    <Bike className="h-5 w-5 mr-2 text-blue-600" />
                     Doanh thu theo loại xe
                   </h3>
                   {detailData.revenueByVehicleType.length === 0 ? (

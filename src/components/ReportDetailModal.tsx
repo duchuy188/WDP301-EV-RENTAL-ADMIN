@@ -11,14 +11,14 @@ import {
   Clock,
   Phone,
   Mail,
-  Car,
+  Bike,
   FileText,
   Building,
   ClipboardList
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
-import { Report, getIssueTypeLabel, getReportStatusLabel, getReportStatusColor } from './service/type/reportTypes';
+import { Report, getIssueTypeLabel, getReportStatusLabel, getReportStatusColor, getIssueTypeColor } from './service/type/reportTypes';
 import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
 
 interface ReportDetailModalProps {
@@ -31,6 +31,48 @@ export function ReportDetailModal({ report: initialReport, isOpen, onClose }: Re
   useDisableBodyScroll(isOpen);
   const [report, setReport] = useState<Report | null>(initialReport);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [staffInfo, setStaffInfo] = useState<{fullname: string; email: string; phone: string; avatar?: string} | null>(null);
+  const [loadingStaff, setLoadingStaff] = useState(false);
+
+  // Fetch staff info when report has resolved_by
+  useEffect(() => {
+    const fetchStaffInfo = async () => {
+      if (!initialReport?.resolved_by?._id) {
+        console.log('No resolved_by._id found');
+        setStaffInfo(null);
+        return;
+      }
+
+      try {
+        setLoadingStaff(true);
+        const { UserService } = await import('./service/userService');
+        const response = await UserService.getUserById(initialReport.resolved_by._id);
+        
+        // Handle response structure - API returns {user: {...}}
+        const staffData = response.user || response.data?.user || response.data || response;
+        
+        if (staffData) {
+          setStaffInfo({
+            fullname: staffData.fullname,
+            email: staffData.email,
+            phone: staffData.phone,
+            avatar: staffData.avatar
+          });
+        } else {
+          setStaffInfo(null);
+        }
+      } catch (error) {
+        console.error('Error fetching staff info:', error);
+        setStaffInfo(null);
+      } finally {
+        setLoadingStaff(false);
+      }
+    };
+
+    if (isOpen) {
+      fetchStaffInfo();
+    }
+  }, [initialReport?.resolved_by?._id, isOpen]);
 
   // Update local report when prop changes
   useEffect(() => {
@@ -75,9 +117,6 @@ export function ReportDetailModal({ report: initialReport, isOpen, onClose }: Re
                         <h2 className="text-2xl font-bold text-white">
                           Chi tiết báo cáo
                         </h2>
-                        <p className="text-red-100 text-sm mt-1">
-                          Mã: {report.code}
-                        </p>
                       </div>
                     </div>
                     <Button
@@ -105,11 +144,7 @@ export function ReportDetailModal({ report: initialReport, isOpen, onClose }: Re
                         )}
                         {getReportStatusLabel(report.status)}
                       </Badge>
-                      <Badge className={`${
-                        report.issue_type === 'accident' 
-                          ? 'bg-red-100 text-red-700 border-2 border-red-300' 
-                          : 'bg-purple-100 text-purple-700 border-2 border-purple-300'
-                      } font-semibold text-base px-4 py-2`}>
+                      <Badge className={`${getIssueTypeColor(report.issue_type)} font-semibold text-base px-4 py-2`}>
                         {getIssueTypeLabel(report.issue_type)}
                       </Badge>
                       <div className="flex-1" />
@@ -144,7 +179,7 @@ export function ReportDetailModal({ report: initialReport, isOpen, onClose }: Re
                       {report.vehicle_id && (
                         <div className="p-4 bg-green-50 rounded-xl">
                           <div className="flex items-center gap-2 text-green-600 font-semibold mb-3">
-                            <Car size={18} />
+                            <Bike size={18} />
                             Thông tin xe
                           </div>
                           <div className="space-y-2 text-sm">
@@ -190,12 +225,6 @@ export function ReportDetailModal({ report: initialReport, isOpen, onClose }: Re
                               <span className="text-gray-600">Mã thuê: </span>
                               <span className="font-mono font-medium text-gray-900">{report.rental_id.code}</span>
                             </div>
-                            {report.booking_id && (
-                              <div>
-                                <span className="text-gray-600">Mã đặt: </span>
-                                <span className="font-mono font-medium text-gray-900">{report.booking_id}</span>
-                              </div>
-                            )}
                           </div>
                         </div>
                       )}
@@ -244,18 +273,66 @@ export function ReportDetailModal({ report: initialReport, isOpen, onClose }: Re
                     {/* Resolution Information */}
                     {report.status === 'resolved' && report.resolution_notes && (
                       <div className="p-4 bg-green-50 rounded-xl border border-green-200">
-                        <div className="flex items-center gap-2 text-green-700 font-semibold mb-2">
+                        <div className="flex items-center gap-2 text-green-700 font-semibold mb-3">
                           <CheckCircle size={18} />
                           Giải quyết
                         </div>
                         <p className="text-gray-700 mb-3 whitespace-pre-wrap leading-relaxed">
                           {report.resolution_notes}
                         </p>
-                        {report.resolved_at && (
-                          <div className="text-sm text-gray-600">
-                            Đã giải quyết lúc: {report.resolved_at}
-                          </div>
-                        )}
+                        <div className="space-y-2">
+                          {report.resolved_by && (
+                            <div className="flex items-start gap-3 p-3 bg-white rounded-lg">
+                              {loadingStaff ? (
+                                <div className="flex items-center gap-2 text-gray-500">
+                                  <div className="animate-spin h-5 w-5 border-2 border-gray-300 border-t-green-500 rounded-full"></div>
+                                  <span className="text-sm">Đang tải thông tin nhân viên...</span>
+                                </div>
+                              ) : staffInfo ? (
+                                <>
+                                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
+                                    {staffInfo.avatar ? (
+                                      <img
+                                        src={staffInfo.avatar}
+                                        alt={staffInfo.fullname}
+                                        className="h-full w-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display = 'none';
+                                          e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                        }}
+                                      />
+                                    ) : null}
+                                    <User className={`h-5 w-5 text-white ${staffInfo.avatar ? 'hidden' : ''}`} />
+                                  </div>
+                                  <div className="flex-1">
+                                    <div className="text-sm font-semibold text-gray-900">
+                                      Người giải quyết: {staffInfo.fullname}
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Mail size={12} className="text-gray-500" />
+                                      <span className="text-xs text-gray-600">{staffInfo.email}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Phone size={12} className="text-gray-500" />
+                                      <span className="text-xs text-gray-600">{staffInfo.phone}</span>
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <div className="flex items-center gap-2 text-gray-500">
+                                  <User className="h-5 w-5" />
+                                  <span className="text-sm">Không tìm thấy thông tin nhân viên</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {report.resolved_at && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Calendar size={14} />
+                              Đã giải quyết lúc: {report.resolved_at}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 

@@ -36,6 +36,9 @@ export interface Report {
   resolved_at: string | null;
   resolved_by: {
     _id: string;
+    fullname?: string;
+    email?: string;
+    phone?: string;
   } | null;
   is_active: boolean;
   createdAt: string;
@@ -140,4 +143,15 @@ export const getReportStatusColor = (status: ReportStatus): string => {
     resolved: 'text-green-600 bg-green-50'
   };
   return colors[status] || 'text-gray-600 bg-gray-50';
+};
+
+// Helper function to get issue type color
+export const getIssueTypeColor = (type: IssueType): string => {
+  const colors: Record<IssueType, string> = {
+    accident: 'bg-red-100 text-red-700 border-2 border-red-300',
+    battery_issue: 'bg-yellow-100 text-yellow-700 border-2 border-yellow-300',
+    vehicle_breakdown: 'bg-orange-100 text-orange-700 border-2 border-orange-300',
+    other: 'bg-purple-100 text-purple-700 border-2 border-purple-300'
+  };
+  return colors[type] || 'bg-gray-100 text-gray-700 border-2 border-gray-300';
 };

@@ -89,23 +89,41 @@ export interface StationForecastResponse {
 }
 
 // Vehicle Recommendations
+export interface VehicleTypeDetail {
+  type: string;
+  total: number;
+  rented: number;
+  reserved: number;
+  inUse: number;
+  utilization: number;
+}
+
 export interface VehicleRecommendation {
   stationId: string;
   stationName: string;
   currentVehicles: number;
-  predictedDemand: number;
+  rentedVehicles: number;
+  reservedVehicles: number;
+  inUseVehicles: number;
+  utilization: number;
   vehiclesNeeded: number;
-  optimalCapacity: number;
-  priority: Priority;
+  priority: string; // 'cao' | 'trung bình' | 'thấp'
   estimatedROI: number;
-  timing: Timing;
+  timing: string;
+  recommendations: string[];
+  vehicleTypes: VehicleTypeDetail[];
+  // Legacy fields for backward compatibility
+  predictedDemand?: number;
+  optimalCapacity?: number;
 }
 
 export interface VehicleRecommendationsData {
   totalStations: number;
   totalVehiclesNeeded: number;
   estimatedInvestment: number;
+  overallUtilization: number;
   recommendations: VehicleRecommendation[];
+  generalRecommendations: string[];
   generatedAt: string;
 }
 

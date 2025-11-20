@@ -70,8 +70,13 @@ export function AIDetailedAnalytics() {
       setLoading(true);
       const response = await AIService.getVehicleRecommendations();
       setVehicleData(response.data);
-      console.log('🚗 Vehicle Recommendations:', response.data);
+      console.log('🚗 Vehicle Recommendations - Full Response:', JSON.stringify(response.data, null, 2));
+      console.log('🚗 Number of recommendations:', response.data.recommendations?.length || 0);
+      if (response.data.recommendations && response.data.recommendations.length > 0) {
+        console.log('🚗 First recommendation sample:', response.data.recommendations[0]);
+      }
     } catch (error: any) {
+      console.error('❌ Error fetching vehicle recommendations:', error);
       showToast.error(error.message || 'Không thể tải gợi ý xe');
     } finally {
       setLoading(false);
@@ -109,16 +114,32 @@ export function AIDetailedAnalytics() {
   };
 
   const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return <Badge variant="destructive">Ưu tiên cao</Badge>;
-      case 'medium':
-        return <Badge variant="warning">Ưu tiên TB</Badge>;
-      case 'low':
-        return <Badge variant="default">Ưu tiên thấp</Badge>;
-      default:
-        return null;
+    const lowerPriority = priority.toLowerCase();
+    if (lowerPriority.includes('cao') || lowerPriority === 'high') {
+      return <Badge variant="destructive">Ưu tiên cao</Badge>;
+    } else if (lowerPriority.includes('trung') || lowerPriority === 'medium') {
+      return <Badge variant="warning">Ưu tiên TB</Badge>;
+    } else if (lowerPriority.includes('thấp') || lowerPriority === 'low') {
+      return <Badge variant="default">Ưu tiên thấp</Badge>;
     }
+    return <Badge variant="default">{priority}</Badge>;
+  };
+
+  const getUtilizationColor = (utilization: number) => {
+    if (utilization >= 80) return 'text-red-600 dark:text-red-400';
+    if (utilization >= 60) return 'text-orange-600 dark:text-orange-400';
+    if (utilization >= 40) return 'text-yellow-600 dark:text-yellow-400';
+    if (utilization >= 20) return 'text-blue-600 dark:text-blue-400';
+    return 'text-gray-600 dark:text-gray-400';
+  };
+
+  const getVehicleTypeLabel = (type: string) => {
+    const labels: Record<string, string> = {
+      scooter: 'Xe máy điện',
+      motorcycle: 'Mô tô điện',
+      electric_bike: 'Xe đạp điện'
+    };
+    return labels[type] || type;
   };
 
   const getTimingText = (timing: string) => {
@@ -455,8 +476,48 @@ export function AIDetailedAnalytics() {
               </Card>
             ) : (
               <>
+                {/* General Recommendations - System Overview */}
+                {vehicleData.generalRecommendations && vehicleData.generalRecommendations.length > 0 && (
+                  <Card className="border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Brain className="w-5 h-5 text-blue-600" />
+                        Phân tích tổng quan hệ thống
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {vehicleData.generalRecommendations.map((rec, index) => {
+                          const isWarning = rec.includes('CẢNH BÁO') || rec.includes('❌');
+                          const isNew = rec.includes('🏗️') || rec.includes('mới');
+                          const isOpportunity = rec.includes('💡') || rec.includes('cơ hội');
+                          
+                          return (
+                            <div
+                              key={index}
+                              className={`flex items-start gap-2 p-3 rounded-lg border-l-2 ${
+                                isWarning 
+                                  ? 'bg-red-50 dark:bg-red-900/20 border-red-500' 
+                                  : isNew
+                                  ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500'
+                                  : isOpportunity
+                                  ? 'bg-green-50 dark:bg-green-900/20 border-green-500'
+                                  : 'bg-white dark:bg-gray-800/50 border-blue-500'
+                              }`}
+                            >
+                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                {rec}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Overview Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="border-l-4 border-l-blue-500">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm text-gray-600 dark:text-gray-400">
@@ -470,33 +531,26 @@ export function AIDetailedAnalytics() {
                     </CardContent>
                   </Card>
 
-                  <Card className="border-l-4 border-l-purple-500">
+                  <Card className={`border-l-4 ${
+                    vehicleData.overallUtilization >= 80 ? 'border-l-red-500' :
+                    vehicleData.overallUtilization >= 60 ? 'border-l-orange-500' :
+                    vehicleData.overallUtilization >= 40 ? 'border-l-yellow-500' :
+                    vehicleData.overallUtilization >= 20 ? 'border-l-blue-500' :
+                    'border-l-gray-500'
+                  }`}>
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm text-gray-600 dark:text-gray-400">
-                        Tổng xe cần thêm
+                        Tỷ lệ sử dụng TB
                       </CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="text-3xl font-bold text-gray-900 dark:text-white">
-                        {vehicleData.totalVehiclesNeeded}
+                      <p className={`text-3xl font-bold ${getUtilizationColor(vehicleData.overallUtilization)}`}>
+                        {vehicleData.overallUtilization}%
                       </p>
                     </CardContent>
                   </Card>
 
-                  <Card className="border-l-4 border-l-green-500">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-sm text-gray-600 dark:text-gray-400">
-                        Đầu tư ước tính
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
-                        {((vehicleData.estimatedInvestment || 0) / 1000000).toFixed(1)}M VNĐ
-                      </p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="border-l-4 border-l-orange-500">
+                  <Card className="border-l-4 border-l-indigo-500">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm text-gray-600 dark:text-gray-400 flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
@@ -512,67 +566,171 @@ export function AIDetailedAnalytics() {
                 </div>
 
                 {/* Recommendations List */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Danh sách gợi ý theo trạm</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {vehicleData.recommendations.map((rec, index) => (
-                        <div
-                          key={index}
-                          className="p-5 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-800 dark:to-blue-900/20 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-all"
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-2">
-                                <h4 className="text-lg font-bold text-gray-900 dark:text-white">
-                                  {rec.stationName}
-                                </h4>
-                                {getPriorityBadge(rec.priority)}
-                              </div>
-                              <p className="text-xs text-gray-500 dark:text-gray-400">
-                                Station ID: {rec.stationId}
-                              </p>
+                <div className="space-y-4">
+                  {vehicleData.recommendations.map((rec, index) => (
+                    <Card 
+                      key={index}
+                      className="overflow-hidden hover:shadow-xl transition-all duration-300 border-l-4"
+                      style={{
+                        borderLeftColor: rec.utilization >= 80 ? '#dc2626' : 
+                                       rec.utilization >= 60 ? '#ea580c' : 
+                                       rec.utilization >= 40 ? '#ca8a04' : 
+                                       rec.utilization >= 20 ? '#2563eb' : '#6b7280'
+                      }}
+                    >
+                      <CardContent className="p-5">
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <h4 className="text-lg font-bold text-gray-900 dark:text-white truncate">
+                                {rec.stationName}
+                              </h4>
+                              {getPriorityBadge(rec.priority)}
                             </div>
-                            <div className="text-right">
-                              <p className="text-sm text-gray-600 dark:text-gray-400">ROI dự kiến</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">
+                              {rec.stationId}
+                            </p>
+                          </div>
+                          <div className="flex gap-3 ml-4">
+                            <div className="text-right px-3 py-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">ROI</p>
                               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                                 {rec.estimatedROI}%
                               </p>
                             </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Xe hiện tại</p>
-                              <p className="text-xl font-bold text-gray-900 dark:text-white">{rec.currentVehicles}</p>
+                            <div className="text-right px-3 py-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 mb-0.5">Sử dụng</p>
+                              <p className={`text-2xl font-bold ${getUtilizationColor(rec.utilization)}`}>
+                                {rec.utilization.toFixed(1)}%
+                              </p>
                             </div>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Nhu cầu dự báo</p>
-                              <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{rec.predictedDemand}</p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Cần bổ sung</p>
-                              <p className="text-xl font-bold text-orange-600 dark:text-orange-400">{rec.vehiclesNeeded}</p>
-                            </div>
-                            <div className="bg-white dark:bg-gray-800 p-3 rounded-lg">
-                              <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Công suất tối ưu</p>
-                              <p className="text-xl font-bold text-green-600 dark:text-green-400">{rec.optimalCapacity}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                            <Clock className="w-4 h-4 text-purple-600" />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">
-                              Thời điểm thực hiện: <strong>{getTimingText(rec.timing)}</strong>
-                            </span>
                           </div>
                         </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+
+                        {/* Stats Grid - Compact */}
+                        <div className="grid grid-cols-5 gap-2 mb-4">
+                          <div className="text-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Tổng xe</p>
+                            <p className="text-xl font-bold text-gray-900 dark:text-white">
+                              {rec.currentVehicles}
+                            </p>
+                          </div>
+                          <div className="text-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mb-1">Đang thuê</p>
+                            <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                              {rec.rentedVehicles}
+                            </p>
+                          </div>
+                          <div className="text-center p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                            <p className="text-xs text-purple-600 dark:text-purple-400 mb-1">Đã đặt</p>
+                            <p className="text-xl font-bold text-purple-600 dark:text-purple-400">
+                              {rec.reservedVehicles}
+                            </p>
+                          </div>
+                          <div className="text-center p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                            <p className="text-xs text-green-600 dark:text-green-400 mb-1">Đang dùng</p>
+                            <p className="text-xl font-bold text-green-600 dark:text-green-400">
+                              {rec.inUseVehicles}
+                            </p>
+                          </div>
+                          <div className="text-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg">
+                            <p className="text-xs text-orange-600 dark:text-orange-400 mb-1">Cần thêm</p>
+                            <p className="text-xl font-bold text-orange-600 dark:text-orange-400">
+                              {rec.vehiclesNeeded}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Vehicle Types Breakdown - Compact */}
+                        {rec.vehicleTypes && rec.vehicleTypes.length > 0 && (
+                          <div className="mb-4">
+                            <div className="flex items-center gap-2 mb-2">
+                              <FaMotorcycle className="w-3.5 h-3.5 text-gray-600 dark:text-gray-400" />
+                              <h5 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                                Chi tiết theo loại xe
+                              </h5>
+                            </div>
+                            <div className="grid grid-cols-1 gap-2">
+                              {rec.vehicleTypes.map((vType, vIdx) => (
+                                <div
+                                  key={vIdx}
+                                  className="bg-white dark:bg-gray-800/50 p-3 rounded-lg border border-gray-200 dark:border-gray-700"
+                                >
+                                  <div className="flex items-center justify-between mb-2">
+                                    <span className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                      {getVehicleTypeLabel(vType.type)}
+                                    </span>
+                                    <Badge 
+                                      variant="outline" 
+                                      className={`text-xs font-semibold ${getUtilizationColor(vType.utilization)}`}
+                                    >
+                                      {vType.utilization.toFixed(1)}%
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-gray-500 dark:text-gray-400">Tổng:</span>
+                                      <span className="font-bold text-gray-900 dark:text-white">{vType.total}</span>
+                                    </div>
+                                    <div className="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-gray-500 dark:text-gray-400">Thuê:</span>
+                                      <span className="font-bold text-blue-600 dark:text-blue-400">{vType.rented}</span>
+                                    </div>
+                                    <div className="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-gray-500 dark:text-gray-400">Đặt:</span>
+                                      <span className="font-bold text-purple-600 dark:text-purple-400">{vType.reserved}</span>
+                                    </div>
+                                    <div className="w-px h-3 bg-gray-300 dark:bg-gray-600"></div>
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-gray-500 dark:text-gray-400">Dùng:</span>
+                                      <span className="font-bold text-green-600 dark:text-green-400">{vType.inUse}</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Recommendations - Compact */}
+                        {rec.recommendations && rec.recommendations.length > 0 && (
+                          <div className="mb-3">
+                            <div className="flex items-center gap-2 mb-2">
+                              <Sparkles className="w-3.5 h-3.5 text-yellow-600" />
+                              <h5 className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">
+                                Gợi ý từ AI
+                              </h5>
+                            </div>
+                            <div className="space-y-1.5">
+                              {rec.recommendations.map((recommendation, recIdx) => (
+                                <div
+                                  key={recIdx}
+                                  className="flex items-start gap-2 p-2.5 bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/10 dark:to-amber-900/10 rounded-md border-l-2 border-yellow-500"
+                                >
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                                    {recommendation}
+                                  </p>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Footer - Compact */}
+                        <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <Clock className="w-3.5 h-3.5 text-gray-500" />
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
+                            Thời điểm: <span className="font-semibold text-gray-900 dark:text-white">{rec.timing}</span>
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
               </>
             )}
           </motion.div>

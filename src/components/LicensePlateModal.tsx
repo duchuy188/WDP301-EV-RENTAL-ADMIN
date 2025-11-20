@@ -409,12 +409,6 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         showToast.info('Không có dữ liệu nào được import. Vui lòng kiểm tra file Excel.');
       }
     } catch (error: any) {
-      // Dismiss loading toast if it exists
-      if (toastId) {
-        showToast.dismiss(toastId);
-        toastId = null;
-      }
-      
       console.error('❌ Error importing license plates:', error);
       console.error('❌ Error response:', error.response);
       console.error('❌ Error details:', {
@@ -425,23 +419,45 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
         fullError: error
       });
       
+      // Dismiss loading toast if it exists
+      if (toastId) {
+        try {
+          showToast.dismiss(toastId);
+        } catch (e) {
+          console.error('Error dismissing toast:', e);
+        }
+        toastId = null;
+      }
+      
       let errorMessage = 'Không thể import biển số';
       let errorDetails = '';
       
-      // Extract detailed error message
+      // Extract detailed error message with better handling
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.response?.data?.error) {
         errorMessage = error.response.data.error;
+      } else if (error.response?.data) {
+        // Try to get any error text from response data
+        errorMessage = typeof error.response.data === 'string' 
+          ? error.response.data 
+          : JSON.stringify(error.response.data).substring(0, 100);
       } else if (error.message) {
         errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
       }
       
       // Add status code to error message
       if (error.response?.status) {
-        errorDetails = `(HTTP ${error.response.status})`;
-        errorMessage = `${errorMessage} ${errorDetails}`;
+        errorDetails = ` (HTTP ${error.response.status})`;
+        errorMessage = `${errorMessage}${errorDetails}`;
       }
+      
+      // Show error toast with a small delay to ensure it displays
+      setTimeout(() => {
+        showToast.error(errorMessage);
+      }, 100);
       
       setImportResult({
         success: 0,
@@ -465,8 +481,6 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
           block: 'nearest' 
         });
       }, 100);
-      
-      showToast.error(`Lỗi import: ${errorMessage}`);
     } finally {
       // Make sure to dismiss toast in finally block as well
       if (toastId) {
