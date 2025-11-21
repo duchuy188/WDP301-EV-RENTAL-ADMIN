@@ -151,6 +151,9 @@ class MaintenanceService {
       const formData = new FormData();
       
       formData.append('status', payload.status);
+      if (payload.battery_level !== undefined) {
+        formData.append('battery_level', payload.battery_level.toString());
+      }
       if (payload.notes) formData.append('notes', payload.notes);
       
       // Add images if exists

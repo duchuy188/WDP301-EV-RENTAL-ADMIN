@@ -22,6 +22,7 @@ import { MaintenanceReport, MaintenanceStatus } from './service/type/maintenance
 import MaintenanceService from './service/maintenanceService';
 import { showToast } from '../lib/toast';
 import useDisableBodyScroll from '../hooks/useDisableBodyScroll';
+import { UpdateMaintenanceModal } from './UpdateMaintenanceModal';
 
 interface MaintenanceDetailModalProps {
   report: MaintenanceReport | null;
@@ -40,18 +41,13 @@ export function MaintenanceDetailModal({
   const [report, setReport] = useState<MaintenanceReport | null>(initialReport);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showUpdateForm, setShowUpdateForm] = useState(false);
-  const [updateNotes, setUpdateNotes] = useState('');
-  const [updateStatus, setUpdateStatus] = useState<MaintenanceStatus>('fixed');
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
 
   // Update local report when prop changes
   useEffect(() => {
     setReport(initialReport);
     setShowDeleteConfirm(false);
-    setShowUpdateForm(false);
-    setUpdateNotes(initialReport?.notes || '');
   }, [initialReport, isOpen]);
 
   // Fetch fresh report data
@@ -94,33 +90,9 @@ export function MaintenanceDetailModal({
     }
   };
 
-  const handleUpdate = async () => {
-    if (!report?._id) return;
-
-    try {
-      setIsUpdating(true);
-      const response = await MaintenanceService.updateMaintenance(report._id, {
-        status: updateStatus,
-        notes: updateNotes.trim() || undefined
-      });
-      
-      setReport(response.data);
-      setShowUpdateForm(false);
-      
-      // Close modal first, then show toast
-      onClose();
-      
-      // Small delay to ensure modal closes before showing toast
-      setTimeout(() => {
-        showToast.success('Đã cập nhật báo cáo thành công');
-      }, 100);
-      
-      onUpdate();
-    } catch (error: any) {
-      showToast.error(error.message || 'Không thể cập nhật báo cáo');
-    } finally {
-      setIsUpdating(false);
-    }
+  const handleUpdateSuccess = () => {
+    onClose();
+    onUpdate();
   };
 
   if (!report) return null;
@@ -405,89 +377,118 @@ export function MaintenanceDetailModal({
                     </div>
                   )}
 
-                  {/* Images */}
+                  {/* Images - Split into Before/After based on maintenance status */}
                   {report.images && report.images.length > 0 && (
-                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                          <ImageIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                          Hình ảnh đính kèm
-                          <span className="text-sm font-normal text-gray-500">({report.images.length})</span>
-                        </h3>
-                      </div>
-                      <div className="p-6">
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {report.images.map((image, index) => (
-                            <a
-                              key={index}
-                              href={image}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="relative aspect-square rounded-xl overflow-hidden group shadow-md hover:shadow-xl transition-all"
-                            >
-                              <img
-                                src={image}
-                                alt={`Ảnh ${index + 1}`}
-                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
-                                <span className="text-white text-sm font-medium">Xem ảnh</span>
-                              </div>
-                            </a>
-                          ))}
+                    <div className="space-y-4">
+                      {/* Images Before Maintenance (shown for all reports) */}
+                      {report.status === 'reported' ? (
+                        // All images are "before" if status is still "reported"
+                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-orange-50 dark:bg-orange-900/20">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                              <ImageIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                              Hình ảnh trước bảo trì
+                              <span className="text-sm font-normal text-gray-500">({report.images.length})</span>
+                            </h3>
+                          </div>
+                          <div className="p-6">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                              {report.images.map((image, index) => (
+                                <a
+                                  key={index}
+                                  href={image}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="relative aspect-square rounded-xl overflow-hidden group shadow-md hover:shadow-xl transition-all"
+                                >
+                                  <img
+                                    src={image}
+                                    alt={`Ảnh trước bảo trì ${index + 1}`}
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                  />
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
+                                    <span className="text-white text-sm font-medium">Xem ảnh</span>
+                                  </div>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        // When status is "fixed", split images (assume first image is before, rest are after if multiple)
+                        <>
+                          {/* Before Images - Show first image as "before" */}
+                          {report.images.length >= 1 && (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-orange-50 dark:bg-orange-900/20">
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                  <ImageIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                                  Hình ảnh trước bảo trì
+                                  <span className="text-sm font-normal text-gray-500">(1)</span>
+                                </h3>
+                              </div>
+                              <div className="p-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                  <a
+                                    href={report.images[0]}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="relative aspect-square rounded-xl overflow-hidden group shadow-md hover:shadow-xl transition-all"
+                                  >
+                                    <img
+                                      src={report.images[0]}
+                                      alt="Ảnh trước bảo trì"
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                    />
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
+                                      <span className="text-white text-sm font-medium">Xem ảnh</span>
+                                    </div>
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* After Images - Show remaining images as "after" */}
+                          {report.images.length > 1 && (
+                            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                              <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-green-50 dark:bg-green-900/20">
+                                <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                  <ImageIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                                  Hình ảnh sau bảo trì
+                                  <span className="text-sm font-normal text-gray-500">({report.images.length - 1})</span>
+                                </h3>
+                              </div>
+                              <div className="p-6">
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                  {report.images.slice(1).map((image, index) => (
+                                    <a
+                                      key={index + 1}
+                                      href={image}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="relative aspect-square rounded-xl overflow-hidden group shadow-md hover:shadow-xl transition-all"
+                                    >
+                                      <img
+                                        src={image}
+                                        alt={`Ảnh sau bảo trì ${index + 1}`}
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                                      />
+                                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
+                                        <span className="text-white text-sm font-medium">Xem ảnh</span>
+                                      </div>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   )}
 
-                  {/* Update Form */}
-                  {showUpdateForm && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl shadow-sm border-2 border-blue-200 dark:border-blue-800 overflow-hidden"
-                    >
-                      <div className="px-6 py-4 bg-blue-100 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800">
-                        <h3 className="text-base font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                          <Edit className="w-5 h-5" />
-                          Cập nhật trạng thái
-                        </h3>
-                      </div>
-                      <div className="p-6">
-                        <div className="space-y-4">
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                              Trạng thái
-                            </label>
-                            <select
-                              value={updateStatus}
-                              onChange={(e) => setUpdateStatus(e.target.value as MaintenanceStatus)}
-                              className="w-full px-4 py-3 rounded-xl border-2 border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
-                              aria-label="Chọn trạng thái báo cáo"
-                            >
-                              <option value="reported">Đã báo cáo</option>
-                              <option value="fixed">Đã sửa</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
-                              Ghi chú
-                            </label>
-                            <textarea
-                              value={updateNotes}
-                              onChange={(e) => setUpdateNotes(e.target.value)}
-                              placeholder="Nhập ghi chú về bảo trì (tùy chọn)..."
-                              className="w-full px-4 py-3 rounded-xl border-2 border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none transition-all"
-                              rows={4}
-                            />
-                          </div>
-                          <p className="text-xs text-blue-600 dark:text-blue-400">
-                            * Thông tin cập nhật sẽ được lưu vào hệ thống
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+
 
                   {/* Metadata */}
                   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
@@ -586,60 +587,35 @@ export function MaintenanceDetailModal({
                     )}
                   </div>
                   <div className="flex gap-3">
-                    {!showUpdateForm && (
+                    <Button
+                      variant="outline"
+                      onClick={onClose}
+                      className="px-6 py-2.5 h-11 border-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Đóng
+                    </Button>
+                    {report.status === 'reported' && (
                       <Button
-                        variant="outline"
-                        onClick={onClose}
-                        className="px-6 py-2.5 h-11 border-2 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        onClick={() => setShowUpdateModal(true)}
+                        className="px-8 py-2.5 h-11 min-w-[180px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                       >
-                        Đóng
+                        <CheckCircle className="h-5 w-5 mr-2" />
+                        Cập nhật bảo trì
                       </Button>
-                    )}
-                    {!showUpdateForm && (
-                      <Button
-                        onClick={() => setShowUpdateForm(true)}
-                        className="px-8 py-2.5 h-11 min-w-[180px] bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
-                      >
-                        <Edit className="h-5 w-5 mr-2" />
-                        Cập nhật trạng thái
-                      </Button>
-                    )}
-                    {showUpdateForm && (
-                      <>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            setShowUpdateForm(false);
-                            setUpdateNotes('');
-                          }}
-                          className="px-6 py-2.5 h-11 border-2 hover:bg-gray-100 dark:hover:bg-gray-700"
-                        >
-                          Hủy
-                        </Button>
-                        <Button
-                          onClick={handleUpdate}
-                          disabled={isUpdating}
-                          className="px-8 py-2.5 h-11 min-w-[180px] bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50"
-                        >
-                          {isUpdating ? (
-                            <>
-                              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                              Đang lưu...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="h-5 w-5 mr-2" />
-                              Lưu thay đổi
-                            </>
-                          )}
-                        </Button>
-                      </>
                     )}
                   </div>
                 </div>
               </div>
             </motion.div>
           </div>
+
+          {/* Update Maintenance Modal */}
+          <UpdateMaintenanceModal
+            report={report}
+            isOpen={showUpdateModal}
+            onClose={() => setShowUpdateModal(false)}
+            onSuccess={handleUpdateSuccess}
+          />
         </>
       )}
     </AnimatePresence>

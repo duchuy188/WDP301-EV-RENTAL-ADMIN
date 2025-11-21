@@ -93,6 +93,7 @@ export interface GetMaintenanceByIdResponse {
 
 export interface UpdateMaintenancePayload {
   status: MaintenanceStatus;
+  battery_level?: number;
   notes?: string;
   images?: File[];
 }
