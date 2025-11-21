@@ -47,6 +47,10 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
   const [response, setResponse] = useState('');
   const [showResolveForm, setShowResolveForm] = useState(false);
   
+  // Image modal state
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
+  
   // Additional details
   const [userDetails, setUserDetails] = useState<any>(null);
   const [rentalDetails, setRentalDetails] = useState<any>(null);
@@ -463,12 +467,14 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
                       <div className="p-6">
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                         {feedback.images.map((image, index) => (
-                          <a
+                          <button
                             key={index}
-                            href={image}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                              className="relative aspect-square rounded-xl overflow-hidden group shadow-md hover:shadow-xl transition-all"
+                            onClick={() => {
+                              setSelectedImage(image);
+                              setShowImageModal(true);
+                            }}
+                            type="button"
+                              className="relative aspect-square rounded-xl overflow-hidden group shadow-md hover:shadow-xl transition-all cursor-pointer"
                           >
                             <img
                               src={image}
@@ -478,7 +484,7 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
                               <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center pb-3">
                               <span className="text-white text-sm font-medium">Xem ảnh</span>
                             </div>
-                          </a>
+                          </button>
                         ))}
                         </div>
                       </div>
@@ -886,6 +892,41 @@ export function FeedbackDetailModal({ feedback: initialFeedback, isOpen, onClose
               </div>
             </motion.div>
           </div>
+        </>
+      )}
+
+      {/* Image Modal */}
+      {showImageModal && selectedImage && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center p-4"
+            onClick={() => {
+              setShowImageModal(false);
+              setSelectedImage(null);
+            }}
+          >
+            <button
+              onClick={() => {
+                setShowImageModal(false);
+                setSelectedImage(null);
+              }}
+              className="absolute top-4 right-4 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors z-10"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <motion.img
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              src={selectedImage}
+              alt="Preview"
+              className="max-w-full max-h-full object-contain rounded-lg"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </motion.div>
         </>
       )}
     </AnimatePresence>
