@@ -84,21 +84,6 @@ const PeakAnalysisSection: React.FC<PeakAnalysisSectionProps> = ({ stationId, cl
         </h2>
         
         <div className="flex flex-col sm:flex-row gap-3">
-          {/* Type Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-gray-500" />
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value as 'hours' | 'days' | 'both')}
-              className="px-4 py-2 rounded-lg font-medium border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-              aria-label="Chọn loại thống kê"
-            >
-              <option value="both">Giờ & Ngày</option>
-              <option value="hours">Chỉ Giờ</option>
-              <option value="days">Chỉ Ngày</option>
-            </select>
-          </div>
-
           {/* Period Filter */}
           <div className="flex gap-2">
             {(['7d', '30d', '90d', '1y'] as const).map((period) => (
