@@ -525,7 +525,8 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                             value={bulkFormData.quantity}
                             onChange={(e) => {
                               const value = e.target.value;
-                              setBulkFormData({ ...bulkFormData, quantity: value === '' ? '' : Math.max(1, Math.min(100, parseInt(value, 10) || 1)) });
+                              const numValue = value === '' ? 1 : Math.max(1, Math.min(100, parseInt(value, 10) || 1));
+                              setBulkFormData({ ...bulkFormData, quantity: numValue });
                               if (errors.quantity) {
                                 setErrors(prev => ({ ...prev, quantity: '' }));
                               }
@@ -535,7 +536,7 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                             required
                           />
                           <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-                            Tối đa 100 xe mỗi lần {bulkFormData.quantity !== '' && `(đang chọn: ${bulkFormData.quantity} xe)`}
+                            Tối đa 100 xe mỗi lần (đang chọn: {bulkFormData.quantity} xe)
                           </p>
                           {errors.quantity && (
                             <p className="text-red-500 text-xs mt-1 flex items-center">

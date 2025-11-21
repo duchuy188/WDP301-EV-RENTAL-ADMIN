@@ -72,6 +72,7 @@ interface StationRevenue {
   id: string;
   name: string;
   code: string;
+  address: string;
   revenue: number;
   transactionCount: number;
   percentage: number;
@@ -88,6 +89,46 @@ interface StaffPerformance {
   totalComplaints: number;
   resolutionRate: number;
 }
+
+// Helper function to extract location (district/province) from station address
+const extractLocationFromAddress = (address: string, stationName: string): string => {
+  if (!address) return stationName;
+  
+  // Common patterns to extract location
+  // Examples: "123 Đường ABC, Quận 7, TP.HCM" -> "Quận 7"
+  //           "456 XYZ, Bình Dương" -> "Bình Dương"
+  const patterns = [
+    /(?:Quận|quận)\s*\d+/i,        // Quận 1, Quận 7, etc.
+    /(?:Huyện|huyện)\s+[^,]+/i,    // Huyện ...
+    /(?:Thành phố|thành phố|TP\.|TP)\s+[^,]+/i, // Thành phố ..., TP ...
+    /[^,]+\s*(?:Tỉnh|tỉnh)/i,      // ... Tỉnh
+    /(?:^|,\s*)([^,]+)(?:,|$)/    // Fallback: get last significant part
+  ];
+  
+  for (const pattern of patterns) {
+    const match = address.match(pattern);
+    if (match) {
+      const location = match[0].trim().replace(/^,\s*/, '').replace(/,\s*$/, '');
+      // Clean up common prefixes
+      return location
+        .replace(/^Quận\s*/i, 'Q.')
+        .replace(/^Huyện\s*/i, 'H.')
+        .replace(/^Thành phố\s*/i, '')
+        .replace(/^TP\.?\s*/i, '')
+        .trim();
+    }
+  }
+  
+  // If no pattern matches, try to get the last part of the address
+  const parts = address.split(',').map(p => p.trim()).filter(p => p);
+  if (parts.length > 0) {
+    const lastPart = parts[parts.length - 1];
+    // If last part is a province/city, return it
+    if (lastPart.length < 50) return lastPart;
+  }
+  
+  return stationName;
+};
 
 export function Dashboard() {
   // State
@@ -274,6 +315,7 @@ export function Dashboard() {
               id: station.id,
               name: station.name,
               code: station.code,
+              address: station.address || '',
               revenue: station.revenue,
               transactionCount: station.transactionCount,
               percentage: station.percentage
@@ -793,7 +835,7 @@ const kpiCards = [
                       <div className="mb-3">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <h4 className="font-bold text-sm text-gray-900 dark:text-white line-clamp-1 flex-1">
-                            {station.name}
+                            {extractLocationFromAddress(station.address, station.name)}
                           </h4>
                           <Badge 
                             variant="outline" 
