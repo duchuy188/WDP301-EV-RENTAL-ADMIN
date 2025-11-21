@@ -71,6 +71,9 @@ export interface GetAdminRentalsParams {
   station_id?: string;
   page?: number;
   limit?: number;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+  populate?: string; // Fields to populate, comma-separated
 }
 
 export interface GetUserRentalsResponse {

@@ -193,8 +193,19 @@ export default function Assignment() {
       filterable: true,
       render: (value: string, row: UnassignedStaff) => (
         <div className="flex items-center space-x-3">
-          <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
-            <User className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0 shadow-md">
+            {row.avatar ? (
+              <img
+                src={row.avatar}
+                alt={value}
+                className="h-full w-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+            ) : null}
+            <User className={`h-5 w-5 text-white ${row.avatar ? 'hidden' : ''}`} />
           </div>
           <div>
             <p className="font-medium text-gray-900 dark:text-white">{value}</p>

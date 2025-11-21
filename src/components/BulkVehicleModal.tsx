@@ -37,13 +37,13 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
   // Bulk Create State
   const [bulkFormData, setBulkFormData] = useState({
     model: '',
-    year: new Date().getFullYear(),
+    year: '',
     color: '',
     type: 'scooter' as 'scooter' | 'motorcycle',
-    batteryCapacity: 2.5,
-    maxRange: 80,
-    pricePerDay: 150000,
-    depositPercentage: 50,
+    batteryCapacity: '',
+    maxRange: '',
+    pricePerDay: '',
+    depositPercentage: '',
     quantity: 1
   });
   
@@ -56,13 +56,13 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
   const resetForm = useCallback(() => {
     setBulkFormData({
       model: '',
-      year: new Date().getFullYear(),
+      year: '',
       color: '',
       type: 'scooter' as 'scooter' | 'motorcycle',
-      batteryCapacity: 2.5,
-      maxRange: 80,
-      pricePerDay: 150000,
-      depositPercentage: 50,
+      batteryCapacity: '',
+      maxRange: '',
+      pricePerDay: '',
+      depositPercentage: '',
       quantity: 1
     });
     setBulkResult(null);
@@ -145,22 +145,12 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
     setErrors({});
 
     // Parse validated values (all validated, so safe to parse)
-    const year = typeof bulkFormData.year === 'number' ? bulkFormData.year : parseInt(String(bulkFormData.year), 10);
-    const batteryCapacity = typeof bulkFormData.batteryCapacity === 'number' 
-      ? bulkFormData.batteryCapacity 
-      : parseFloat(String(bulkFormData.batteryCapacity));
-    const maxRange = typeof bulkFormData.maxRange === 'number' 
-      ? bulkFormData.maxRange 
-      : parseInt(String(bulkFormData.maxRange), 10);
-    const pricePerDay = typeof bulkFormData.pricePerDay === 'number' 
-      ? bulkFormData.pricePerDay 
-      : parseInt(String(bulkFormData.pricePerDay), 10);
-    const depositPercentage = typeof bulkFormData.depositPercentage === 'number' 
-      ? bulkFormData.depositPercentage 
-      : parseInt(String(bulkFormData.depositPercentage), 10);
-    const quantity = typeof bulkFormData.quantity === 'number' 
-      ? bulkFormData.quantity 
-      : parseInt(String(bulkFormData.quantity), 10);
+    const year = parseInt(String(bulkFormData.year).trim(), 10);
+    const batteryCapacity = parseFloat(String(bulkFormData.batteryCapacity).trim());
+    const maxRange = parseInt(String(bulkFormData.maxRange).trim(), 10);
+    const pricePerDay = parseInt(String(bulkFormData.pricePerDay).replace(/\./g, '').trim(), 10);
+    const depositPercentage = parseInt(String(bulkFormData.depositPercentage).trim(), 10);
+    const quantity = parseInt(String(bulkFormData.quantity).trim(), 10);
 
     // Create the request body matching the API specification
     const requestBody = {
@@ -392,23 +382,31 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                             Năm sản xuất <span className="text-red-500">*</span>
                           </label>
-                          <Input
-                            id="field-year"
-                            name="year"
-                            type="number"
-                            min="2000"
-                            max="2030"
-                            value={bulkFormData.year}
-                            onChange={(e) => {
-                              setBulkFormData({ ...bulkFormData, year: e.target.value === '' ? '' : parseInt(e.target.value) });
-                              if (errors.year) {
-                                setErrors(prev => ({ ...prev, year: '' }));
-                              }
-                            }}
-                            placeholder="VD: 2024"
-                            className={`h-11 ${errors.year ? 'border-red-500 ring-red-500' : ''}`}
-                            required
-                          />
+                          <div className="relative">
+                            <select
+                              id="field-year"
+                              name="year"
+                              value={bulkFormData.year}
+                              onChange={(e) => {
+                                setBulkFormData({ ...bulkFormData, year: e.target.value === '' ? '' : parseInt(e.target.value) });
+                                if (errors.year) {
+                                  setErrors(prev => ({ ...prev, year: '' }));
+                                }
+                              }}
+                              className={`h-11 w-full px-4 py-2 rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 appearance-none cursor-pointer transition-all duration-200 ${errors.year ? 'border-red-500 ring-2 ring-red-200' : 'border-gray-300 dark:border-gray-600 hover:border-primary-400'}`}
+                              required
+                            >
+                              <option value="" disabled className="text-gray-400">Chọn năm sản xuất</option>
+                              {Array.from({ length: 26 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                                <option key={year} value={year} className="py-2">{year}</option>
+                              ))}
+                            </select>
+                            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                              <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                              </svg>
+                            </div>
+                          </div>
                           {errors.year && (
                             <p className="text-red-500 text-xs mt-1 flex items-center">
                               <AlertCircle className="h-3 w-3 mr-1" />
@@ -656,18 +654,18 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                           <Input
                             id="field-pricePerDay"
                             name="pricePerDay"
-                            type="number"
-                            min="50000"
-                            max="500000"
-                            step="1000"
-                            value={bulkFormData.pricePerDay}
+                            type="text"
+                            value={bulkFormData.pricePerDay !== '' ? Number(bulkFormData.pricePerDay).toLocaleString('vi-VN') : ''}
                             onChange={(e) => {
-                              setBulkFormData({ ...bulkFormData, pricePerDay: e.target.value === '' ? '' : parseInt(e.target.value) });
-                              if (errors.pricePerDay) {
-                                setErrors(prev => ({ ...prev, pricePerDay: '' }));
+                              const value = e.target.value.replace(/\./g, '');
+                              if (value === '' || /^\d+$/.test(value)) {
+                                setBulkFormData({ ...bulkFormData, pricePerDay: value === '' ? '' : parseInt(value) });
+                                if (errors.pricePerDay) {
+                                  setErrors(prev => ({ ...prev, pricePerDay: '' }));
+                                }
                               }
                             }}
-                            placeholder="VD: 150000"
+                            placeholder="VD: 150.000"
                             className={`h-11 ${errors.pricePerDay ? 'border-red-500 ring-red-500' : ''}`}
                             required
                           />

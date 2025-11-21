@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { FaMotorcycle } from 'react-icons/fa';
 import {
   Wrench,
   RefreshCw,
@@ -522,14 +523,19 @@ export function MaintenancePage() {
                             </div>
                           </td>
                           <td className="px-6 py-4 text-sm">
-                            <div className="font-medium text-gray-900 dark:text-white">
-                              {getVehicleName(report.vehicle_id)}
-                            </div>
-                            {typeof report.vehicle_id === 'object' && report.vehicle_id !== null && report.vehicle_id.license_plate && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400">
-                                {report.vehicle_id.license_plate}
+                            <div className="flex items-center gap-2">
+                              <FaMotorcycle className="text-gray-500 dark:text-gray-400" size={16} />
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white">
+                                  {getVehicleName(report.vehicle_id)}
+                                </div>
+                                {typeof report.vehicle_id === 'object' && report.vehicle_id !== null && report.vehicle_id.license_plate && (
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {report.vehicle_id.license_plate}
+                                  </div>
+                                )}
                               </div>
-                            )}
+                            </div>
                           </td>
                           <td className="px-6 py-4 text-sm">
                             <div className="text-gray-900 dark:text-white">

@@ -24,6 +24,8 @@ export function Chatbot() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
 
   // Scroll to bottom
   const scrollToBottom = () => {
@@ -167,14 +169,31 @@ export function Chatbot() {
       <AnimatePresence>
         {!isOpen && (
           <motion.button
+            drag
+            dragMomentum={false}
+            dragElastic={0.1}
+            dragConstraints={{
+              left: -window.innerWidth + 80,
+              right: 0,
+              top: -window.innerHeight + 80,
+              bottom: 0
+            }}
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
-            onClick={handleOpen}
-            className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-primary-600 to-primary-700 rounded-full shadow-2xl hover:shadow-primary-500/50 transition-all"
-            title="Mở chatbot"
+            onClick={(e) => {
+              if (!isDragging) {
+                handleOpen();
+              }
+            }}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={() => {
+              setTimeout(() => setIsDragging(false), 100);
+            }}
+            className="fixed bottom-6 right-6 z-50 p-4 bg-gradient-to-r from-primary-600 to-primary-700 rounded-full shadow-2xl hover:shadow-primary-500/50 transition-all cursor-grab active:cursor-grabbing"
+            title="Mở chatbot (Kéo để di chuyển)"
           >
             <MessageCircle className="w-6 h-6 text-white" />
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
@@ -186,13 +205,25 @@ export function Chatbot() {
       <AnimatePresence>
         {isOpen && (
           <motion.div
+            drag
+            dragMomentum={false}
+            dragElastic={0}
+            dragConstraints={{
+              left: -window.innerWidth + 400,
+              right: 0,
+              top: -window.innerHeight + 650,
+              bottom: 0
+            }}
+            onDragStart={() => setIsDragging(true)}
+            onDragEnd={() => setIsDragging(false)}
             initial={{ opacity: 0, y: 100, scale: 0.8 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.8 }}
-            className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            style={{ x: position.x, y: position.y }}
+            className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white dark:bg-gray-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden cursor-move"
           >
             {/* Header */}
-            <div className="bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800 px-4 py-3 flex items-center justify-between">
+            <div className="bg-gradient-to-r from-primary-600 to-primary-700 dark:from-primary-700 dark:to-primary-800 px-4 py-3 flex items-center justify-between cursor-grab active:cursor-grabbing">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-white/20 rounded-lg">
                   <Sparkles className="w-5 h-5 text-white" />

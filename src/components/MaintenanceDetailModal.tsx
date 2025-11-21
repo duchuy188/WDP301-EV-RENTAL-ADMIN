@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   Wrench,
-  Car,
+  Bike,
   MapPin,
   User,
   Calendar,
@@ -269,7 +269,7 @@ export function MaintenanceDetailModal({
                     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                       <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-b border-blue-100 dark:border-blue-900/30">
                         <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                          <Car className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                          <Bike size={18} className="text-blue-600 dark:text-blue-400" />
                           Thông tin xe
                         </h3>
                       </div>
