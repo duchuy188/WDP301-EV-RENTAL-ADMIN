@@ -119,19 +119,103 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.name.trim()) newErrors.name = 'Tên xe là bắt buộc';
-    if (!formData.licensePlate.trim()) newErrors.licensePlate = 'Biển số là bắt buộc';
-    if (!formData.brand.trim()) newErrors.brand = 'Thương hiệu là bắt buộc';
-    if (!formData.model.trim()) newErrors.model = 'Model là bắt buộc';
-    if (!formData.color.trim()) newErrors.color = 'Màu sắc là bắt buộc';
-    if (formData.year < 2000 || formData.year > 2030) newErrors.year = 'Năm sản xuất không hợp lệ';
-    if (formData.batteryCapacity <= 0) newErrors.batteryCapacity = 'Dung lượng pin phải lớn hơn 0';
-    if (formData.maxRange <= 0) newErrors.maxRange = 'Quãng đường tối đa phải lớn hơn 0';
-    if (formData.batteryLevel < 0 || formData.batteryLevel > 100) newErrors.batteryLevel = 'Mức pin phải từ 0-100%';
-    if (formData.pricePerDay <= 0) newErrors.pricePerDay = 'Giá thuê phải lớn hơn 0';
-    if (formData.depositPercentage < 0 || formData.depositPercentage > 100) newErrors.depositPercentage = 'Phần trăm cọc phải từ 0-100%';
+    // Name validation
+    if (!formData.name.trim()) {
+      newErrors.name = 'Tên xe là bắt buộc';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Tên xe phải có ít nhất 2 ký tự';
+    } else if (formData.name.trim().length > 100) {
+      newErrors.name = 'Tên xe không được quá 100 ký tự';
+    }
+
+    // License plate validation with Vietnamese format
+    if (!formData.licensePlate.trim()) {
+      newErrors.licensePlate = 'Biển số là bắt buộc';
+    } else {
+      // Format: 54P-354.13 or 54P-35413 (with or without dot)
+      // Vietnamese license plate format: [2 digits][Letter][dash][3-5 digits][optional dot][optional 2 digits]
+      const licensePlateRegex = /^[0-9]{2}[A-Z]{1,2}-[0-9]{3,6}(\.[0-9]{2})?$/;
+      const normalizedPlate = formData.licensePlate.trim().toUpperCase();
+      
+      if (!licensePlateRegex.test(normalizedPlate)) {
+        newErrors.licensePlate = 'Biển số không đúng định dạng (VD: 54P-354.13 hoặc 89K-942.32)';
+        console.log('License plate validation failed:', normalizedPlate);
+      }
+    }
+
+    // Brand validation
+    if (!formData.brand.trim()) {
+      newErrors.brand = 'Thương hiệu là bắt buộc';
+    } else if (formData.brand.trim().length < 2) {
+      newErrors.brand = 'Thương hiệu phải có ít nhất 2 ký tự';
+    }
+
+    // Model validation
+    if (!formData.model.trim()) {
+      newErrors.model = 'Model là bắt buộc';
+    } else if (formData.model.trim().length < 2) {
+      newErrors.model = 'Model phải có ít nhất 2 ký tự';
+    }
+
+    // Color validation
+    if (!formData.color.trim()) {
+      newErrors.color = 'Màu sắc là bắt buộc';
+    }
+
+    // Year validation
+    const currentYear = new Date().getFullYear();
+    if (formData.year < 2000) {
+      newErrors.year = 'Năm sản xuất phải từ 2000 trở lên';
+    } else if (formData.year > currentYear + 1) {
+      newErrors.year = `Năm sản xuất không được vượt quá ${currentYear + 1}`;
+    }
+
+    // Battery capacity validation
+    if (formData.batteryCapacity <= 0) {
+      newErrors.batteryCapacity = 'Dung lượng pin phải lớn hơn 0';
+    } else if (formData.batteryCapacity > 100) {
+      newErrors.batteryCapacity = 'Dung lượng pin không hợp lý (tối đa 100 kWh)';
+    }
+
+    // Max range validation
+    if (formData.maxRange <= 0) {
+      newErrors.maxRange = 'Quãng đường tối đa phải lớn hơn 0';
+    } else if (formData.maxRange > 500) {
+      newErrors.maxRange = 'Quãng đường tối đa không hợp lý (tối đa 500 km)';
+    }
+
+    // Battery level validation
+    if (formData.batteryLevel < 0 || formData.batteryLevel > 100) {
+      newErrors.batteryLevel = 'Mức pin phải từ 0-100%';
+    }
+
+    // Price validation
+    if (formData.pricePerDay <= 0) {
+      newErrors.pricePerDay = 'Giá thuê phải lớn hơn 0';
+    } else if (formData.pricePerDay < 10000) {
+      newErrors.pricePerDay = 'Giá thuê tối thiểu là 10,000 VNĐ';
+    } else if (formData.pricePerDay > 10000000) {
+      newErrors.pricePerDay = 'Giá thuê tối đa là 10,000,000 VNĐ';
+    }
+
+    // Deposit percentage validation
+    if (formData.depositPercentage < 0 || formData.depositPercentage > 100) {
+      newErrors.depositPercentage = 'Phần trăm cọc phải từ 0-100%';
+    }
+
+    // Station validation - Optional for edit, required for create
+    // Allow empty station during edit
+    // if (!formData.stationId) {
+    //   newErrors.stationId = 'Vui lòng chọn trạm xe';
+    // }
 
     setErrors(newErrors);
+    
+    // Log errors for debugging
+    if (Object.keys(newErrors).length > 0) {
+      console.log('Validation errors:', newErrors);
+    }
+    
     return Object.keys(newErrors).length === 0;
   };
 
@@ -166,11 +250,6 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
       // Update battery level separately if changed
       if (formData.batteryLevel !== vehicle.batteryLevel) {
         await vehicleService.updateVehicleBattery(vehicle.id, { current_battery: formData.batteryLevel });
-      }
-
-      // Update status separately if changed
-      if (formData.status !== vehicle.status) {
-        await vehicleService.updateVehicleStatus(vehicle.id, { status: formData.status });
       }
 
       showToast.success('Cập nhật thông tin xe thành công!');
@@ -283,14 +362,23 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                   </label>
                   <Input
                     value={formData.licensePlate}
-                    onChange={(e) => setFormData({ ...formData, licensePlate: e.target.value })}
+                    onChange={(e) => {
+                      // Auto format to uppercase
+                      const value = e.target.value.toUpperCase();
+                      setFormData({ ...formData, licensePlate: value });
+                    }}
+                    placeholder="VD: 51F-512.13 hoặc 89K-942.32"
                     className={errors.licensePlate ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
-                  {errors.licensePlate && (
+                  {errors.licensePlate ? (
                     <p className="text-red-500 text-xs mt-1 flex items-center">
                       <AlertCircle className="h-3 w-3 mr-1" />
                       {errors.licensePlate}
+                    </p>
+                  ) : (
+                    <p className="text-gray-500 text-xs mt-1">
+                      Định dạng: [Số tỉnh][Chữ cái]-[Số].[Số] (VD: 51F-512.13)
                     </p>
                   )}
                 </div>
@@ -304,7 +392,7 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                   <select
                     value={formData.brand}
                     onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.brand ? 'border-red-500' : 'border-gray-300'}`}
                     required
                     disabled={loadingBrands}
                     aria-label="Chọn thương hiệu xe"
@@ -318,11 +406,16 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                       </option>
                     ))}
                   </select>
-                  {brands.length === 0 && !loadingBrands && (
+                  {errors.brand ? (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.brand}
+                    </p>
+                  ) : brands.length === 0 && !loadingBrands ? (
                     <p className="text-xs text-gray-500 mt-1">
                       Không có thương hiệu nào trong hệ thống
                     </p>
-                  )}
+                  ) : null}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -331,7 +424,7 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                   <select
                     value={formData.model}
                     onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${errors.model ? 'border-red-500' : 'border-gray-300'}`}
                     required
                     disabled={loadingModels}
                     aria-label="Chọn model xe"
@@ -345,11 +438,16 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                       </option>
                     ))}
                   </select>
-                  {models.length === 0 && !loadingModels && (
+                  {errors.model ? (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.model}
+                    </p>
+                  ) : models.length === 0 && !loadingModels ? (
                     <p className="text-xs text-gray-500 mt-1">
                       Không có model nào trong hệ thống
                     </p>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
@@ -364,8 +462,15 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                     max="2030"
                     value={formData.year}
                     onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                    className={errors.year ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {errors.year && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.year}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -425,8 +530,15 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                     step="0.1"
                     value={formData.batteryCapacity}
                     onChange={(e) => setFormData({ ...formData, batteryCapacity: parseFloat(e.target.value) })}
+                    className={errors.batteryCapacity ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {errors.batteryCapacity && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.batteryCapacity}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -438,8 +550,15 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                     max="200"
                     value={formData.maxRange}
                     onChange={(e) => setFormData({ ...formData, maxRange: parseInt(e.target.value) })}
+                    className={errors.maxRange ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {errors.maxRange && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.maxRange}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -453,8 +572,15 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                   max="100"
                   value={formData.batteryLevel}
                   onChange={(e) => setFormData({ ...formData, batteryLevel: parseInt(e.target.value) })}
+                  className={errors.batteryLevel ? 'border-red-500 focus:ring-red-500' : ''}
                   required
                 />
+                {errors.batteryLevel && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {errors.batteryLevel}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -482,8 +608,15 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                     step="1000"
                     value={formData.pricePerDay}
                     onChange={(e) => setFormData({ ...formData, pricePerDay: parseInt(e.target.value) })}
+                    className={errors.pricePerDay ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {errors.pricePerDay && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.pricePerDay}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -495,75 +628,16 @@ export function EditVehicleModal({ isOpen, onClose, vehicle, onVehicleUpdated }:
                     max="100"
                     value={formData.depositPercentage}
                     onChange={(e) => setFormData({ ...formData, depositPercentage: parseInt(e.target.value) })}
+                    className={errors.depositPercentage ? 'border-red-500 focus:ring-red-500' : ''}
                     required
                   />
+                  {errors.depositPercentage && (
+                    <p className="text-red-500 text-xs mt-1 flex items-center">
+                      <AlertCircle className="h-3 w-3 mr-1" />
+                      {errors.depositPercentage}
+                    </p>
+                  )}
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-            {/* Status and Location */}
-            <Card className="border-2 border-gray-200 dark:border-gray-700">
-              <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
-                <CardTitle className="flex items-center space-x-2 text-base">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                    <MapPin className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                  </div>
-                  <span>Trạng thái và vị trí</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Trạng thái *
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as VehicleStatus })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                    aria-label="Chọn trạng thái xe"
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="available">Sẵn sàng</option>
-                    <option value="reserved">Đã đặt</option>
-                    <option value="rented">Đang thuê</option>
-                    <option value="maintenance">Bảo trì</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Trạm phân bổ
-                  </label>
-                  <select
-                    value={formData.stationId}
-                    onChange={(e) => setFormData({ ...formData, stationId: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onFocus={() => !stations.length && loadStations()}
-                    aria-label="Chọn trạm phân bổ"
-                  >
-                    <option value="">Chưa phân bổ</option>
-                    {stations.map((station) => (
-                      <option key={station._id} value={station._id}>
-                        {station.name} - {station.address}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="isActive"
-                  checked={formData.isActive}
-                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <label htmlFor="isActive" className="text-sm font-medium text-gray-700">
-                  Xe đang hoạt động
-                </label>
               </div>
             </CardContent>
           </Card>
