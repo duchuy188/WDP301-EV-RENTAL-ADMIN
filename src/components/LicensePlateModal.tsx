@@ -845,7 +845,6 @@ export function LicensePlateModal({ isOpen, onClose, onSuccess, vehicles = [] }:
                   <div className="text-sm text-amber-800">
                     <p className="font-medium mb-1">Lưu ý:</p>
                     <ul className="list-disc list-inside space-y-1">
-                      <li><strong>KHÔNG</strong> xóa hoặc thay đổi cột <strong>vehicle_id</strong></li>
                       <li>Biển số đúng định dạng: VD: 51A-123.45</li>
                       <li>File phải là Excel (.xlsx hoặc .xls)</li>
                     </ul>

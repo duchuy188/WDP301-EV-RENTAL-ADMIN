@@ -30,7 +30,7 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { name: 'Dashboard', icon: Home, path: '/' },
+  { name: 'Bảng điều khiển', icon: Home, path: '/' },
   {
     name: 'Quản lý Xe và Trạm',
     icon: FaMotorcycle,
@@ -147,7 +147,7 @@ export function Sidebar({ isCollapsed, setIsCollapsed, isMobile }: SidebarProps)
                   transition={{ duration: 0.2 }}
                 >
                   <h1 className="text-xl font-bold text-gray-900 dark:text-white">EV Rental</h1>
-                  <p className="text-sm text-neutral-500 dark:text-gray-400">Admin Panel</p>
+                <p className="text-sm text-neutral-500 dark:text-gray-400">Quản Trị</p>
                 </motion.div>
               )}
             </div>
