@@ -397,7 +397,7 @@ export function BulkVehicleModal({ isOpen, onClose, onSuccess }: BulkVehicleModa
                               required
                             >
                               <option value="" disabled className="text-gray-400">Chọn năm sản xuất</option>
-                              {Array.from({ length: 26 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                              {Array.from({ length: new Date().getFullYear() - 2020 + 1 }, (_, i) => new Date().getFullYear() - i).map(year => (
                                 <option key={year} value={year} className="py-2">{year}</option>
                               ))}
                             </select>
